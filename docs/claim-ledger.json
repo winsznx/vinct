@@ -133,5 +133,148 @@
       "The counterexample crate is a scratch build and is not committed to this repository.",
       "A stub crate declaring anchor-compat alongside anchor-lang 1.0.2 still passes cargo check, so this result depends on exercising the macros."
     ]
+  },
+  {
+    "id": "phase1-reference-model-is-authoritative",
+    "wording": "One pure Rust reference model defines every VINCT covenant, incident, certificate, settlement, and recovery rule, and no expected value is implemented a second time.",
+    "status": "verified",
+    "proof_level": 1,
+    "network": "none",
+    "source_commit": "",
+    "program_ids": [],
+    "transactions": [],
+    "commands": ["cargo test --workspace", "cargo clippy --workspace --all-targets -- -D warnings"],
+    "artifacts": ["crates/vinct-types/src", "crates/vinct-reference/src"],
+    "verified_at": "2026-08-07T18:20:00Z",
+    "limitations": [
+      "Deterministic model only. No account constraint, no runtime, no network behaviour is proven here.",
+      "The model takes resolved addresses as input; it does not derive program addresses, which needs a Solana runtime."
+    ]
+  },
+  {
+    "id": "phase1-canonical-hash-mutation-coverage",
+    "wording": "Every one-byte and one-order mutation the PRD enumerates either changes the canonical digest or is rejected outright, including sorting account metas.",
+    "status": "verified",
+    "proof_level": 1,
+    "network": "none",
+    "source_commit": "",
+    "program_ids": [],
+    "transactions": [],
+    "commands": ["cargo test -p vinct-types"],
+    "artifacts": [
+      "crates/vinct-types/tests/canonical_hashes.rs",
+      "packages/test-vectors/canonical-vectors.json"
+    ],
+    "verified_at": "2026-08-07T18:20:00Z",
+    "limitations": [
+      "Covers the canonical encoding only. An on-chain program that fails to feed the right bytes into these types is a separate risk, addressed from Phase 2.",
+      "26 mutation vectors are committed; 22 produce distinct digests and 4 are rejected before hashing."
+    ]
+  },
+  {
+    "id": "phase1-exhaustive-three-member-state-space",
+    "wording": "All 1024 states of the three-member covenant were enumerated, and certification never occurs without the frozen threshold being met.",
+    "status": "verified",
+    "proof_level": 1,
+    "network": "none",
+    "source_commit": "",
+    "program_ids": [],
+    "transactions": [],
+    "commands": ["cargo test -p vinct-reference --test exhaustive_three_member"],
+    "artifacts": [
+      "artifacts/test-vectors/exhaustive-three-member.json",
+      "crates/vinct-reference/tests/exhaustive_three_member.rs"
+    ],
+    "verified_at": "2026-08-07T18:20:00Z",
+    "limitations": [
+      "Exhaustive for three members, one threshold, and one ceiling. Larger covenants are covered by property tests, not enumeration.",
+      "Enumerates evaluation outcomes, not on-chain instruction behaviour."
+    ]
+  },
+  {
+    "id": "phase1-quarantine-cannot-certify",
+    "wording": "Quarantine can never cause a certification, in any state of the three-member covenant or under property testing up to eight members.",
+    "status": "verified",
+    "proof_level": 1,
+    "network": "none",
+    "source_commit": "",
+    "program_ids": [],
+    "transactions": [],
+    "commands": [
+      "cargo test -p vinct-reference --test exhaustive_three_member",
+      "cargo test -p vinct-reference --test properties"
+    ],
+    "artifacts": ["docs/decision-log.md", "crates/vinct-reference/src/evaluate.rs"],
+    "verified_at": "2026-08-07T18:20:00Z",
+    "limitations": [
+      "A property test found the original implementation violating this. The claim describes the corrected model, recorded as D-0013.",
+      "Assumes the quarantine authority cannot also forge attestations; that is a separate control tested from Phase 4."
+    ]
+  },
+  {
+    "id": "phase1-operation-id-is-acyclic-and-bound",
+    "wording": "The operation identity is computable before any concrete action bundle exists, every one of its eight inputs is load-bearing, and the concrete bundle stays cryptographically bound through the certificate.",
+    "status": "verified",
+    "proof_level": 1,
+    "network": "none",
+    "source_commit": "",
+    "program_ids": [],
+    "transactions": [],
+    "commands": ["cargo test -p vinct-reference --test operation_binding"],
+    "artifacts": [
+      "docs/decision-log.md",
+      "crates/vinct-types/src/action.rs",
+      "crates/vinct-reference/tests/operation_binding.rs"
+    ],
+    "verified_at": "2026-08-07T18:20:00Z",
+    "limitations": [
+      "Corrects PRD sections 12.3 and 12.4, whose derivation was circular and could not be implemented. Recorded as D-0012.",
+      "Replay resistance is proven against the model's capability-bounds check, not yet against a deployed adapter program."
+    ]
+  },
+  {
+    "id": "phase1-cross-language-hash-parity",
+    "wording": "An independently written TypeScript encoder reproduces every canonical Borsh preimage and SHA-256 digest byte for byte.",
+    "status": "verified",
+    "proof_level": 1,
+    "network": "none",
+    "source_commit": "",
+    "program_ids": [],
+    "transactions": [],
+    "commands": ["pnpm verify-vectors", "pnpm test:ts"],
+    "artifacts": [
+      "packages/verifier/src",
+      "packages/test-vectors/canonical-vectors.json",
+      "tests/program/verifier-parity.test.ts"
+    ],
+    "verified_at": "2026-08-07T18:20:00Z",
+    "limitations": [
+      "The TypeScript side implements Borsh from the specification rather than reusing the Rust encoder, which is what makes the check independent.",
+      "Rust remains authoritative. The vectors prove agreement, not that either implementation is correct in isolation.",
+      "17 negative tests confirm the parity checker reports disagreement when one is introduced."
+    ]
+  },
+  {
+    "id": "phase1-settlement-classifier-never-infers",
+    "wording": "Settlement reaches SETTLED only when every adapter receipt, every target effect, and the final settlement receipt were positively observed, and an unreadable observation is never treated as absence.",
+    "status": "verified",
+    "proof_level": 1,
+    "network": "none",
+    "source_commit": "",
+    "program_ids": [],
+    "transactions": [],
+    "commands": [
+      "cargo test -p vinct-reference --test settlement",
+      "cargo test -p vinct-reference --test properties"
+    ],
+    "artifacts": [
+      "crates/vinct-types/src/settlement.rs",
+      "crates/vinct-reference/tests/settlement.rs"
+    ],
+    "verified_at": "2026-08-07T18:20:00Z",
+    "limitations": [
+      "Classifies supplied observations. Whether the observations themselves are complete depends on the Phase 3 reconciler.",
+      "The real committor's transaction-strategy grouping is still unmeasured, so which classifications actually occur on Devnet is unknown until Phase 3."
+    ]
   }
 ]

@@ -4,3 +4,4 @@ target
 artifacts
 scripts/fixtures
 pnpm-lock.yaml
+packages/test-vectors

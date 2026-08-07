@@ -179,3 +179,155 @@ sub-expression in VINCT's own programs will still fail the gate.
 
 No type errors were suppressed. There is no `unsafe`, no `unwrap`, and no `expect` in the
 probe.
+
+---
+
+## Phase 1 — 2026-08-07
+
+### D-0012 The operation ID derives from the registered template, not the concrete bundle
+
+PRD section 12.4 derives `operation_id` from `action_bundle_hash`. PRD section 12.3 puts
+`operation_id` inside `ActionBundleV1`. Neither value can be computed first.
+
+The cycle closes a second time through the accounts. Receipt PDAs are seeded by the
+operation ID (`["adapter_receipt", operation_id, adapter]` and `["settlement", operation_id]`
+in PRD section 9), and those addresses appear in the bundle's account metas, which feed the
+bundle hash.
+
+Two ways out were considered.
+
+1. Drop `operation_id` from `ActionBundleV1` and keep the PRD's derivation. Rejected: the
+   receipt-address cycle survives, because the bundle would still have to name accounts
+   whose addresses depend on the operation ID.
+2. Derive `operation_id` from an operation-independent input instead. Taken.
+
+The chosen derivation is:
+
+```text
+operation_id = sha256(
+  sha256("VINCT_OPERATION_V1")
+  || cluster_genesis_hash
+  || covenant
+  || circle_epoch_le64
+  || incident_id_le64
+  || policy_id
+  || member_set_hash
+  || action_bundle_template_hash
+  || certificate_nonce_le64
+)
+```
+
+`action_bundle_template_hash` is the policy's commitment to the *registered* action
+templates, which a protocol authority reviews and signs when it arms its adapter. It is
+fixed before any incident opens, so it introduces no cycle. `ActionBundleV1` keeps its
+`operation_id` field exactly as PRD section 12.3 specifies.
+
+Nothing the PRD's security invariants require is lost. Section 20.9 asks that a
+certificate be cluster-, covenant-, epoch-, incident-, policy-, bundle-, and nonce-bound.
+Seven of those are inside the operation ID directly. Binding to the *concrete* per-incident
+bundle moves one level up: `CertificateV1.action_bundle_hash` carries it, and PRD section
+14's adapter validation order checks the certificate's bundle hash and the operation ID
+independently. An attacker who substitutes a concrete bundle changes its hash and fails
+`CertificateRefusal::ActionBundleMismatch`.
+
+Templates are the natural place for this binding anyway. A protocol that re-arms with
+different bounds produces a different template hash, so every operation issued afterwards
+has a different identity, which is the property that mattered.
+
+Accepted as implementation evidence on 21 regression tests in
+`crates/vinct-reference/tests/operation_binding.rs`: the derivation is acyclic and
+computable before any concrete bundle exists, it is deterministic, every one of its eight
+inputs is load-bearing and collision-free against the others, a receipt-address change
+moves the bundle hash without moving the operation ID, a substituted concrete bundle is
+refused by certificate validation, and replay across incidents, epochs, policies, clusters,
+and consumed operations all fail. The TypeScript verifier reproduces the derivation
+independently.
+
+PRD sections 12.3 and 12.4 are superseded on this point. `docs/architecture-manifest.yaml`
+records the corrected derivation.
+
+### D-0013 A quarantined member's rejection keeps counting
+
+A property test over covenants of two to eight members produced this counterexample: six
+members, threshold two, rejection ceiling one, with two approvals and two rejections. The
+incident evaluates to `RejectedByThreshold`. Quarantining one of the two objectors dropped
+the rejection count to one, which no longer breached the ceiling, and the incident became
+`Certified`.
+
+Whoever holds the quarantine authority could therefore erase objections until the ceiling
+stopped blocking, and push through an action the covenant had already refused. PRD section
+21's threat table requires the test "quarantine cannot certify incident", and PRD section
+16 ends with "a suspected compromise must never make automatic execution easier". Both were
+violated.
+
+Preserving `required_approvals` unchanged, which the model already did, is not sufficient.
+The threshold is only one of the two gates; the rejection ceiling is the other, and
+quarantine was lowering it.
+
+The corrected rule is asymmetric on purpose:
+
+- A quarantined member's **approval** is discarded. A possibly-compromised key must not
+  authorise an action.
+- A quarantined member's **rejection** still counts toward the ceiling. An objection cast
+  while the member was trusted is a signal not to act, and honouring it is the fail-safe
+  direction.
+- A **superseded** record never counts either way. The member replaced it themselves, while
+  trusted.
+
+Implemented as `IncidentState::binding_attestation`, which is the effective record widened
+by exactly the quarantine-invalidated case, plus `objecting_members`, which evaluates the
+ceiling over every role-permitted member rather than only the currently eligible ones.
+
+`Tally::rejections` can now exceed `Tally::eligible`. That is recorded on the field.
+
+Quarantine can still make certification impossible, which is the intended direction:
+eligible members shrink, so `max_reachable_approvals` shrinks with them.
+
+Covered by `quarantining_dissenters_can_never_unblock_a_certification` and
+`quarantine_never_reduces_the_rejection_count`, both exhaustive over the three-member space,
+and by the `quarantine_never_helps_certification` property over two to eight members.
+
+### D-0014 Canonical addresses are a plain 32-byte newtype
+
+`vinct-types` must hash identically inside an Anchor program, in a host test, and in the
+vector generator that feeds the TypeScript verifier. Depending on `solana-program` for
+`Pubkey` would pull a runtime into the reference model and tie it to one Solana crate line.
+
+`Address([u8; 32])` is Borsh-encoded as 32 raw bytes, which is byte-identical to `Pubkey`'s
+encoding, so programs convert at their boundary and no wire format changes.
+
+### D-0015 Account roles replace addresses for operation-derived template slots
+
+Phase 0 established that `#[action]` injects `escrow_auth` as a non-mutable
+`UncheckedAccount`, so a Magic Action target cannot create its own accounts. Receipt
+accounts must therefore exist before an action is scheduled, and their addresses depend on
+the operation ID.
+
+A registered template cannot name them. Instead each slot declares an `AccountRoleV1`:
+`Fixed`, `AdapterReceipt`, `SettlementReceipt`, or `Certificate`. A `Fixed` slot carries a
+concrete address and must not be zero; a derived slot carries `Address::ZERO` and must not
+carry anything else. Both rules are enforced by `TemplateAccountMetaV1::validate`.
+
+This is Phase 0's preferred option A, and it is stronger than pinning a hash of a supplied
+address: the adapter re-derives the expected PDA from the operation ID and compares, so a
+substituted receipt account fails on the derivation rather than on a hash the attacker also
+controls the input to.
+
+None of the rejected properties are weakened. Idempotency still comes from the operation ID,
+operation binding from the certificate, independent verification from the concrete bundle
+hash, protocol sovereignty from the protocol-signed template, and settlement reconciliation
+from observing each receipt PDA at its derived address.
+
+### D-0016 Rejecting an out-of-order member set rather than sorting it
+
+`MemberSetV1::new` imposes ascending address order when a set is constructed, so two clients
+that agree on membership always agree on the hash. `MemberSetV1::validate`, which runs on
+decode, **rejects** an out-of-order set instead of sorting it.
+
+Normalising on decode would let a tampered encoding be repaired into a valid one. The same
+reasoning applies to duplicates: a duplicate member is rejected, not deduplicated, because a
+caller that submitted one is wrong about who the members are.
+
+Account metas are covered by neither rule. They are never sorted anywhere, and
+`sorting_account_metas_changes_the_digest` asserts that a sort is visible as a different
+hash.

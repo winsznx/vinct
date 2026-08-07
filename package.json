@@ -16,7 +16,10 @@
     "check-magicblock-status": "tsx scripts/check-magicblock-status.ts",
     "stack:start": "bash scripts/bootstrap-local.sh start",
     "stack:stop": "bash scripts/bootstrap-local.sh stop",
-    "stack:cycle": "bash scripts/bootstrap-local.sh cycle"
+    "stack:cycle": "bash scripts/bootstrap-local.sh cycle",
+    "verify-vectors": "tsx packages/verifier/src/cli.ts",
+    "gen-vectors": "cargo run -q -p vinct-reference --features vectors --bin gen-vectors",
+    "test:ts": "tsx --test \"tests/**/*.test.ts\""
   },
   "dependencies": {
     "@coral-xyz/anchor": "0.32.1",

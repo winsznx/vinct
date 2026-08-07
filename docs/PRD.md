@@ -809,6 +809,37 @@ Account metas must never be sorted. Solana instruction order is semantic.
 
 ## 12.4 Operation ID
 
+> **Corrected in Phase 1. See `docs/decision-log.md` D-0012.**
+>
+> The derivation below is circular and cannot be implemented. It takes
+> `action_bundle_hash` as an input, while section 12.3 places `operation_id` inside
+> `ActionBundleV1`. The loop closes a second time through the accounts: receipt PDAs are
+> seeded by the operation ID (section 9) and appear in the bundle's account metas.
+>
+> The implemented derivation substitutes the policy's registered action-*template* hash,
+> which is fixed before any incident opens:
+>
+> ```text
+> operation_id =
+> sha256(
+>   sha256("VINCT_OPERATION_V1") ||
+>   cluster_genesis_hash ||
+>   covenant ||
+>   circle_epoch_le64 ||
+>   incident_id_le64 ||
+>   policy_id ||
+>   member_set_hash ||
+>   action_bundle_template_hash ||
+>   certificate_nonce_le64
+> )
+> ```
+>
+> Binding to the concrete per-incident bundle is not lost. It moves one level up, onto
+> `CertificateV1.action_bundle_hash`, which section 14's adapter validation checks
+> alongside the operation ID. `ActionBundleV1` keeps its `operation_id` field unchanged.
+
+Original, superseded:
+
 ```text
 operation_id =
 sha256(
@@ -1010,12 +1041,26 @@ Active-incident quarantine:
 
 - requires a separate high-threshold authority
 - stops new attestations from the member
-- invalidates that member's current attestation
+- discards that member's approval
+- retains that member's rejection against the rejection ceiling
 - does not lower the original threshold
 - may make certification impossible
 - impossible incidents expire or move to manual response
 
 A suspected compromise must never make automatic execution easier.
+
+> **Refined in Phase 1. See `docs/decision-log.md` D-0013.**
+>
+> "Invalidates that member's current attestation" was implemented literally and created a
+> hole a property test found: quarantining a dissenter erased their rejection, which could
+> drop the count back under the ceiling and turn a `RejectedByThreshold` incident into a
+> certified one. Preserving `required_approvals` alone is not enough, because the ceiling
+> is the second gate.
+>
+> Quarantine is therefore asymmetric. An approval from a possibly-compromised key is
+> discarded; a rejection cast while the member was trusted keeps counting. Both directions
+> are fail-safe, and only one of them is available to an attacker who controls the
+> quarantine authority. A member's own superseded record never counts either way.
 
 ---
 

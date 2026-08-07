@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 9f50ad8ad9994dd9afc789397222c26f87b0c3fa03047701ab576645e34f6b8b # shrinks to member_count = 6, decisions = [Some(Approve), Some(Reject), Some(Abstain), None, Some(Approve), Some(Reject), None], quarantine_mask = 32

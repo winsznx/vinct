@@ -1,0 +1,16 @@
+[package]
+name = "vinct-types"
+version = "0.1.0"
+description = "Canonical VINCT types, Borsh layouts, and domain-separated digests. No network or Anchor dependency."
+edition = "2021"
+publish = false
+
+[dependencies]
+borsh = { version = "=1.8.0", features = ["derive"] }
+sha2 = { version = "=0.10.9", default-features = false }
+
+[dev-dependencies]
+hex = "=0.4.3"
+
+[lints.rust]
+missing_docs = "warn"
