@@ -1,0 +1,88 @@
+{
+  "captured_at": "2026-08-07T16:23:53.034Z",
+  "router": "https://devnet-router.magicblock.app/",
+  "probe_account": "11111111111111111111111111111111",
+  "probe_account_is_known_delegated": false,
+  "advertised_routes": [
+    {
+      "identity": "MUS3hc9TCw4cGC12vHNoYcCGzJG1txjgQLZWVoeNHNd",
+      "fqdn": "https://devnet-us.magicblock.app/",
+      "countryCode": "USA",
+      "blockTimeMs": 50
+    },
+    {
+      "identity": "MAS1Dt9qreoRMQ14YQuhg8UTZMMzDdKhmkZMECCzk57",
+      "fqdn": "https://devnet-as.magicblock.app/",
+      "countryCode": "SGP",
+      "blockTimeMs": 50
+    },
+    {
+      "identity": "MEUGGrYPxKk17hCr7wpT6s8dtNokZj5U2L57vjYMS8e",
+      "fqdn": "https://devnet-eu.magicblock.app/",
+      "countryCode": "DEU",
+      "blockTimeMs": 50
+    },
+    {
+      "identity": "MTEWGuqxUpYZGFJQcp8tLN7x5v9BSeoFHYWQQ3n3xzo",
+      "fqdn": "https://devnet-tee.magicblock.app/",
+      "countryCode": "SGP",
+      "blockTimeMs": 50
+    }
+  ],
+  "calls": [
+    {
+      "method": "getRoutes",
+      "params": [],
+      "ok": true,
+      "result": [
+        {
+          "identity": "MUS3hc9TCw4cGC12vHNoYcCGzJG1txjgQLZWVoeNHNd",
+          "fqdn": "https://devnet-us.magicblock.app/",
+          "baseFee": 0,
+          "blockTimeMs": 50,
+          "countryCode": "USA"
+        },
+        {
+          "identity": "MAS1Dt9qreoRMQ14YQuhg8UTZMMzDdKhmkZMECCzk57",
+          "fqdn": "https://devnet-as.magicblock.app/",
+          "baseFee": 0,
+          "blockTimeMs": 50,
+          "countryCode": "SGP"
+        },
+        {
+          "identity": "MEUGGrYPxKk17hCr7wpT6s8dtNokZj5U2L57vjYMS8e",
+          "fqdn": "https://devnet-eu.magicblock.app/",
+          "baseFee": 0,
+          "blockTimeMs": 50,
+          "countryCode": "DEU"
+        },
+        {
+          "identity": "MTEWGuqxUpYZGFJQcp8tLN7x5v9BSeoFHYWQQ3n3xzo",
+          "fqdn": "https://devnet-tee.magicblock.app/",
+          "baseFee": 0,
+          "blockTimeMs": 50,
+          "countryCode": "SGP"
+        }
+      ],
+      "error": null
+    },
+    {
+      "method": "getDelegationStatus",
+      "params": [
+        "11111111111111111111111111111111"
+      ],
+      "ok": true,
+      "result": {
+        "isDelegated": false
+      },
+      "error": null
+    }
+  ],
+  "findings": {
+    "get_delegation_status_fields": [
+      "isDelegated"
+    ],
+    "get_delegation_status_includes_fqdn": false,
+    "note": "Probed with an undelegated account. Whether a delegated account's response carries an fqdn is UNVERIFIED. Re-run with --account <delegated pubkey> before relying on it."
+  }
+}

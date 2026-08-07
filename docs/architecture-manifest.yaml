@@ -1,0 +1,172 @@
+schema_version: "1"
+application:
+  id: "vinct"
+  name: "VINCT"
+  goal: "Binding mutual aid for protocols sharing critical dependencies"
+  network: "devnet"
+
+requirements:
+  privacy: "private"
+  settlement_guarantee: "Every required base-layer effect must be independently observed before settlement"
+  max_uncommitted_seconds: null
+  latency_target_ms: null
+  throughput_target_tps: null
+
+products:
+  - id: "per"
+    purpose: "Protected incident state and sealed attestations"
+  - id: "er"
+    purpose: "Low-latency shared state and delegated account lifecycle"
+  - id: "magic_actions"
+    purpose: "Commit-linked base-layer action cohort"
+  - id: "cranks"
+    purpose: "Incident expiry"
+
+actors:
+  - id: "steward"
+    authority: "formation only"
+  - id: "protocol_authority"
+    authority: "owns and arms local sovereign adapter"
+  - id: "responder"
+    authority: "opens incidents and submits one sealed attestation"
+  - id: "observer"
+    authority: "read-only public lifecycle"
+  - id: "reconciler"
+    authority: "classifies delivery, cannot execute silently"
+
+accounts:
+  - id: "covenant"
+    owner_program: "vinct_core"
+    derivation: "pda"
+    authority: "ratification authorities"
+    created_on: "base"
+    persistence: "base-settled"
+    er_access: "none"
+    delegated: false
+    delegation_group: "none"
+    privacy: "public"
+    commit_policy: "none"
+    undelegate_policy: "none"
+    close_policy: "expire or supersede"
+    funding_owner: "steward"
+  - id: "incident_state"
+    owner_program: "vinct_core"
+    derivation: "pda"
+    authority: "program and PER permission authority"
+    created_on: "base"
+    persistence: "base-settled after scrub"
+    er_access: "write"
+    delegated: true
+    delegation_group: "incident"
+    privacy: "private"
+    commit_policy: "terminal scrub-and-commit only"
+    undelegate_policy: "after permission close and zeroization verification"
+    close_policy: "none"
+    funding_owner: "circle sponsor"
+  - id: "ephemeral_permission"
+    owner_program: "permission program"
+    derivation: "sdk-defined"
+    authority: "trusted permission authority"
+    created_on: "er"
+    persistence: "er-only"
+    er_access: "write"
+    delegated: false
+    delegation_group: "incident"
+    privacy: "private"
+    commit_policy: "none"
+    undelegate_policy: "none"
+    close_policy: "close before incident undelegation"
+    funding_owner: "delegated incident PDA or configured payer"
+  - id: "adapter_capability"
+    owner_program: "vinct_adapter"
+    derivation: "pda"
+    authority: "protocol authority"
+    created_on: "base"
+    persistence: "base-settled"
+    er_access: "read"
+    delegated: false
+    delegation_group: "none"
+    privacy: "public"
+    commit_policy: "none"
+    undelegate_policy: "none"
+    close_policy: "revoke or expire"
+    funding_owner: "protocol"
+  - id: "adapter_receipt"
+    owner_program: "vinct_adapter"
+    derivation: "pda"
+    authority: "adapter program"
+    created_on: "base"
+    persistence: "base-settled"
+    er_access: "none"
+    delegated: false
+    delegation_group: "none"
+    privacy: "public"
+    commit_policy: "none"
+    undelegate_policy: "none"
+    close_policy: "immutable"
+    funding_owner: "Magic Action escrow"
+  - id: "settlement_receipt"
+    owner_program: "vinct_core"
+    derivation: "pda"
+    authority: "action handler"
+    created_on: "base"
+    persistence: "base-settled"
+    er_access: "none"
+    delegated: false
+    delegation_group: "none"
+    privacy: "public"
+    commit_policy: "none"
+    undelegate_policy: "none"
+    close_policy: "immutable"
+    funding_owner: "Magic Action escrow"
+
+routing:
+  router_discovery_required: true
+  allow_static_er_endpoint: false
+  compatibility_checks:
+    - "all writable delegated accounts resolve to the same compatible ER"
+    - "base owner, router status, and ER owner agree"
+    - "fresh blockhash obtained from the destination runtime"
+
+settlement:
+  strategy: "terminal"
+  triggers:
+    - "threshold certificate after private-field zeroization"
+    - "incident expiry after private-field zeroization"
+  terminal_undelegation_actor: "configured incident lifecycle authority"
+  magic_actions:
+    - "three sovereign adapter actions"
+    - "one final settlement receipt action"
+  commit_sponsor: "verify current quota and fee-vault path in Phase 0"
+  fee_vault: null
+  delegated_fee_payer: null
+  recovery_path: "observe every expected effect, classify, create governed recovery with a new operation ID"
+
+external_dependencies:
+  - "MagicBlock base RPC"
+  - "MagicBlock Router"
+  - "router-resolved TEE-backed PER endpoint"
+  - "Magic Program committor and action service"
+  - "MagicBlock crank scheduler"
+  - "Solana Devnet"
+
+open_questions:
+  - "Exact target-environment grouping of all BaseActions in one TransactionStrategy"
+  - "Measured CU, account, and transaction-size budgets"
+  - "Expected TEE workload measurement allowlist"
+  - "Protocol operator acceptance of unarmed and armed sovereign adapters"
+  # Raised by the Phase 0 probe; see docs/decision-log.md D-0009 and D-0008.
+  - "Whether router getDelegationStatus returns an fqdn for a delegated account. The pinned SDK types it as {isDelegated} only, and the live devnet router returned only that field for an undelegated account. If absent, endpoint resolution must combine getRoutes with the delegation record's validator identity, and PRD section 10 needs a correction."
+  - "Whether the TypeScript SDK 0.14.3 and Rust SDK 0.16.2 pairing holds at runtime for permission and intent encoding"
+  - "Which crank call path to use: raw MagicBlockInstruction::ScheduleTask bincode, or the SDK ScheduleCrankCpi driven from remaining_accounts"
+
+resolved_questions:
+  - question: "Exact compatible Anchor and TypeScript version line after Phase 0 probe"
+    resolution: "anchor-lang 1.0.2 with ephemeral-rollups-sdk 0.16.2 features [anchor, access-control]; Anchor CLI 1.0.2; Solana CLI 3.1.9 with platform tools v1.52; Rust 1.89.0; TypeScript client on @coral-xyz/anchor 0.32.1 and @magicblock-labs/ephemeral-rollups-sdk 0.14.3 over @solana/web3.js v1."
+    evidence: "docs/source-lock.md; artifacts/source-lock/version-report.json"
+
+phase_0_constraints:
+  # Constrains the Phase 3 receipt design. See docs/decision-log.md D-0008.
+  - "The #[action] macro appends escrow_auth as a non-mutable UncheckedAccount, so a Magic Action target cannot init its own accounts. adapter_receipt and settlement_receipt PDAs must exist on base before the action is scheduled, or be created by a payer other than escrow_auth."
+  # Constrains every local-stack run. See docs/decision-log.md D-0007.
+  - "The local stack requires the ephemeral validator identity funded to at least 5 SOL on base; the packaged dump funds 0.0534 SOL."

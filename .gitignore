@@ -1,0 +1,30 @@
+# Rust / Anchor
+target/
+**/*.rs.bk
+
+# Node
+node_modules/
+.pnpm-store/
+dist/
+.next/
+*.tsbuildinfo
+
+# Project-pinned toolchains (reinstalled by scripts/bootstrap-toolchain.sh)
+.toolchain/
+
+# Local MagicBlock stack runtime state
+magicblock-test-storage/
+test-ledger/
+mb-stack.log
+
+# Secrets and keys — never commit
+*.pem
+*.key
+**/id.json
+**/*-keypair.json
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store

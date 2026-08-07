@@ -1,0 +1,18 @@
+{
+  "magicblock_engine_examples": {
+    "repository": "https://github.com/magicblock-labs/magicblock-engine-examples",
+    "commit": "a291e4b2c9cc4bab6918ff434d9aaa72c702cf29",
+    "commit_date": "2026-07-28T16:00:48+07:00",
+    "resolved_by": "git ls-remote https://github.com/magicblock-labs/magicblock-engine-examples HEAD",
+    "resolved_at": "2026-08-07",
+    "vendored": false,
+    "examples_inspected": [
+      "magic-actions/anchor",
+      "private-counter/anchor",
+      "crank-counter/anchor",
+      "delegation-actions/anchor",
+      "sealed-auction/anchor"
+    ],
+    "note": "Inspected out-of-tree, not vendored. This commit was HEAD of the default branch when Phase 0 ran, and it matches the planning snapshot recorded in the PRD."
+  }
+}

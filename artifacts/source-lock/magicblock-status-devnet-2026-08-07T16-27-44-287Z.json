@@ -1,0 +1,12 @@
+{
+  "captured_at": "2026-08-07T16:27:44.287Z",
+  "source": "https://status.magicblock.app.invalid/api/services",
+  "network": "devnet",
+  "reachable": false,
+  "http_status": null,
+  "error": "fetch failed",
+  "services_advertised": null,
+  "observations": [],
+  "down": [],
+  "raw": null
+}

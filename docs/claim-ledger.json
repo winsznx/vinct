@@ -1,0 +1,137 @@
+[
+  {
+    "id": "phase0-toolchain-compiles",
+    "wording": "One pinned toolchain builds an Anchor program that uses MagicBlock delegation, commit intents, Magic Actions, PER access control, and crank scheduling together.",
+    "status": "verified",
+    "proof_level": 0,
+    "network": "none",
+    "source_commit": "ac525ae90ad510839364f5df0bb77b40e54abe00",
+    "program_ids": [],
+    "transactions": [],
+    "commands": [
+      "cargo check --workspace --all-targets",
+      "cargo clippy --workspace --all-targets -- -D warnings",
+      "cargo fmt --all -- --check",
+      "cargo build-sbf",
+      "anchor build",
+      "pnpm typecheck",
+      "pnpm lint"
+    ],
+    "artifacts": [
+      "docs/source-lock.md",
+      "artifacts/source-lock/version-report.json",
+      "probes/magicblock-compat-probe/src/lib.rs",
+      "Cargo.lock",
+      "pnpm-lock.yaml"
+    ],
+    "verified_at": "2026-08-07T16:31:00Z",
+    "limitations": [
+      "Compilation and SBF linking only. No instruction was executed on any runtime.",
+      "The probe holds no VINCT product logic and is never deployed.",
+      "Says nothing about delegation, PER confidentiality, crank execution, or Magic Action delivery behaviour."
+    ]
+  },
+  {
+    "id": "phase0-source-commits-recorded",
+    "wording": "The MagicBlock development skill, the Solana development skill, and the MagicBlock engine examples are pinned to exact upstream commits resolved during this phase.",
+    "status": "verified",
+    "proof_level": 0,
+    "network": "none",
+    "source_commit": "ac525ae90ad510839364f5df0bb77b40e54abe00",
+    "program_ids": [],
+    "transactions": [],
+    "commands": [
+      "git ls-remote https://github.com/magicblock-labs/magicblock-dev-skill HEAD",
+      "git ls-remote https://github.com/solana-foundation/solana-dev-skill HEAD",
+      "git ls-remote https://github.com/magicblock-labs/magicblock-engine-examples HEAD",
+      "pnpm source-lock",
+      "pnpm source-lock -- --check"
+    ],
+    "artifacts": [
+      "docs/source-lock.md",
+      "docs/upstream-pins.json",
+      ".claude/skills/magicblock/.source-lock.json",
+      ".claude/skills/solana-dev/.source-lock.json",
+      "artifacts/source-lock/version-report.json"
+    ],
+    "verified_at": "2026-08-07T16:31:00Z",
+    "limitations": [
+      "Commits were HEAD of each default branch on 2026-08-07 and will drift.",
+      "The engine examples are inspected out-of-tree, not vendored, so the pin is a recorded SHA rather than a checked-in tree."
+    ]
+  },
+  {
+    "id": "phase0-local-stack-lifecycle",
+    "wording": "The pinned local MagicBlock stack starts, answers getHealth on its base, ephemeral, and query-filtering endpoints, and stops leaving no surviving process.",
+    "status": "verified",
+    "proof_level": 0,
+    "network": "localnet",
+    "source_commit": "ac525ae90ad510839364f5df0bb77b40e54abe00",
+    "program_ids": [],
+    "transactions": [],
+    "commands": ["bash scripts/bootstrap-local.sh cycle"],
+    "artifacts": ["artifacts/local-stack/stack-lifecycle.json", "scripts/bootstrap-local.sh"],
+    "verified_at": "2026-08-07T16:24:00Z",
+    "limitations": [
+      "Process lifecycle and RPC health only. No account was created, delegated, or committed.",
+      "Does not prove router discovery, TEE-backed PER confidentiality, crank registration, or Magic Action delivery.",
+      "Requires a locally patched validator-identity fixture because the packaged dump funds the ephemeral validator below its 5 SOL minimum."
+    ]
+  },
+  {
+    "id": "phase0-magicblock-status-captured",
+    "wording": "MagicBlock devnet service status was captured from the official status API with a timestamp, including one service reported down.",
+    "status": "verified",
+    "proof_level": 0,
+    "network": "devnet",
+    "source_commit": "ac525ae90ad510839364f5df0bb77b40e54abe00",
+    "program_ids": [],
+    "transactions": [],
+    "commands": ["pnpm check-magicblock-status"],
+    "artifacts": [
+      "artifacts/source-lock/magicblock-status-devnet-latest.json",
+      "scripts/check-magicblock-status.ts"
+    ],
+    "verified_at": "2026-08-07T16:27:57Z",
+    "limitations": [
+      "A snapshot of one moment. Service health must be re-captured before every rehearsal.",
+      "rpc_router on devnet-tee-as.magicblock.app was DOWN at capture time.",
+      "Reports the provider's own status, which is not independent verification of the services."
+    ]
+  },
+  {
+    "id": "phase0-router-endpoints-discovered",
+    "wording": "The MagicBlock devnet router's advertised endpoints were read live, and no regional endpoint is hardcoded in this repository.",
+    "status": "verified",
+    "proof_level": 0,
+    "network": "devnet",
+    "source_commit": "ac525ae90ad510839364f5df0bb77b40e54abe00",
+    "program_ids": [],
+    "transactions": [],
+    "commands": ["pnpm exec tsx scripts/probe-router.ts"],
+    "artifacts": ["artifacts/source-lock/router-probe-latest.json", "scripts/probe-router.ts"],
+    "verified_at": "2026-08-07T16:23:53Z",
+    "limitations": [
+      "getDelegationStatus was probed with an undelegated account and returned only {isDelegated:false}.",
+      "Whether a delegated account's response carries an fqdn is UNVERIFIED. The PRD's endpoint-resolution instruction is not yet confirmed.",
+      "No account was delegated, so no ER endpoint was actually resolved or used."
+    ]
+  },
+  {
+    "id": "phase0-adversarial-feature-line",
+    "wording": "The ephemeral-rollups-sdk anchor feature line was chosen against a failing counterexample rather than from documentation alone.",
+    "status": "verified",
+    "proof_level": 0,
+    "network": "none",
+    "source_commit": "ac525ae90ad510839364f5df0bb77b40e54abe00",
+    "program_ids": [],
+    "transactions": [],
+    "commands": ["cargo check (probe source rebuilt with the anchor-compat feature)"],
+    "artifacts": ["docs/source-lock.md", "docs/decision-log.md"],
+    "verified_at": "2026-08-07T16:29:00Z",
+    "limitations": [
+      "The counterexample crate is a scratch build and is not committed to this repository.",
+      "A stub crate declaring anchor-compat alongside anchor-lang 1.0.2 still passes cargo check, so this result depends on exercising the macros."
+    ]
+  }
+]

@@ -1,0 +1,9 @@
+{
+  "repository": "https://github.com/solana-foundation/solana-dev-skill",
+  "commit": "d4ecf1674ebae1be3a899e0998aa0318fe67c96e",
+  "commit_date": "2026-08-07T07:09:32-07:00",
+  "source_subpath": "skills/solana-dev/",
+  "installed_at": "2026-08-07T16:28:27Z",
+  "install_command": "bash install.sh (copied, not symlinked)",
+  "note": "Skill files are read-only during normal execution. Re-record this file whenever the skill is reinstalled."
+}

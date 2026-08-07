@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "VINCT Claim Ledger",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": [
+      "id",
+      "wording",
+      "status",
+      "proof_level",
+      "network",
+      "source_commit",
+      "program_ids",
+      "transactions",
+      "commands",
+      "artifacts",
+      "verified_at",
+      "limitations"
+    ],
+    "properties": {
+      "id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "wording": {
+        "type": "string",
+        "minLength": 1
+      },
+      "status": {
+        "enum": [
+          "verified",
+          "failed",
+          "unavailable",
+          "reported_not_independently_verified"
+        ]
+      },
+      "proof_level": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 10
+      },
+      "network": {
+        "type": "string"
+      },
+      "source_commit": {
+        "type": "string"
+      },
+      "program_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "transactions": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "commands": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "artifacts": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "verified_at": {
+        "type": "string"
+      },
+      "limitations": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "additionalProperties": false
+  }
+}

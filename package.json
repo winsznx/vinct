@@ -1,0 +1,39 @@
+{
+  "name": "vinct",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Binding mutual aid for protocols",
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "prettier --check \"{scripts,packages,tests}/**/*.{ts,tsx,json}\"",
+    "lint:fix": "prettier --write \"{scripts,packages,tests}/**/*.{ts,tsx,json}\"",
+    "source-lock": "tsx scripts/source-lock.ts",
+    "check-magicblock-status": "tsx scripts/check-magicblock-status.ts",
+    "stack:start": "bash scripts/bootstrap-local.sh start",
+    "stack:stop": "bash scripts/bootstrap-local.sh stop",
+    "stack:cycle": "bash scripts/bootstrap-local.sh cycle"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "0.32.1",
+    "@magicblock-labs/ephemeral-rollups-sdk": "0.14.3",
+    "@solana/web3.js": "1.98.4",
+    "magic-router-sdk": "1.0.10"
+  },
+  "devDependencies": {
+    "@magicblock-labs/ephemeral-validator": "0.13.19",
+    "@types/node": "24.13.3",
+    "prettier": "3.9.6",
+    "tsx": "4.23.11",
+    "typescript": "5.9.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

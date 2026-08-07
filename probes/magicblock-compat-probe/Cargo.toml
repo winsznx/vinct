@@ -1,0 +1,34 @@
+[package]
+name = "magicblock-compat-probe"
+version = "0.1.0"
+description = "Phase 0 compatibility probe. Compile-surface only, no VINCT product logic."
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "magicblock_compat_probe"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build"]
+anchor-debug = []
+custom-heap = []
+custom-panic = []
+
+[dependencies]
+anchor-lang = { version = "=1.0.2", features = ["init-if-needed"] }
+ephemeral-rollups-sdk = { version = "=0.16.2", features = [
+    "anchor",
+    "access-control",
+] }
+magicblock-magic-program-api = { version = "=0.10.1", default-features = false }
+bincode = "=1.3.3"
+sha2 = "=0.10.9"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }

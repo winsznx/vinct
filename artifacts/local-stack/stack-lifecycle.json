@@ -1,0 +1,18 @@
+{
+  "started_at": "2026-08-07T16:23:35Z",
+  "ended_at": "2026-08-07T16:23:42Z",
+  "ephemeral_validator": "0.13.19",
+  "solana_cli": "3.1.9",
+  "base_rpc": "http://127.0.0.1:8899",
+  "er_rpc": "http://127.0.0.1:7799",
+  "qfs_rpc": "http://127.0.0.1:6699",
+  "health_probe": "getHealth returned a result for base, er, and qfs",
+  "clean_shutdown": true,
+  "surviving_processes": [],
+  "not_proven": [
+    "router getDelegationStatus discovery",
+    "TEE-backed PER confidentiality",
+    "crank scheduler registration and iteration",
+    "Magic Action base-layer delivery"
+  ]
+}

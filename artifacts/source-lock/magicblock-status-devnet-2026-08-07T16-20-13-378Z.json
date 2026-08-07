@@ -1,0 +1,709 @@
+{
+  "captured_at": "2026-08-07T16:20:13.378Z",
+  "source": "https://status.magicblock.app/api/services",
+  "network": "devnet",
+  "reachable": true,
+  "http_status": 200,
+  "error": null,
+  "services_advertised": [
+    {
+      "id": "er",
+      "label": "ER"
+    },
+    {
+      "id": "rpc_router",
+      "label": "RPC Router"
+    },
+    {
+      "id": "pricing_oracle",
+      "label": "Pricing Oracle"
+    },
+    {
+      "id": "vrf_oracle",
+      "label": "VRF Oracle"
+    }
+  ],
+  "observations": [
+    {
+      "network": "devnet",
+      "region": "asia",
+      "fqdn": "devnet-as.magicblock.app",
+      "service": "er",
+      "status": true
+    },
+    {
+      "network": "devnet",
+      "region": "asia",
+      "fqdn": "devnet-as.magicblock.app",
+      "service": "rpc_router",
+      "status": true
+    },
+    {
+      "network": "devnet",
+      "region": "asia",
+      "fqdn": "devnet-as.magicblock.app",
+      "service": "pricing_oracle",
+      "status": true
+    },
+    {
+      "network": "devnet",
+      "region": "asia",
+      "fqdn": "devnet-as.magicblock.app",
+      "service": "vrf_oracle",
+      "status": true
+    },
+    {
+      "network": "devnet",
+      "region": "europe",
+      "fqdn": "devnet-eu.magicblock.app",
+      "service": "er",
+      "status": true
+    },
+    {
+      "network": "devnet",
+      "region": "europe",
+      "fqdn": "devnet-eu.magicblock.app",
+      "service": "rpc_router",
+      "status": true
+    },
+    {
+      "network": "devnet",
+      "region": "europe",
+      "fqdn": "devnet-eu.magicblock.app",
+      "service": "pricing_oracle",
+      "status": true
+    },
+    {
+      "network": "devnet",
+      "region": "europe",
+      "fqdn": "devnet-eu.magicblock.app",
+      "service": "vrf_oracle",
+      "status": true
+    },
+    {
+      "network": "devnet",
+      "region": "tee",
+      "fqdn": "devnet-tee-as.magicblock.app",
+      "service": "er",
+      "status": true
+    },
+    {
+      "network": "devnet",
+      "region": "tee",
+      "fqdn": "devnet-tee-as.magicblock.app",
+      "service": "pricing_oracle",
+      "status": true
+    },
+    {
+      "network": "devnet",
+      "region": "tee",
+      "fqdn": "devnet-tee-as.magicblock.app",
+      "service": "vrf_oracle",
+      "status": true
+    },
+    {
+      "network": "devnet",
+      "region": "tee",
+      "fqdn": "devnet-tee-as.magicblock.app",
+      "service": "rpc_router",
+      "status": false
+    },
+    {
+      "network": "devnet",
+      "region": "usa",
+      "fqdn": "devnet-us.magicblock.app",
+      "service": "er",
+      "status": true
+    },
+    {
+      "network": "devnet",
+      "region": "usa",
+      "fqdn": "devnet-us.magicblock.app",
+      "service": "rpc_router",
+      "status": true
+    },
+    {
+      "network": "devnet",
+      "region": "usa",
+      "fqdn": "devnet-us.magicblock.app",
+      "service": "pricing_oracle",
+      "status": true
+    },
+    {
+      "network": "devnet",
+      "region": "usa",
+      "fqdn": "devnet-us.magicblock.app",
+      "service": "vrf_oracle",
+      "status": true
+    }
+  ],
+  "down": [
+    {
+      "network": "devnet",
+      "region": "tee",
+      "fqdn": "devnet-tee-as.magicblock.app",
+      "service": "rpc_router",
+      "status": false
+    }
+  ],
+  "raw": {
+    "meta": {
+      "timezone": "UTC",
+      "start": "2026-07-30T00:00:00Z",
+      "end": "2026-08-08T00:00:00Z",
+      "step": "1d",
+      "days": [
+        "2026-07-29",
+        "2026-07-30",
+        "2026-07-31",
+        "2026-08-01",
+        "2026-08-02",
+        "2026-08-03",
+        "2026-08-04",
+        "2026-08-05",
+        "2026-08-06",
+        "2026-08-07"
+      ],
+      "services": [
+        {
+          "id": "er",
+          "label": "ER"
+        },
+        {
+          "id": "rpc_router",
+          "label": "RPC Router"
+        },
+        {
+          "id": "pricing_oracle",
+          "label": "Pricing Oracle"
+        },
+        {
+          "id": "vrf_oracle",
+          "label": "VRF Oracle"
+        }
+      ]
+    },
+    "environments": {
+      "mainnet": {
+        "regions": {
+          "asia": {
+            "servers": {
+              "as.magicblock.app": {
+                "displayName": "Asia",
+                "serverFqdn": "as.magicblock.app",
+                "metrics": {
+                  "er": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "rpc_router": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "pricing_oracle": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "vrf_oracle": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ]
+                },
+                "live_status": {
+                  "er": true,
+                  "rpc_router": true,
+                  "pricing_oracle": true,
+                  "vrf_oracle": true
+                }
+              }
+            }
+          },
+          "europe": {
+            "servers": {
+              "eu.magicblock.app": {
+                "displayName": "Europe",
+                "serverFqdn": "eu.magicblock.app",
+                "metrics": {
+                  "er": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "rpc_router": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "pricing_oracle": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "vrf_oracle": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ]
+                },
+                "live_status": {
+                  "er": true,
+                  "rpc_router": true,
+                  "pricing_oracle": true,
+                  "vrf_oracle": true
+                }
+              }
+            }
+          },
+          "tee": {
+            "servers": {
+              "mainnet-tee-as.magicblock.app": {
+                "displayName": "TEE",
+                "serverFqdn": "mainnet-tee-as.magicblock.app",
+                "metrics": {
+                  "er": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "pricing_oracle": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "vrf_oracle": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "rpc_router": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                  ]
+                },
+                "live_status": {
+                  "er": true,
+                  "pricing_oracle": true,
+                  "vrf_oracle": true,
+                  "rpc_router": false
+                }
+              }
+            }
+          },
+          "usa": {
+            "servers": {
+              "us.magicblock.app": {
+                "displayName": "USA",
+                "serverFqdn": "us.magicblock.app",
+                "metrics": {
+                  "er": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "rpc_router": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "pricing_oracle": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "vrf_oracle": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ]
+                },
+                "live_status": {
+                  "er": true,
+                  "rpc_router": true,
+                  "pricing_oracle": true,
+                  "vrf_oracle": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "devnet": {
+        "regions": {
+          "asia": {
+            "servers": {
+              "devnet-as.magicblock.app": {
+                "displayName": "Asia",
+                "serverFqdn": "devnet-as.magicblock.app",
+                "metrics": {
+                  "er": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "rpc_router": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "pricing_oracle": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    8,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "vrf_oracle": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ]
+                },
+                "live_status": {
+                  "er": true,
+                  "rpc_router": true,
+                  "pricing_oracle": true,
+                  "vrf_oracle": true
+                }
+              }
+            }
+          },
+          "europe": {
+            "servers": {
+              "devnet-eu.magicblock.app": {
+                "displayName": "Europe",
+                "serverFqdn": "devnet-eu.magicblock.app",
+                "metrics": {
+                  "er": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "rpc_router": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "pricing_oracle": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "vrf_oracle": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ]
+                },
+                "live_status": {
+                  "er": true,
+                  "rpc_router": true,
+                  "pricing_oracle": true,
+                  "vrf_oracle": true
+                }
+              }
+            }
+          },
+          "tee": {
+            "servers": {
+              "devnet-tee-as.magicblock.app": {
+                "displayName": "TEE",
+                "serverFqdn": "devnet-tee-as.magicblock.app",
+                "metrics": {
+                  "er": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "pricing_oracle": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "vrf_oracle": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "rpc_router": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                  ]
+                },
+                "live_status": {
+                  "er": true,
+                  "pricing_oracle": true,
+                  "vrf_oracle": true,
+                  "rpc_router": false
+                }
+              }
+            }
+          },
+          "usa": {
+            "servers": {
+              "devnet-us.magicblock.app": {
+                "displayName": "USA",
+                "serverFqdn": "devnet-us.magicblock.app",
+                "metrics": {
+                  "er": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "rpc_router": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "pricing_oracle": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "vrf_oracle": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ]
+                },
+                "live_status": {
+                  "er": true,
+                  "rpc_router": true,
+                  "pricing_oracle": true,
+                  "vrf_oracle": true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

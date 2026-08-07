@@ -1,0 +1,151 @@
+{
+  "captured_at": "2026-08-07T16:38:06.043Z",
+  "repository_commit": "ac525ae90ad510839364f5df0bb77b40e54abe00",
+  "repository_dirty": true,
+  "upstream_sources": {
+    "magicblock_dev_skill": {
+      "repository": "https://github.com/magicblock-labs/magicblock-dev-skill",
+      "installed_at": ".claude/skills/magicblock",
+      "commit": {
+        "value": "b6edd28e7f6b4433de5e6fbfe316f97efe36181f",
+        "source": ".claude/skills/magicblock/.source-lock.json"
+      }
+    },
+    "solana_dev_skill": {
+      "repository": "https://github.com/solana-foundation/solana-dev-skill",
+      "installed_at": ".claude/skills/solana-dev",
+      "commit": {
+        "value": "d4ecf1674ebae1be3a899e0998aa0318fe67c96e",
+        "source": ".claude/skills/solana-dev/.source-lock.json"
+      }
+    },
+    "magicblock_engine_examples": {
+      "repository": "https://github.com/magicblock-labs/magicblock-engine-examples",
+      "installed_at": null,
+      "commit": {
+        "value": "a291e4b2c9cc4bab6918ff434d9aaa72c702cf29",
+        "source": "docs/upstream-pins.json"
+      }
+    }
+  },
+  "toolchain": {
+    "rustc": {
+      "value": "1.89.0",
+      "source": "rustc --version"
+    },
+    "cargo": {
+      "value": "1.89.0",
+      "source": "cargo --version"
+    },
+    "rustup": {
+      "value": "1.29.0",
+      "source": "rustup --version"
+    },
+    "solana_cli": {
+      "value": "3.1.9",
+      "source": "/Users/mac/vinct/.toolchain/solana/active_release/bin/solana --version"
+    },
+    "cargo_build_sbf": {
+      "value": "3.1.9",
+      "source": "/Users/mac/vinct/.toolchain/solana/active_release/bin/cargo-build-sbf --version"
+    },
+    "platform_tools": {
+      "value": "1.52",
+      "source": "/Users/mac/vinct/.toolchain/solana/active_release/bin/cargo-build-sbf --version"
+    },
+    "anchor_cli": {
+      "value": "1.0.2",
+      "source": "anchor --version"
+    },
+    "node": {
+      "value": "24.14.1",
+      "source": "node --version"
+    },
+    "pnpm": {
+      "value": "10.33.0",
+      "source": "pnpm --version"
+    }
+  },
+  "rust_dependencies": {
+    "anchor_lang": {
+      "value": "1.0.2",
+      "source": "Cargo.lock"
+    },
+    "ephemeral_rollups_sdk": {
+      "value": "0.16.2",
+      "source": "Cargo.lock"
+    },
+    "magicblock_magic_program_api": {
+      "value": "0.10.1",
+      "source": "Cargo.lock"
+    },
+    "magicblock_delegation_program_api": {
+      "value": "3.1.0",
+      "source": "Cargo.lock"
+    },
+    "solana_program": {
+      "value": "2.3.0",
+      "source": "Cargo.lock"
+    }
+  },
+  "typescript_dependencies": {
+    "coral_anchor": {
+      "value": "0.32.1",
+      "source": "package.json"
+    },
+    "ephemeral_rollups_sdk": {
+      "value": "0.14.3",
+      "source": "package.json"
+    },
+    "ephemeral_validator": {
+      "value": "0.13.19",
+      "source": "package.json"
+    },
+    "magic_router_sdk": {
+      "value": "1.0.10",
+      "source": "package.json"
+    },
+    "solana_web3js": {
+      "value": "1.98.4",
+      "source": "package.json"
+    },
+    "typescript": {
+      "value": "5.9.3",
+      "source": "package.json"
+    }
+  },
+  "endpoints": {
+    "local_base_rpc": {
+      "value": "http://127.0.0.1:8899",
+      "source": "scripts/toolchain-env.sh"
+    },
+    "local_er_rpc": {
+      "value": "http://127.0.0.1:7799",
+      "source": "scripts/toolchain-env.sh"
+    },
+    "local_qfs_rpc": {
+      "value": "http://127.0.0.1:6699",
+      "source": "scripts/toolchain-env.sh"
+    },
+    "devnet_base_rpc": {
+      "value": "https://rpc.magicblock.app/devnet",
+      "source": "scripts/toolchain-env.sh"
+    },
+    "devnet_router": {
+      "value": "https://devnet-router.magicblock.app/",
+      "source": "scripts/toolchain-env.sh"
+    },
+    "status_api": {
+      "value": "https://status.magicblock.app/api/services",
+      "source": "scripts/toolchain-env.sh"
+    },
+    "resolved_er_endpoint": {
+      "value": null,
+      "reason": "resolved per account at runtime through router getDelegationStatus; never pinned"
+    }
+  },
+  "status_api_snapshot": {
+    "value": "artifacts/source-lock/magicblock-status-devnet-latest.json",
+    "source": "check-magicblock-status.ts"
+  }
+}
