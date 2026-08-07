@@ -22,6 +22,9 @@ PID_FILE="$STATE_DIR/mb-stack.pid"
 LOG_FILE="$STATE_DIR/mb-stack.log"
 ARTIFACT_DIR="$VINCT_ROOT/artifacts/local-stack"
 READY_TIMEOUT="${VINCT_STACK_READY_TIMEOUT:-240}"
+# The MagicBlock committor program. Its absence is silent: the stack starts healthy and
+# only intent execution fails, which is why it is preloaded explicitly.
+COMMITTOR_PROGRAM_ID="ComtrB2KEaWgXsW1dhr1xYL4Ht4Bjj3gXnnL6KMdABq"
 STOP_TIMEOUT="${VINCT_STACK_STOP_TIMEOUT:-30}"
 
 # Every process name mb-stack supervises. Used only to assert a clean shutdown —
@@ -73,11 +76,25 @@ cmd_start() {
   local identity_fixture="$VINCT_ROOT/scripts/fixtures/local-er-validator-identity.json"
   [ -f "$identity_fixture" ] || die "missing $identity_fixture"
 
+  # The committor program is missing from the packaged base validator, so an intent bundle
+  # that needs buffer preparation fails with ProgramAccountNotFound and no action ever
+  # reaches base. It is dumped from Devnet on first use and preloaded here. This is a gap in
+  # @magicblock-labs/ephemeral-validator 0.13.19, not in VINCT.
+  local committor_so="$VINCT_ROOT/.toolchain/local-programs/committor.so"
+  if [ ! -f "$committor_so" ]; then
+    log "Dumping the committor program from Devnet (one time)"
+    mkdir -p "$(dirname "$committor_so")"
+    solana program dump "$COMMITTOR_PROGRAM_ID" "$committor_so" \
+      -u https://api.devnet.solana.com >/dev/null 2>&1 \
+      || die "could not dump $COMMITTOR_PROGRAM_ID; the local stack cannot execute intent bundles without it"
+  fi
+
   log "Starting pinned local stack (@magicblock-labs/ephemeral-validator@$VINCT_EPHEMERAL_VALIDATOR_VERSION)"
   (
     cd "$VINCT_ROOT"
     RUST_LOG=info pnpm exec mb-stack --reset \
       --account mAGicPQYBMvcYveUZA5F5UNNwyHvfYh5xkLS2Fr1mev "$identity_fixture" \
+      --bpf-program "$COMMITTOR_PROGRAM_ID" "$committor_so" \
       >"$LOG_FILE" 2>&1 </dev/null &
     echo $! >"$PID_FILE"
   )

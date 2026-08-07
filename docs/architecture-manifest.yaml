@@ -151,12 +151,10 @@ external_dependencies:
   - "Solana Devnet"
 
 open_questions:
-  - "Exact target-environment grouping of all BaseActions in one TransactionStrategy"
-  - "Measured CU, account, and transaction-size budgets"
+  - "Measured CU, account, and transaction-size budgets on Devnet"
   - "Expected TEE workload measurement allowlist"
   - "Protocol operator acceptance of unarmed and armed sovereign adapters"
   # Raised by the Phase 0 probe; see docs/decision-log.md D-0009 and D-0008.
-  - "Whether router getDelegationStatus returns an fqdn for a delegated account. The pinned SDK types it as {isDelegated} only, and the live devnet router returned only that field for an undelegated account. If absent, endpoint resolution must combine getRoutes with the delegation record's validator identity, and PRD section 10 needs a correction."
   - "Whether the TypeScript SDK 0.14.3 and Rust SDK 0.16.2 pairing holds at runtime for permission and intent encoding"
   - "Which crank call path to use: raw MagicBlockInstruction::ScheduleTask bincode, or the SDK ScheduleCrankCpi driven from remaining_accounts"
 
@@ -194,6 +192,12 @@ resolved_questions:
   - question: "Exact compatible Anchor and TypeScript version line after Phase 0 probe"
     resolution: "anchor-lang 1.0.2 with ephemeral-rollups-sdk 0.16.2 features [anchor, access-control]; Anchor CLI 1.0.2; Solana CLI 3.1.9 with platform tools v1.52; Rust 1.89.0; TypeScript client on @coral-xyz/anchor 0.32.1 and @magicblock-labs/ephemeral-rollups-sdk 0.14.3 over @solana/web3.js v1."
     evidence: "docs/source-lock.md; artifacts/source-lock/version-report.json"
+  - question: "Whether router getDelegationStatus returns an fqdn for a delegated account"
+    resolution: "It does. Against a genuinely delegated account on Devnet the response is {delegationRecord, fqdn, isDelegated} and the resolver reached https://devnet-as.magicblock.app/ through it. The Phase 0 observation was made against an undelegated account, where there is no endpoint to report. PRD section 10 is correct as written."
+    evidence: "docs/decision-log.md D-0024; packages/client/src/routing.ts"
+  - question: "Exact target-environment grouping of all BaseActions in one TransactionStrategy"
+    resolution: "All four shared one strategy on the local committor. A single failing BaseAction removed every action in the cohort and the committor retried the commit alone, producing COMMIT_WITHOUT_ACTIONS rather than PARTIAL_OBSERVATION. Inferred from all four disappearing together; the committor does not expose its grouping directly. Not yet observed on Devnet."
+    evidence: "artifacts/local-stack/committor-behaviour.json; docs/decision-log.md D-0027"
   - question: "How adapter and settlement receipt accounts are created given the #[action] escrow_auth constraint"
     resolution: "Receipt PDAs are seeded by the operation ID and created on base before the intent is scheduled. Templates name them by role, not address, and the adapter re-derives the expected address from the operation ID. Phase 0 preferred option A."
     evidence: "docs/decision-log.md D-0015; crates/vinct-types/src/action.rs; crates/vinct-types/tests/canonical_hashes.rs"

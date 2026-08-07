@@ -427,3 +427,113 @@ with `CertificateExpired`.
 
 Fixtures now derive their windows from `Clock::slot`, which is also what production clients
 will have to do. A slot number is only meaningful relative to now.
+
+---
+
+## Phase 3 — 2026-08-07
+
+### D-0024 Router `getDelegationStatus` does carry the ER endpoint, for a delegated account
+
+D-0009 recorded that `getDelegationStatus` returned only `{isDelegated: false}` and that the
+PRD's routing instruction was therefore unconfirmed. With a genuinely delegated account on
+Devnet, the same method returns:
+
+```
+{delegationRecord, fqdn, isDelegated}
+```
+
+and the resolver took the `getDelegationStatus.fqdn` path to `https://devnet-as.magicblock.app/`.
+
+The PRD was right and the Phase 0 observation was simply made against an undelegated
+account, where there is no endpoint to report. D-0009 is resolved in the PRD's favour.
+
+`packages/client/src/routing.ts` still keeps its fallback chain — `fqdn`, then the router's
+`getRoutes` table matched against the delegation record's validator identity, then an
+explicitly configured endpoint — and records which source answered. The local stack has no
+router at all, so the `configured` path is load-bearing rather than defensive.
+
+### D-0025 The delegated account is written before the intent is built, never after
+
+The first Devnet scheduling attempt failed with `ExternalAccountDataModified`. The handler
+was setting `operation.scheduled` after `commit_and_undelegate` had already taken the
+account into the intent.
+
+The write moved ahead of the builder, followed by an explicit `exit` so the change is
+serialized before the commit captures it. That is the correct order on its own merits: the
+committed bytes that land on base must already say the cohort was scheduled, otherwise the
+account would arrive claiming it never was.
+
+### D-0026 The adapter must tolerate accounts the Magic Actions dispatcher appends
+
+D-0020 hardened the adapter to refuse any account beyond its declared context. On the local
+stack that turned out to break Magic Actions entirely: every scheduled action failed with
+`UnexpectedAccounts` (0x1791), the committor stripped all four BaseActions, and the cohort
+landed as `COMMIT_WITHOUT_ACTIONS` with nothing delivered.
+
+The dispatcher legitimately supplies accounts of its own when invoking a target. D-0020's
+reasoning was that a protocol authority should not sign off on a shorter account list than
+the transaction carries, but that property is delivered elsewhere and more directly:
+`ordered_account_metas_hash` commits to the declared six, the handler never reads
+`remaining_accounts`, and the CPI account list is built explicitly from pinned capability
+fields. An appended account is inert by construction.
+
+The refusal is removed. The adversarial test changed from `adding_an_extra_writable_account_is_refused`
+to `an_extra_account_is_inert`, which is the stronger assertion anyway: it appends beta's
+market to alpha's action and proves beta's market is left untouched while alpha's is paused.
+
+D-0020 is superseded on this point.
+
+### D-0027 One failing BaseAction removes the whole cohort
+
+The Phase 3 kill-gate question, answered from observation rather than documentation.
+
+Protocol gamma's market was deliberately left without a registered adapter signer, so its
+CPI failed with `NoAdapterRegistered` (0x1770) at instruction 6 of the attempted base
+transaction. Alpha's and beta's actions were well-formed and would have succeeded.
+
+The committor logged:
+
+```
+Patched intent: 2. error was: User supplied actions are ill-formed:
+Error processing Instruction 6: custom program error: 0x1770
+```
+
+and retried the commit alone. Final base state: the scrubbed checkpoint committed and
+undelegated, zero adapter receipts, zero target effects, settlement receipt not finalized.
+
+Three consequences for the product.
+
+All four BaseActions shared one transaction strategy. That is inferred rather than read —
+the committor does not expose its grouping — but all four disappearing together is strong
+evidence, and it is the answer the architecture manifest's open question was waiting for.
+
+`PARTIAL_OBSERVATION` did not occur. The cohort behaved atomically at the strategy level,
+which is what the product thesis needs: three protocols either all pause or none do.
+
+`COMMIT_WITHOUT_ACTIONS` is real. It was observed three times, twice from a genuine action
+failure and once from VINCT's own bug. An implementation that read the successful commit as
+proof of settlement would have reported `SETTLED` for an operation in which nothing
+happened, on all three occasions.
+
+Evidence: `artifacts/local-stack/committor-behaviour.json` and the raw committor log
+alongside it.
+
+Scope: this is the local committor. The Devnet committor is a separate deployment and no
+Devnet claim rests on this observation.
+
+### D-0028 The local stack does not ship the committor program
+
+`mb-test-validator` from `@magicblock-labs/ephemeral-validator@0.13.19` preloads eight
+MagicBlock programs. `ComtrB2KEaWgXsW1dhr1xYL4Ht4Bjj3gXnnL6KMdABq`, the committor, is not
+among them, and the package ships no dump of it.
+
+The failure mode is quiet: the stack starts healthy, every service passes `getHealth`, ER
+transactions succeed, and only intent execution fails, with
+`FailedToPrepareBufferAccounts(... ProgramAccountNotFound ...)` buried in the ER log. From
+the client's side it simply looks like nothing ever settles.
+
+`scripts/bootstrap-local.sh` now dumps the program from Devnet on first use and preloads it
+through `mb-stack`'s passthrough `--bpf-program`. The dump lives in `.toolchain/` and is not
+committed, since it is MagicBlock's binary rather than ours.
+
+This is a gap in the packaged local stack, not in VINCT.

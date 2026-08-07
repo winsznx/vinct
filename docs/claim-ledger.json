@@ -392,5 +392,127 @@
     "limitations": [
       "Covers a CPI that fails inside the target program. Phase 3 must observe what the committor does when a BaseAction fails inside a Magic Action attempt, which is a different failure mode."
     ]
+  },
+  {
+    "id": "phase3-programs-deployed-devnet",
+    "wording": "The VINCT core, sovereign adapter, and reference protocol programs are deployed and executable on Solana Devnet.",
+    "status": "verified",
+    "proof_level": 4,
+    "network": "devnet",
+    "source_commit": "",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
+      "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4",
+      "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
+    ],
+    "transactions": [
+      "3UJL4YpnJA7u9G8GkUgtZDbXY6azvPLPCZbhheDBRjUGoHqzKnwM7koBRbbxPbktiLuTWswN1JXLng1X9fCR2Vh7",
+      "4QAi3V5QBDw4je91pXRDSUgFPBErEcahTfRDQGqrRUctuwvVW7bWnVvjE7TQ4ezELsQFS8EYG8sLS5wJ3sv6J6HW",
+      "5t9GYs4zfuAYQdBTxsvbX7gR1NeoLpdAoXH3X8JbPEvMo5Nca4sPpTFrWXsYEqUvmPMZUc6p38JALh2wVds95w5c"
+    ],
+    "commands": ["solana program deploy"],
+    "artifacts": ["artifacts/devnet/deployment.json"],
+    "verified_at": "2026-08-07T20:00:00Z",
+    "limitations": [
+      "vinct_core on Devnet predates the D-0025 scheduling-order correction and needs an upgrade before a Devnet cohort can be scheduled.",
+      "Executability confirmed on both api.devnet.solana.com and rpc.magicblock.app/devnet. No VINCT instruction has been executed on Devnet yet."
+    ]
+  },
+  {
+    "id": "phase3-router-returns-fqdn-for-delegated-account",
+    "wording": "The MagicBlock devnet router returns the ephemeral rollup endpoint in getDelegationStatus for a genuinely delegated account, confirming the PRD's routing model.",
+    "status": "verified",
+    "proof_level": 4,
+    "network": "devnet",
+    "source_commit": "",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
+      "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4",
+      "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
+    ],
+    "transactions": [],
+    "commands": ["pnpm exec tsx scripts/phase3-seam.ts"],
+    "artifacts": ["packages/client/src/routing.ts", "docs/decision-log.md"],
+    "verified_at": "2026-08-07T20:00:00Z",
+    "limitations": [
+      "Observed once, for one delegated account, on devnet. The response was {delegationRecord, fqdn, isDelegated} and resolved to https://devnet-as.magicblock.app/.",
+      "The client keeps a fallback chain because the local stack has no router at all."
+    ]
+  },
+  {
+    "id": "phase3-full-cohort-delivered-local",
+    "wording": "A four-action Magic Actions cohort delivered end to end on the local MagicBlock stack: three independent protocol markets paused and the settlement receipt was written.",
+    "status": "verified",
+    "proof_level": 4,
+    "network": "localnet",
+    "source_commit": "",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
+      "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4",
+      "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
+    ],
+    "transactions": [
+      "pLkCCEQyGVuzj17nPt56BWAtpFk64XnaCjsht74dZfy1YM7EmJsMtF5Syjinmo27uipjSBjugLDVXB4hnwD8k1k"
+    ],
+    "commands": ["pnpm exec tsx scripts/phase3-seam.ts"],
+    "artifacts": ["artifacts/local-stack/phase3-seam-local-success-v2-latest.json"],
+    "verified_at": "2026-08-07T20:08:00Z",
+    "limitations": [
+      "Local stack, not Devnet. Says nothing about the Devnet committor.",
+      "Every effect was read back from base-layer account state; none was inferred from the ER scheduling signature.",
+      "The local stack required the committor program to be dumped from Devnet and preloaded; it is not shipped with the validator package."
+    ]
+  },
+  {
+    "id": "phase3-one-failure-removes-the-whole-cohort",
+    "wording": "When one adapter action fails, the committor removes every BaseAction in the cohort and retries the commit alone, producing COMMIT_WITHOUT_ACTIONS rather than a partial application.",
+    "status": "verified",
+    "proof_level": 4,
+    "network": "localnet",
+    "source_commit": "",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
+      "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4",
+      "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
+    ],
+    "transactions": [
+      "1PygThopun69JiommSLboEiw4UsoeVvYjsyRyZumZHZ1nRAUMXUoS9xWh1fjvGfPTiAiwmpNCtNZhcC2vkF3uyu",
+      "4Cro3CEvGpeAu9VMWc5ZodjcHTW9LyCFg4W2dAj8YDzqCxA3Lzhr7VnsvYYQC8qqovD9wU7PZyoxjZ8hjFdZr6fJ"
+    ],
+    "commands": ["pnpm exec tsx scripts/phase3-seam.ts --fail-one"],
+    "artifacts": [
+      "artifacts/local-stack/committor-behaviour.json",
+      "artifacts/local-stack/committor-behaviour-raw.log"
+    ],
+    "verified_at": "2026-08-07T20:10:10Z",
+    "limitations": [
+      "Local committor only. The Devnet committor is a separate deployment and this claim does not extend to it.",
+      "That all four actions shared one TransactionStrategy is inferred from all four disappearing together; the committor does not expose its grouping.",
+      "Only gamma's action was malformed. Alpha's and beta's were well-formed and still did not run, which is the substance of the finding.",
+      "A cohort large enough to split across strategies is untested."
+    ]
+  },
+  {
+    "id": "phase3-scheduling-is-not-settlement",
+    "wording": "Every observed run returned a successful ER scheduling signature, including two in which no base-layer action ran at all.",
+    "status": "verified",
+    "proof_level": 4,
+    "network": "localnet",
+    "source_commit": "",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
+      "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4",
+      "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
+    ],
+    "transactions": [],
+    "commands": [
+      "pnpm exec tsx scripts/phase3-seam.ts",
+      "pnpm exec tsx scripts/phase3-seam.ts --fail-one"
+    ],
+    "artifacts": ["artifacts/local-stack/committor-behaviour.json"],
+    "verified_at": "2026-08-07T20:10:10Z",
+    "limitations": [
+      "This is the falsification of the naive settlement model, demonstrated rather than argued. It does not prove the classifier is correct for cases not yet observed."
+    ]
   }
 ]

@@ -455,17 +455,57 @@ fn substituting_a_non_executable_target_program_is_refused() {
 }
 
 #[test]
-fn adding_an_extra_writable_account_is_refused() {
+fn an_extra_account_is_inert() {
     // An attacker appends a writable account hoping the adapter will pass it through.
+    //
+    // This used to assert a refusal. The local MagicBlock stack proved that wrong: the
+    // Magic Actions dispatcher appends accounts of its own when invoking a target, so
+    // refusing extras made every scheduled action fail. What matters is not that an extra
+    // account is rejected but that it cannot be touched, which is what this asserts.
     let operation_id = operation(b"adv-extra-account");
     let mut world = armed(operation_id);
+
+    let victim = world.protocols[1].market;
+    let before = read_market(&world.svm, &victim);
+    assert!(!before.new_borrowing_paused);
+
     let mut instruction = world.execute_instruction(0, operation_id);
-    instruction
-        .accounts
-        .push(AccountMeta::new(world.protocols[1].market, false));
+    instruction.accounts.push(AccountMeta::new(victim, false));
     let payer = world.payer.insecure_clone();
-    assert_failed_with(world.send(instruction, &[&payer]), "UnexpectedAccounts");
-    assert!(!read_market(&world.svm, &world.protocols[1].market).new_borrowing_paused);
+    world
+        .send(instruction, &[&payer])
+        .expect("the action still executes");
+
+    // Alpha's own market was paused, and beta's appended market was not touched.
+    assert!(read_market(&world.svm, &world.protocols[0].market).new_borrowing_paused);
+    let after = read_market(&world.svm, &victim);
+    assert!(
+        !after.new_borrowing_paused,
+        "an appended account was written"
+    );
+    assert_eq!(after.update_count, before.update_count);
+    assert_eq!(after.last_operation_id, before.last_operation_id);
+}
+
+#[test]
+fn an_extra_account_does_not_change_the_committed_meta_hash() {
+    // The commitment covers the declared accounts only, which is why appending one is
+    // harmless: it cannot alter what the protocol authority signed off on.
+    let operation_id = operation(b"adv-extra-commitment");
+    let world = armed(operation_id);
+    let protocol = &world.protocols[0];
+    let certificate = world.certificate_address(operation_id);
+    let receipt = world.receipt_address(0, operation_id);
+
+    let declared = ordered_account_metas_hash(&[
+        (certificate.to_bytes(), false, false),
+        (protocol.capability.to_bytes(), false, true),
+        (protocol.market.to_bytes(), false, true),
+        (receipt.to_bytes(), false, true),
+        (protocol.adapter_signer.to_bytes(), false, false),
+        (mock_protocol_program().to_bytes(), false, false),
+    ]);
+    assert_eq!(declared, world.metas_hash_for(0, operation_id));
 }
 
 #[test]

@@ -1,0 +1,56 @@
+{
+  "captured_at": "2026-08-07T20:10:10Z",
+  "environment": "local MagicBlock stack, @magicblock-labs/ephemeral-validator 0.13.19, committor program ComtrB2KEaWgXsW1dhr1xYL4Ht4Bjj3gXnnL6KMdABq",
+  "question": "When one BaseAction in a four-action cohort fails, what does the committor actually do?",
+  "answer": "It removes every BaseAction in the affected transaction strategy and retries the remaining commit work. The scrubbed checkpoint reaches base; none of the four actions run.",
+
+  "runs": [
+    {
+      "label": "local-success-v2",
+      "scheduled": "commit_and_undelegate + 3 adapter actions + 1 settlement receipt action",
+      "er_signature": "pLkCCEQyGVuzj17nPt56BWAtpFk64XnaCjsht74dZfy1YM7EmJsMtF5Syjinmo27uipjSBjugLDVXB4hnwD8k1k",
+      "outcome": "ALL_ACTIONS_APPLIED",
+      "adapters_applied": 3,
+      "settlement_finalized": true,
+      "checkpoint_committed": true,
+      "note": "The whole cohort delivered in one attempt. Three independent protocol markets paused and the final settlement receipt was written."
+    },
+    {
+      "label": "local-fail-one",
+      "scheduled": "the same cohort, with protocol gamma's market deliberately left without a registered adapter signer",
+      "er_signature": "1PygThopun69JiommSLboEiw4UsoeVvYjsyRyZumZHZ1nRAUMXUoS9xWh1fjvGfPTiAiwmpNCtNZhcC2vkF3uyu",
+      "base_attempt_signature": "4Cro3CEvGpeAu9VMWc5ZodjcHTW9LyCFg4W2dAj8YDzqCxA3Lzhr7VnsvYYQC8qqovD9wU7PZyoxjZ8hjFdZr6fJ",
+      "base_attempt_error": "Error processing Instruction 6: custom program error: 0x1770",
+      "error_meaning": "0x1770 = 6000 = vinct_mock_protocol NoAdapterRegistered. Gamma's own protocol refused the pause because its authority had not registered an adapter signer.",
+      "committor_log": "Patched intent: 2. error was: User supplied actions are ill-formed: Error processing Instruction 6: custom program error: 0x1770",
+      "outcome": "COMMIT_WITHOUT_ACTIONS",
+      "adapters_applied": 0,
+      "adapters_absent": 3,
+      "settlement_finalized": false,
+      "checkpoint_committed": true,
+      "note": "The decisive observation. Only gamma's action was malformed, yet alpha's and beta's actions did not run either. One failing BaseAction removed the entire cohort."
+    },
+    {
+      "label": "local-success (first attempt, before the adapter correction)",
+      "base_attempt_signature": "2FR2EHRT12J73Qiqtwi6WsHaZzX59nDrom7q7FYdeDAspb3SWHRhy3nv5k5vX2M8WXcPmnuKFUjt5NCcFewLjM2x",
+      "base_attempt_error": "Error processing Instruction 4: custom program error: 0x1791",
+      "error_meaning": "0x1791 = 6033 = vinct_adapter UnexpectedAccounts. VINCT's own Phase 2 hardening refused the accounts the Magic Actions dispatcher appends.",
+      "committor_log": "Patched intent: 0. error was: User supplied actions are ill-formed: Error processing Instruction 4: custom program error: 0x1791",
+      "outcome": "COMMIT_WITHOUT_ACTIONS",
+      "note": "An unintended reproduction of the same behaviour from a different cause, which is what led to the correction recorded as D-0026."
+    }
+  ],
+
+  "what_this_settles": [
+    "All four BaseActions shared one transaction strategy. A single failure removed all of them, which is why the failure run shows zero adapters applied rather than two.",
+    "PARTIAL_OBSERVATION did not occur in either failure. The cohort behaved atomically at the strategy level, which is the outcome the product thesis needs.",
+    "COMMIT_WITHOUT_ACTIONS is a real, reachable state and not a defensive hypothetical. It was observed three times.",
+    "An ER scheduling signature carries no information about delivery. Every run returned a successful ER signature, including the two where nothing was delivered."
+  ],
+
+  "what_this_does_not_settle": [
+    "This is the local committor. The Devnet committor is a separate deployment and must be observed independently before any Devnet claim is made.",
+    "The committor's log names the removal but does not expose its internal TransactionStrategy grouping. That all four actions shared one strategy is inferred from all four disappearing together, not read from the committor's own structure.",
+    "Whether a cohort large enough to be split across strategies would produce PARTIAL_OBSERVATION is untested. The reference bundle is four actions and fits one transaction."
+  ]
+}

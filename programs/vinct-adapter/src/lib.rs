@@ -222,16 +222,21 @@ pub mod vinct_adapter {
     /// The instruction takes no data beyond the discriminator. Everything that could vary is
     /// pinned by the capability, so there is no argument an attacker could steer.
     pub fn execute_bounded_action(ctx: Context<ExecuteBoundedAction>) -> Result<()> {
-        // Anchor puts any account beyond the declared context into `remaining_accounts` and
-        // ignores it. This adapter never reads them and builds its CPI account list
-        // explicitly, so an appended account is inert today. It is refused anyway: the
-        // ordered-meta commitment covers only the declared accounts, so tolerating extras
-        // would mean a protocol authority signed off on a shorter list than the transaction
-        // actually carries. Found by the extra-writable-account adversarial test.
-        require!(
-            ctx.remaining_accounts.is_empty(),
-            AdapterError::UnexpectedAccounts
-        );
+        // Accounts beyond the declared context land in `remaining_accounts`. They are inert
+        // here: this handler never reads them, and the CPI account list below is built
+        // explicitly from pinned capability fields, so an appended account cannot be
+        // written by this adapter or by its target.
+        //
+        // An earlier version refused them outright. That was wrong, and the local stack
+        // proved it: the Magic Actions dispatcher legitimately appends accounts when it
+        // invokes a target, so the refusal made every scheduled action fail with
+        // `UnexpectedAccounts`, the committor stripped all four BaseActions from the
+        // transaction strategy, and the cohort landed as COMMIT_WITHOUT_ACTIONS. See
+        // docs/decision-log.md D-0026.
+        //
+        // The property the refusal was reaching for is delivered elsewhere and more
+        // directly: `ordered_account_metas_hash` commits to the declared six, and
+        // `an_extra_account_is_inert` asserts an appended writable account is left untouched.
 
         let clock = Clock::get()?;
         let capability = &ctx.accounts.capability;
@@ -807,6 +812,4 @@ pub enum AdapterError {
     ProtocolStateMismatch,
     #[msg("Capability nonce overflowed")]
     CapabilityNonceOverflow,
-    #[msg("Unexpected additional accounts were supplied")]
-    UnexpectedAccounts,
 }

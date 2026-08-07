@@ -1,0 +1,29 @@
+{
+  "captured_at": "2026-08-07T19:49:23Z",
+  "network": "solana-devnet",
+  "cluster_genesis_hash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "base_rpc": "https://rpc.magicblock.app/devnet",
+  "public_rpc": "https://api.devnet.solana.com",
+  "router": "https://devnet-router.magicblock.app/",
+  "deployer": "2Mz8wsdCor431yjZ46wRaKF8ZjoTYPC5nxNNqFR7PWBU",
+  "upgrade_authority": "2Mz8wsdCor431yjZ46wRaKF8ZjoTYPC5nxNNqFR7PWBU",
+  "programs": {
+    "vinct_core": {
+      "program_id": "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
+      "deploy_signature": "3UJL4YpnJA7u9G8GkUgtZDbXY6azvPLPCZbhheDBRjUGoHqzKnwM7koBRbbxPbktiLuTWswN1JXLng1X9fCR2Vh7",
+      "size_bytes": 366856
+    },
+    "vinct_adapter": {
+      "program_id": "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4",
+      "deploy_signature": "4QAi3V5QBDw4je91pXRDSUgFPBErEcahTfRDQGqrRUctuwvVW7bWnVvjE7TQ4ezELsQFS8EYG8sLS5wJ3sv6J6HW",
+      "size_bytes": 291936
+    },
+    "vinct_mock_protocol": {
+      "program_id": "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS",
+      "deploy_signature": "5t9GYs4zfuAYQdBTxsvbX7gR1NeoLpdAoXH3X8JbPEvMo5Nca4sPpTFrWXsYEqUvmPMZUc6p38JALh2wVds95w5c",
+      "size_bytes": 163024,
+      "note": "First attempt failed with 75 write transactions failed and orphaned buffer DbMnS7KTRsDpA4k8UJCeVTVJKG27JFPiGNn5JJToXxmD. The buffer was closed to reclaim 1.13585112 SOL and the deploy retried with --with-compute-unit-price 1000, which succeeded."
+    }
+  },
+  "verified_executable_on": ["https://api.devnet.solana.com", "https://rpc.magicblock.app/devnet"]
+}

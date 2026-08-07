@@ -1,0 +1,252 @@
+{
+  "captured_at": "2026-08-07T20:03:10.568Z",
+  "run": "local-success",
+  "deliberate_failure": false,
+  "network": "localnet",
+  "cluster_genesis_hash": "8KbP5QyaCTM6c28rcfz3xLVE4ptD9tM6xGvYhDvAvrWi",
+  "endpoints": {
+    "base": "http://127.0.0.1:8899",
+    "router": null,
+    "ephemeral_rollup": "http://127.0.0.1:7799"
+  },
+  "programs": {
+    "core": "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
+    "adapter": "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4",
+    "mock_protocol": "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
+  },
+  "operation_id": "18a7207cf0eabbbfe29651770988aefa1b9a0e46130d8102d46f899b987eff95",
+  "covenant": "vfHBCpZnWnjhme1RD97h2kbHMi9zSSvgKrs2wdNzgz8",
+  "certificate": "FEuv9rxBcXRRcQN5bnRSUMhqLQARCcKTmnbFATnMoZWz",
+  "operation_account": "SBC9y5JMDfwmMghmwWfK27czBZtzsdxx3TgoG5ivfkN",
+  "protocols": [
+    {
+      "name": "alpha",
+      "authority": "GiSnT2qtL2PpZb9Ne6ZTBYngujAJ4bAGxcUicS2QgJ6e",
+      "market": "22Aj4Z6kodffzu9fk4nRRptEG5Bec7rmZa4rHmsmKKje",
+      "capability": "AoATrbrbJs8S2SbaB66drMb8wiCrBLedc2tn9AvGz3YY",
+      "adapter_signer": "26tMUU8gHeG1iASzPaqdLX9TMv5odar7S2SdCPJMFuA5",
+      "adapter_receipt": "9ZuLzXkJEio2NjPVJeXPA6H1E3NpWvD5L6deYyiXxXXo"
+    },
+    {
+      "name": "beta",
+      "authority": "D9TALNz7TMiUTKrs3dSHMNyBLavUB1MMm6a2GVRDR52d",
+      "market": "FnSQcXzZAWdD1WpLsLA5dB6RVK9Mfwmr4qDSVcroMWqh",
+      "capability": "3Pi8SarjcrWjHtCmTM6EGjsLD1xXXxX3nEjibzf5JtWf",
+      "adapter_signer": "29jqxYWsncdBPxQyQnyojDN4gCwee7vnk2fHTcLHH5i3",
+      "adapter_receipt": "3a1FuTGNaiegidc6RjiP36tDDAb2nhnccg6wSCjFwsCi"
+    },
+    {
+      "name": "gamma",
+      "authority": "2WajRxP2HbpwTgZnivbEQC1H4jAh1U25zu8H8A5Fr3mv",
+      "market": "DRP3AAFzMaV9sV3nMooQCuteuC8TpXTPypEhGFqjxFF8",
+      "capability": "6KqM1SSstASfYNvKM7zUSt43pnitFDx1fa19QsnKUXCL",
+      "adapter_signer": "49N72ejTV1abVeRnJN3UHTuM2WnsjpwHze8n8TFv3Eun",
+      "adapter_receipt": "DHzeMQ3J6CLy7h5RVHDVVhWkErgq9MvMn1fA7xKYcc2u"
+    }
+  ],
+  "routing": {
+    "resolved_endpoint": "http://127.0.0.1:7799",
+    "resolution_source": "configured",
+    "get_delegation_status_fields": [],
+    "get_delegation_status_raw": null,
+    "validator_identity": null,
+    "advertised_routes": [],
+    "note": "No router resolution available. Using the explicitly configured endpoint, which is only appropriate for the local stack."
+  },
+  "scheduling": {
+    "er_signature": "exDgqNZd9QmGx3ZMEYNK58Vz8nhKdkebdWdCcXSx8pD6Kn1kL1vVwkvnBMawTD1s7coLKoqU2TVEGvy4yXpTdWf",
+    "er_compute_units": 61103,
+    "serialized_transaction_bytes": 816,
+    "account_count": 21,
+    "declared_adapter_compute_units": 80000,
+    "declared_settlement_compute_units": 40000,
+    "declared_total_action_compute_units": 280000,
+    "meaning": "INTENT_ACCEPTED. The ER accepted the intent bundle. This says nothing about whether any base-layer action ran."
+  },
+  "observation": {
+    "window_ms": 90000,
+    "elapsed_ms": 90279,
+    "first_effect_after_ms": 24074,
+    "effects": {
+      "adapters": {
+        "alpha": {
+          "marketPaused": false,
+          "marketUpdateCount": "0",
+          "marketLastOperation": "0000000000000000000000000000000000000000000000000000000000000000",
+          "receiptExecuted": false,
+          "receiptTargetApplied": false
+        },
+        "beta": {
+          "marketPaused": false,
+          "marketUpdateCount": "0",
+          "marketLastOperation": "0000000000000000000000000000000000000000000000000000000000000000",
+          "receiptExecuted": false,
+          "receiptTargetApplied": false
+        },
+        "gamma": {
+          "marketPaused": false,
+          "marketUpdateCount": "0",
+          "marketLastOperation": "0000000000000000000000000000000000000000000000000000000000000000",
+          "receiptExecuted": false,
+          "receiptTargetApplied": false
+        }
+      },
+      "settlementFinalized": false,
+      "settlementObservedActionCount": 0,
+      "operationStillDelegated": false,
+      "operationScheduledFlag": true
+    },
+    "adapters_applied": 0,
+    "adapters_absent": 3,
+    "checkpoint_committed": true
+  },
+  "classification": "COMMIT_WITHOUT_ACTIONS",
+  "steps": [
+    {
+      "step": "fund authorities",
+      "signature": "4pcgk9fX32B5b17mCDAvEH2kf8t2t2MTxogjtBaQebbpxs5FNNXGyt79yG45MqSCzECA5hxM6Qt52hNmuArRodLa",
+      "runtime": "base"
+    },
+    {
+      "step": "alpha: initialize market",
+      "signature": "5XUtR1xTG4T9B36yh6Mc692oM1iPUGd8mtU5itPFo6CWUxL9eGXkHkvHc4Y7QMmRNvx8TApXiqr4NUrueTRoDMif",
+      "runtime": "base"
+    },
+    {
+      "step": "alpha: install capability",
+      "signature": "5x3hLswaifHbw6grgSBmjqZhXe2hVzj2bH5SY95TFxLg2kpn3rwi9VWh2HUhqrRzsML3dfjMEe4sLECcjXsdCwjm",
+      "runtime": "base"
+    },
+    {
+      "step": "alpha: arm capability",
+      "signature": "56xJTY9PfqUtK8K1VLHHNxJ5AH8wTMBYKeXdgBMK83JqFcbCaaGrVdeifWftJ6z82zQBbe3DP26wboEtcFsRm9FY",
+      "runtime": "base"
+    },
+    {
+      "step": "alpha: register adapter signer",
+      "signature": "2za8mhvp288hFYUJs3e8TbikmzEMzB42a3nJB3TqPDRiF48ZxdpqukmpagfqjgVb8jDeG1a8vBgcMuBeR6goq8go",
+      "runtime": "base"
+    },
+    {
+      "step": "beta: initialize market",
+      "signature": "4Zt3s9gdVuduRQYGfNt5Ay3hJs9EDd8LCLybj8q1SVns3LiB4mCsLdcR2S6etPsxq9uyEx7g7EsLZPQspxpTiWZE",
+      "runtime": "base"
+    },
+    {
+      "step": "beta: install capability",
+      "signature": "m7mBFX2zULRszaASRZNPbZ55oaVHrXxzFsnWFTxD2ZR8yviVaTe3AkxW3ZbGugzdccx1DB2BSwydNdrjUip26Sx",
+      "runtime": "base"
+    },
+    {
+      "step": "beta: arm capability",
+      "signature": "4uxXa1MsgV5G9VTNx42rQEwGN45aZwSJQ9UYJJ1pJjRTDszCFma5jpER48CZsPxnjQvDcngCEPe8sPoMqMu5ywT6",
+      "runtime": "base"
+    },
+    {
+      "step": "beta: register adapter signer",
+      "signature": "4uLuKYMrj65Som1zN8WnYwbPnQdqYzdxyGoJiacmLA4sEwXYrrM9YcQRPojXcvMPg89wAwLTBZmz3A4x8Fbi75Mn",
+      "runtime": "base"
+    },
+    {
+      "step": "gamma: initialize market",
+      "signature": "3mCVzS9VqorEbd4W5dy8riXB1HqsCzMNM3gsjRHHJgzvqBZ8iVU1G3GcCEBoQSvy2DwQvVDbYGgiXwLCPWMwhBAq",
+      "runtime": "base"
+    },
+    {
+      "step": "gamma: install capability",
+      "signature": "zij3EqpqQZFdFwty9bcwK8uzgq3GQyyj4FXsVbDxRXmjuQbkBm9MWsXJPzQwNURr96KM1Qr4kgfpzXti6pQysp3",
+      "runtime": "base"
+    },
+    {
+      "step": "gamma: arm capability",
+      "signature": "4xtnxPfhrB6XwPmAKaywSoZJWu1izPa9uQdidgyQexY3H66HQeF3cK41PKb3mTni2D8wALGxC5vsjkD7o7rBmVZu",
+      "runtime": "base"
+    },
+    {
+      "step": "gamma: register adapter signer",
+      "signature": "636LfdWAWuaXzGi8xSQpN4zjhzjzdMkckRTMcxoM6DWc4ZauNyyj2XjrGFW52WA1NcXg3hqqdVQb6AGzoz1jbyXm",
+      "runtime": "base"
+    },
+    {
+      "step": "publish certificate",
+      "signature": "141c1cceg5QUzidsPaoqU9hp4F8EAoLWSLHGDWJVcwXEk8469LPfPP44t6p8YhRX5BVnB1DoXQxbJbhYfyrDHbb",
+      "runtime": "base"
+    },
+    {
+      "step": "initialize settlement receipt",
+      "signature": "5aUVCVvBGcjaY87S8DX8VmrXUptgDnkE6qEWBhEfLLXmtWmxnmBx21GbWKzEJFn2MAMAqb8o8PsimUWS5tKxSVfj",
+      "runtime": "base"
+    },
+    {
+      "step": "alpha: initialize adapter receipt",
+      "signature": "2MmPzj6ZfpYsvYbW8NdutMtuPJqF2Jxy26msggJqgN2YTNSktYkK4yGjfkkTk5KUe6DaVoU51zDEKshR7SXgW6sC",
+      "runtime": "base"
+    },
+    {
+      "step": "beta: initialize adapter receipt",
+      "signature": "Fjc8znmDQxRzzr8Gq9Xbx81RXGnie1VF3G5rS22WTsMULcLbYT2Q6x7UJxieWEeYsaxecexY44vkBbxLqqcw4oC",
+      "runtime": "base"
+    },
+    {
+      "step": "gamma: initialize adapter receipt",
+      "signature": "imMCREG6VYUHQFUAXbuToPBBoN4iBuPxyvbon71jWaxPTQrho4dd1e8TYPHaqxQ2Ph3XRBmDQCCb2da9X4kkT86",
+      "runtime": "base"
+    },
+    {
+      "step": "initialize settlement operation",
+      "signature": "u5MTkvM7WrN3tp67EKHxD3DJz7Xj5i1rKbMeYGQL5etJP3EWWjzooGafRkqBHHg8WTrvwagadr9jgga5xyaKLHY",
+      "runtime": "base"
+    },
+    {
+      "step": "top up action escrow",
+      "signature": "2ZZ4fzZP7nC9tzTwUv7P6VjaL44shnLyQqExsxi9u9jS4HCKNKEkS7AyoCe6aBGzuhEJe6n6m2eLFEHcpNmnH5qC",
+      "runtime": "base"
+    },
+    {
+      "step": "delegate operation account",
+      "signature": "hNwfPp5zdqBRZQvA4gfyo1DKgYhWV2w3hSyMCe2pUknLGq3oAYjcYUMmDjvzkcncNbieL6arsTj3bb5EacntzWE",
+      "runtime": "base"
+    },
+    {
+      "step": "base owner after delegation",
+      "runtime": "none",
+      "detail": {
+        "owner": "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh",
+        "isDelegationProgram": true
+      }
+    },
+    {
+      "step": "resolve ER endpoint",
+      "runtime": "none",
+      "detail": {
+        "endpoint": "http://127.0.0.1:7799",
+        "source": "configured",
+        "evidence": {
+          "delegationStatus": null,
+          "delegationStatusFields": [],
+          "routes": [],
+          "validatorIdentity": null,
+          "note": "No router resolution available. Using the explicitly configured endpoint, which is only appropriate for the local stack."
+        }
+      }
+    },
+    {
+      "step": "ER owner before scheduling",
+      "runtime": "none",
+      "detail": {
+        "owner": "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
+        "isCoreProgram": true
+      }
+    },
+    {
+      "step": "schedule cohort",
+      "signature": "exDgqNZd9QmGx3ZMEYNK58Vz8nhKdkebdWdCcXSx8pD6Kn1kL1vVwkvnBMawTD1s7coLKoqU2TVEGvy4yXpTdWf",
+      "runtime": "er"
+    }
+  ],
+  "limitations": [
+    "Effects are read from base-layer account state. Nothing is inferred from the ER scheduling signature.",
+    "An action whose account could not be read is recorded as null, never as absent.",
+    "Whether all four BaseActions shared one TransactionStrategy is not directly observable from account state; the classification records what landed, not how it was grouped."
+  ]
+}

@@ -250,6 +250,25 @@ pub mod vinct_core {
             compute_units: args.settlement_compute_units,
         });
 
+        // The state change happens *before* the intent is built, not after. Two reasons.
+        //
+        // The committed bytes must already say that this operation was scheduled, otherwise
+        // the account that lands on base would claim the cohort was never attempted.
+        //
+        // And the ER refuses the other order outright: writing to an account after
+        // `commit_and_undelegate` has taken it produces `ExternalAccountDataModified`, which
+        // is what the first Devnet run hit. See docs/decision-log.md D-0025.
+        {
+            let operation = &mut ctx.accounts.operation;
+            operation.scheduled = true;
+            operation.scheduled_at_slot = Clock::get()?.slot;
+            operation.attempt_count = operation
+                .attempt_count
+                .checked_add(1)
+                .ok_or(CoreError::AttemptCountOverflow)?;
+            operation.exit(&crate::ID)?;
+        }
+
         MagicIntentBundleBuilder::new(
             ctx.accounts.payer.to_account_info(),
             ctx.accounts.magic_context.to_account_info(),
@@ -258,14 +277,6 @@ pub mod vinct_core {
         .commit_and_undelegate(&[ctx.accounts.operation.to_account_info()])
         .add_post_commit_actions(actions)
         .build_and_invoke()?;
-
-        let operation = &mut ctx.accounts.operation;
-        operation.scheduled = true;
-        operation.scheduled_at_slot = Clock::get()?.slot;
-        operation.attempt_count = operation
-            .attempt_count
-            .checked_add(1)
-            .ok_or(CoreError::AttemptCountOverflow)?;
 
         emit!(CohortScheduled {
             operation_id,
