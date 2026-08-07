@@ -175,8 +175,14 @@ pub mod vinct_core {
         ctx: Context<'info, ScheduleSettlementCohort<'info>>,
         args: ScheduleCohortArgs,
     ) -> Result<()> {
-        let operation = &ctx.accounts.operation;
+        // Decoded by hand because the account is untyped. Owner and discriminator are
+        // checked explicitly, so nothing is trusted that a typed account would have checked.
+        let mut operation = SettlementOperation::load(&ctx.accounts.operation)?;
         require!(!operation.scheduled, CoreError::CohortAlreadyScheduled);
+        require!(
+            operation.operation_id == args.operation_id,
+            CoreError::OperationMismatch
+        );
         require_keys_eq!(
             operation.certificate,
             ctx.accounts.certificate.key(),
@@ -250,24 +256,20 @@ pub mod vinct_core {
             compute_units: args.settlement_compute_units,
         });
 
-        // The state change happens *before* the intent is built, not after. Two reasons.
+        // The state change is written before the intent is built, and written by hand.
         //
-        // The committed bytes must already say that this operation was scheduled, otherwise
-        // the account that lands on base would claim the cohort was never attempted.
-        //
-        // And the ER refuses the other order outright: writing to an account after
-        // `commit_and_undelegate` has taken it produces `ExternalAccountDataModified`, which
-        // is what the first Devnet run hit. See docs/decision-log.md D-0025.
-        {
-            let operation = &mut ctx.accounts.operation;
-            operation.scheduled = true;
-            operation.scheduled_at_slot = Clock::get()?.slot;
-            operation.attempt_count = operation
-                .attempt_count
-                .checked_add(1)
-                .ok_or(CoreError::AttemptCountOverflow)?;
-            operation.exit(&crate::ID)?;
-        }
+        // The committed bytes must already say the cohort was scheduled, otherwise the
+        // account landing on base would claim it never was. And nothing may write to this
+        // account after `commit_and_undelegate` takes it, which is why the context holds it
+        // untyped: Anchor's automatic write-back would happen after the CPI and Devnet
+        // rejects it with `ExternalAccountDataModified`.
+        operation.scheduled = true;
+        operation.scheduled_at_slot = Clock::get()?.slot;
+        operation.attempt_count = operation
+            .attempt_count
+            .checked_add(1)
+            .ok_or(CoreError::AttemptCountOverflow)?;
+        operation.store(&ctx.accounts.operation)?;
 
         MagicIntentBundleBuilder::new(
             ctx.accounts.payer.to_account_info(),
@@ -357,6 +359,9 @@ pub const MAX_COHORT_ACTIONS: u16 = 8;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct ScheduleCohortArgs {
+    /// The operation being settled. Supplied rather than read from the account, because the
+    /// account is decoded by hand and its seeds must be checked before it is trusted.
+    pub operation_id: [u8; 32],
     /// How many adapter actions precede the settlement action.
     pub adapter_action_count: u16,
     /// Per-action compute budget for each adapter action.
@@ -406,15 +411,20 @@ pub struct DelegateOperation<'info> {
 /// context even though it is not one of the target instruction's data accounts.
 #[commit]
 #[derive(Accounts)]
+#[instruction(args: ScheduleCohortArgs)]
 pub struct ScheduleSettlementCohort<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
-    #[account(
-        mut,
-        seeds = [OPERATION_SEED, operation.operation_id.as_ref()],
-        bump = operation.bump
-    )]
-    pub operation: Account<'info, SettlementOperation>,
+    /// CHECK: decoded and re-serialized by hand below, with explicit owner and
+    /// discriminator checks.
+    ///
+    /// Deliberately untyped. A typed `Account` is written back by Anchor when the
+    /// instruction ends, which lands *after* `commit_and_undelegate` has already taken the
+    /// account into the intent. Devnet rejects that second write with
+    /// `ExternalAccountDataModified`. The MagicBlock crank example documents the same
+    /// pattern for the same reason. See docs/decision-log.md D-0029.
+    #[account(mut, seeds = [OPERATION_SEED, args.operation_id.as_ref()], bump)]
+    pub operation: UncheckedAccount<'info>,
     /// CHECK: read-only in every action; identity checked against the operation.
     pub certificate: UncheckedAccount<'info>,
     /// CHECK: writable in the settlement action's own account list.
@@ -455,6 +465,39 @@ pub struct SettlementOperation {
 impl SettlementOperation {
     /// Serialized size, excluding the 8-byte discriminator.
     pub const SIZE: usize = 32 + 32 + 32 + 2 + 1 + 8 + 2 + 1;
+
+    /// Decodes an untyped operation account, checking what a typed account would check.
+    ///
+    /// Owner and discriminator are verified here rather than assumed. Without the owner
+    /// check any account with matching bytes would decode; without the discriminator check
+    /// a different account type owned by this program would.
+    pub fn load(info: &UncheckedAccount) -> Result<Self> {
+        require_keys_eq!(*info.owner, crate::ID, CoreError::OperationWrongOwner);
+        let data = info.try_borrow_data()?;
+        require!(
+            data.len() >= 8 + Self::SIZE,
+            CoreError::OperationAccountMalformed
+        );
+        require!(
+            &data[..8] == SettlementOperation::DISCRIMINATOR,
+            CoreError::OperationWrongDiscriminator
+        );
+        let mut slice: &[u8] = &data[8..];
+        SettlementOperation::deserialize(&mut slice)
+            .map_err(|_| error!(CoreError::OperationAccountMalformed))
+    }
+
+    /// Writes the operation back into its account, in place.
+    pub fn store(&self, info: &UncheckedAccount) -> Result<()> {
+        let mut data = info.try_borrow_mut_data()?;
+        require!(
+            data.len() >= 8 + Self::SIZE,
+            CoreError::OperationAccountMalformed
+        );
+        let mut cursor = &mut data[8..];
+        self.serialize(&mut cursor)
+            .map_err(|_| error!(CoreError::OperationAccountMalformed))
+    }
 }
 
 #[event]
@@ -641,4 +684,10 @@ pub enum CoreError {
     AdapterAccountCountMismatch,
     #[msg("Attempt count overflowed")]
     AttemptCountOverflow,
+    #[msg("Operation account is not owned by this program")]
+    OperationWrongOwner,
+    #[msg("Operation account has the wrong discriminator")]
+    OperationWrongDiscriminator,
+    #[msg("Operation account is malformed")]
+    OperationAccountMalformed,
 }

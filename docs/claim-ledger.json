@@ -514,5 +514,80 @@
     "limitations": [
       "This is the falsification of the naive settlement model, demonstrated rather than argued. It does not prove the classifier is correct for cases not yet observed."
     ]
+  },
+  {
+    "id": "phase3-devnet-cohort-delivered",
+    "wording": "On Solana Devnet, one Magic Actions cohort paused three independently owned protocol markets and wrote the final settlement receipt, with every effect read back from base-layer account state.",
+    "status": "verified",
+    "proof_level": 7,
+    "network": "devnet",
+    "source_commit": "",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
+      "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4",
+      "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
+    ],
+    "transactions": [
+      "5GNFqCWagRWAGYQRYfVrDa9RjtStJtXjEcsmDuQhT2VDPty1n5fhZ3vFCaca3TPV8yNYhincksAco8ygRvpyHk2d"
+    ],
+    "commands": ["pnpm exec tsx scripts/phase3-seam.ts"],
+    "artifacts": ["artifacts/devnet/phase3-seam-devnet-success-eu-latest.json"],
+    "verified_at": "2026-08-07T21:20:00Z",
+    "limitations": [
+      "Three reference protocols, not real deployed protocols. Each has an independent authority and its own registered adapter signer.",
+      "No effect was inferred from the ER scheduling signature; each was read from base-layer state.",
+      "Routed to the Europe ER because the Asia ER was serving a cached clone of the pre-upgrade program. See docs/decision-log.md D-0030."
+    ]
+  },
+  {
+    "id": "phase3-devnet-one-failure-removes-the-cohort",
+    "wording": "On Devnet, one failing adapter action caused the committor to remove every action in the cohort and retry the commit alone, producing COMMIT_WITHOUT_ACTIONS rather than a partial application.",
+    "status": "verified",
+    "proof_level": 8,
+    "network": "devnet",
+    "source_commit": "",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
+      "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4",
+      "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
+    ],
+    "transactions": [
+      "2kqX3ewrFdwSQ4echtCorotg1PtAghvXBH5ieR8s1HmB9BvjhGxUcQFUHzRbbFPVgA2EnK4KSPJJYA1NL2PZjDi1"
+    ],
+    "commands": ["pnpm exec tsx scripts/phase3-seam.ts --fail-one"],
+    "artifacts": [
+      "artifacts/devnet/phase3-seam-devnet-fail-eu-latest.json",
+      "artifacts/local-stack/committor-behaviour.json"
+    ],
+    "verified_at": "2026-08-07T21:25:00Z",
+    "limitations": [
+      "Only gamma's action was malformed. Alpha's and beta's were well-formed and still did not run, which is the substance of the finding.",
+      "That all four actions shared one TransactionStrategy is inferred from all four disappearing together; the committor does not expose its grouping.",
+      "A cohort large enough to split across strategies remains untested. The reference bundle is four actions and fits one transaction."
+    ]
+  },
+  {
+    "id": "phase3-devnet-measurements",
+    "wording": "The Devnet cohort was measured, not estimated: 61,428 compute units for the ER scheduling transaction, 848 serialized bytes, 21 accounts, and 19.2 seconds from intent acceptance to every base-layer effect being observable.",
+    "status": "verified",
+    "proof_level": 7,
+    "network": "devnet",
+    "source_commit": "",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
+      "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4",
+      "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
+    ],
+    "transactions": [
+      "5GNFqCWagRWAGYQRYfVrDa9RjtStJtXjEcsmDuQhT2VDPty1n5fhZ3vFCaca3TPV8yNYhincksAco8ygRvpyHk2d"
+    ],
+    "commands": ["pnpm exec tsx scripts/phase3-seam.ts"],
+    "artifacts": ["artifacts/devnet/phase3-seam-devnet-success-eu-latest.json"],
+    "verified_at": "2026-08-07T21:20:00Z",
+    "limitations": [
+      "The 280,000 CU across the four actions is the declared per-action budget, not consumed units. Per-action consumption inside a Magic Action attempt is not exposed by the committor.",
+      "The 19.2 second figure is one observation on one ER and is not a latency guarantee.",
+      "LiteSVM measured 49,854 CU for one adapter action directly, which remains the best per-action figure available."
+    ]
   }
 ]

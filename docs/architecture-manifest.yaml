@@ -151,7 +151,7 @@ external_dependencies:
   - "Solana Devnet"
 
 open_questions:
-  - "Measured CU, account, and transaction-size budgets on Devnet"
+  - "How a cached ER program clone is refreshed, and how long it persists after a base-layer upgrade. Routing to a different validator is a workaround, not an answer. See docs/decision-log.md D-0030."
   - "Expected TEE workload measurement allowlist"
   - "Protocol operator acceptance of unarmed and armed sovereign adapters"
   # Raised by the Phase 0 probe; see docs/decision-log.md D-0009 and D-0008.

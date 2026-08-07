@@ -1,0 +1,278 @@
+{
+  "captured_at": "2026-08-07T20:36:39.984Z",
+  "run": "devnet-success-eu",
+  "deliberate_failure": false,
+  "network": "solana-devnet",
+  "cluster_genesis_hash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "endpoints": {
+    "base": "https://rpc.magicblock.app/devnet",
+    "router": "https://devnet-router.magicblock.app/",
+    "ephemeral_rollup": "https://devnet-eu.magicblock.app/"
+  },
+  "programs": {
+    "core": "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
+    "adapter": "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4",
+    "mock_protocol": "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
+  },
+  "operation_id": "15869f2caa3928dac81e234f5573e068dbd800177b658e0459f8b2cac6a882d6",
+  "covenant": "CAjXARYFiPTq2hx7WocY2vRozhUTUVLyMzso22UdZm7L",
+  "certificate": "CD6AZZkYd4MMRR6QXUQPE6ZXmJqXKe9cMwfjpCNJgymW",
+  "operation_account": "8X4JvA7zXYvYckbxbSXyJrgyvXAaPXEu2sps8exYxN9c",
+  "protocols": [
+    {
+      "name": "alpha",
+      "authority": "5HjVWJ9juPX1j2MWmdenTC5ZdpLK1dUjEtkipHj9LUfW",
+      "market": "4C8cPE9mcRtAEQo1zvgx45c55uxGKekFuJADhrvYyamG",
+      "capability": "CGqT3EpfvpVPQCjCHPrTCo6cveY95C7zjavkXzVa6Hww",
+      "adapter_signer": "6ogE8cLGuPadBhvaLgbAmVh1qGteePSH2sLpNBzXiEpg",
+      "adapter_receipt": "FD2iPxtq94o5LVF9B2sbwrS6YbUUxsAnEsKZFUnfnurr"
+    },
+    {
+      "name": "beta",
+      "authority": "A32mtZ9iWp52tD8WMcxnBtJrXv3YSxneAtr7ZXYWkF8H",
+      "market": "5vsASex7ffybjVzuk45wRD5HT5dnsr2Rp6c4JK2ocpHo",
+      "capability": "HcKnHVEAhWaVHxa3aMGPAXCDVucNAYZQjpU7dsa76rKS",
+      "adapter_signer": "AryRLdh8sdDnsaoh7caS8DHZg9oehPHZqHLAmLmTu7gb",
+      "adapter_receipt": "5L11KbVeBA39xHA4iR4jf7evngNmh4xJN3VMwmkr2h52"
+    },
+    {
+      "name": "gamma",
+      "authority": "3yWHcbiJwy1LUGaUb3GGY5UwK5RdCya8mPnYqr85Djyh",
+      "market": "EVz9detMUGpc2CA2gW839tkXugHkDs3RJ4m8HHFWaCJh",
+      "capability": "5kziQrdVgdzXK8GDcARJ7jWkdC4J5ZWUDmEfy1mMua74",
+      "adapter_signer": "GLtSdSnzgiFVXKL4crt8sdZr3Ydj6hRmGCz58sKXya8r",
+      "adapter_receipt": "DG79QSxpj7vpf8PPMLg6en79Df74r5Xtw9zZH7DYgwMZ"
+    }
+  ],
+  "routing": {
+    "resolved_endpoint": "https://devnet-eu.magicblock.app/",
+    "resolution_source": "getDelegationStatus.fqdn",
+    "get_delegation_status_fields": [
+      "delegationRecord",
+      "fqdn",
+      "isDelegated"
+    ],
+    "get_delegation_status_raw": {
+      "isDelegated": true,
+      "fqdn": "https://devnet-eu.magicblock.app/",
+      "delegationRecord": {
+        "authority": "MEUGGrYPxKk17hCr7wpT6s8dtNokZj5U2L57vjYMS8e",
+        "owner": "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
+        "delegationSlot": 481938354,
+        "lamports": 1712160
+      }
+    },
+    "validator_identity": null,
+    "advertised_routes": [],
+    "note": "getDelegationStatus carried an fqdn for a delegated account, which confirms the PRD's routing instruction."
+  },
+  "scheduling": {
+    "er_signature": "5GNFqCWagRWAGYQRYfVrDa9RjtStJtXjEcsmDuQhT2VDPty1n5fhZ3vFCaca3TPV8yNYhincksAco8ygRvpyHk2d",
+    "er_compute_units": 61428,
+    "serialized_transaction_bytes": 848,
+    "account_count": 21,
+    "declared_adapter_compute_units": 80000,
+    "declared_settlement_compute_units": 40000,
+    "declared_total_action_compute_units": 280000,
+    "meaning": "INTENT_ACCEPTED. The ER accepted the intent bundle. This says nothing about whether any base-layer action ran."
+  },
+  "observation": {
+    "window_ms": 90000,
+    "elapsed_ms": 19202,
+    "first_effect_after_ms": null,
+    "effects": {
+      "adapters": {
+        "alpha": {
+          "marketPaused": true,
+          "marketUpdateCount": "1",
+          "marketLastOperation": "15869f2caa3928dac81e234f5573e068dbd800177b658e0459f8b2cac6a882d6",
+          "receiptExecuted": true,
+          "receiptTargetApplied": true
+        },
+        "beta": {
+          "marketPaused": true,
+          "marketUpdateCount": "1",
+          "marketLastOperation": "15869f2caa3928dac81e234f5573e068dbd800177b658e0459f8b2cac6a882d6",
+          "receiptExecuted": true,
+          "receiptTargetApplied": true
+        },
+        "gamma": {
+          "marketPaused": true,
+          "marketUpdateCount": "1",
+          "marketLastOperation": "15869f2caa3928dac81e234f5573e068dbd800177b658e0459f8b2cac6a882d6",
+          "receiptExecuted": true,
+          "receiptTargetApplied": true
+        }
+      },
+      "settlementFinalized": true,
+      "settlementObservedActionCount": 3,
+      "operationStillDelegated": false,
+      "operationScheduledFlag": true
+    },
+    "adapters_applied": 3,
+    "adapters_absent": 0,
+    "checkpoint_committed": true
+  },
+  "classification": "ALL_ACTIONS_APPLIED",
+  "steps": [
+    {
+      "step": "fund authorities",
+      "signature": "4Mivw8Y96a5r8SXNey5jf8XBsixgfyahNigDDjQ8mX8hM89t6q1Atjk9Swa2KJork1QecFMwbtF4zL42FHGefRqi",
+      "runtime": "base"
+    },
+    {
+      "step": "alpha: initialize market",
+      "signature": "nwFciRfLizMLByvJmnCP8wbThT8TqvZWsJ6DaySBCtTHMciWC1p9pwEekYPbmqEcqvdfStnBm7Rs5aSN1kgp6vb",
+      "runtime": "base"
+    },
+    {
+      "step": "alpha: install capability",
+      "signature": "5CDeX5N1U9rMCVr136eo4MmYKQoXTrF5oucEBcBQpeJUQQptLKWdHUzg1AaWabQW2xe2W1J3JYhfb2SyDGCWCcks",
+      "runtime": "base"
+    },
+    {
+      "step": "alpha: arm capability",
+      "signature": "4qoeYtNAETwSYMBagUjcHxmHaoQfpLDdnQns3fKL3ddXyCWWoFbQMv63nC81732qHbyvYdi9oKFaMigf1D4syQ5Y",
+      "runtime": "base"
+    },
+    {
+      "step": "alpha: register adapter signer",
+      "signature": "2ozvi3V8kVumtu584cEmKnfe79XVG7FcdHW631GptCtZ8HVnHLgPgZc7QWrCy35nigEAAwttbzigvxb6X3CM5YVQ",
+      "runtime": "base"
+    },
+    {
+      "step": "beta: initialize market",
+      "signature": "UZfzJR55or7RCd2VCsucZDyRPUdNDrFesntccPVsKU2atSPBGp86vp2nB2pCXWjPi3sHrFwy42CSogkq2uFG7KW",
+      "runtime": "base"
+    },
+    {
+      "step": "beta: install capability",
+      "signature": "4PV41v97ss314Qt1VeVTier8PPpVo5zJcfR3Kiz2qrRCcqaZh8P1nWq869Spr6mvAW5oE6UAyKcML5sU9XEAvzoV",
+      "runtime": "base"
+    },
+    {
+      "step": "beta: arm capability",
+      "signature": "5buVHTsmTT1vVoFjj3TMtZ7rKsdR9hYELe5kLwvqm3fjyM3zjX4sCwb4NtYH66TB9CVFg2mWtQTG3t4ZvUrEPHag",
+      "runtime": "base"
+    },
+    {
+      "step": "beta: register adapter signer",
+      "signature": "2daoWLww13uDgu85bKiq45qBaK5U6jPCPEEgJMr9wxtNXAFu1UTKzQULFxRg7HuP4WvCHTurJa5LC96ncdkLrW4B",
+      "runtime": "base"
+    },
+    {
+      "step": "gamma: initialize market",
+      "signature": "2MRpfY81m8wBj2hk8naxcpsGSym8KfrgymcGWY7LWD9RFTfxtzTH9y4a3mWQmQEf1F2yk6RjBKYz4E3mbbwRFQSj",
+      "runtime": "base"
+    },
+    {
+      "step": "gamma: install capability",
+      "signature": "ncycu3UeBrkstXMaxPNJsR2t8uTT5DnUQ72bGT9G5BjEXVMUhJQ1vBLvu2goJAVjsu2f7AnXx75LitPg4MrwmCQ",
+      "runtime": "base"
+    },
+    {
+      "step": "gamma: arm capability",
+      "signature": "4GgKMkGXB1YKx4styicapUMLAsFszcNW5vKyLXBT7BAE74uCDSvFGeY8GhMGjhvkceRybRwYyfnWeeExFz47dXjs",
+      "runtime": "base"
+    },
+    {
+      "step": "gamma: register adapter signer",
+      "signature": "cP74isgWqmbGVApNhrvgcvLfbDbZKKsUWBZ4WnYgrzTJEFdzK7HTAJwoepxAdp3hKtsNx8kVgYpppzXvv6T8aN6",
+      "runtime": "base"
+    },
+    {
+      "step": "publish certificate",
+      "signature": "42AxapQAXzr4F4GMpW9LhAidJmuAtMgRwoqfBszsf5dc9VnbctYhBkbSU4oas4sdaArQ71ay49FgeK3krR94k1f3",
+      "runtime": "base"
+    },
+    {
+      "step": "initialize settlement receipt",
+      "signature": "4uCgt4EUHC3opsSXsVU7eoUDjoWhvntcxT7q9f823apgsdTz3jyqY6cNWE8b3CkycZ9ii5QRhhK1awcCXmdKaJuG",
+      "runtime": "base"
+    },
+    {
+      "step": "alpha: initialize adapter receipt",
+      "signature": "5PSwi43TecVBj5NPyK62uEjR7HfvJqRPuiWsK4mEFGw3d5mBKZ8j4GwXWHSQtkhf11zDkTMvcuCw8V9w5JoqA4vw",
+      "runtime": "base"
+    },
+    {
+      "step": "beta: initialize adapter receipt",
+      "signature": "3aLsGJNcfxybxaQJ1Bdij1vrQs8fsYB3DwYEyDqahQv2aw6hGFH4368ozXwryV3qNveijPw9iAMbGHaxn1hhsDaA",
+      "runtime": "base"
+    },
+    {
+      "step": "gamma: initialize adapter receipt",
+      "signature": "XNkgzg6vvkdjyWYgG3W87NSiNMNmWLAQbvDve5QxwZYqudbUYe385q5d7bgMtfpwXWi2nCjtyL5nDSs6tCkEBDH",
+      "runtime": "base"
+    },
+    {
+      "step": "initialize settlement operation",
+      "signature": "3cHB8mrfGDYwzBkc7KfTihWQt5Ud7asw8g6oGHLP8bZmTss5AR5ru5TxhWM63tptnXrtZ8MV47fPvknas3s8Z718",
+      "runtime": "base"
+    },
+    {
+      "step": "top up action escrow",
+      "signature": "5FpBvH5zzaZHhvVkws8jsnHA3tvVKUQeD65e3WmS9eyqALpgtLEhBdQRhQPGw9esnJkrweXJrifUUhXsWkL3eRGz",
+      "runtime": "base"
+    },
+    {
+      "step": "delegate operation account",
+      "signature": "5qZhsDEtTtaEoyjgibWJnXoaQCDSbCeCswcBW8rCePQ55BrsH7q23TPskurTCV5bh27ErR1AR4RsmsXgwPvVGMBx",
+      "runtime": "base"
+    },
+    {
+      "step": "base owner after delegation",
+      "runtime": "none",
+      "detail": {
+        "owner": "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh",
+        "isDelegationProgram": true
+      }
+    },
+    {
+      "step": "resolve ER endpoint",
+      "runtime": "none",
+      "detail": {
+        "endpoint": "https://devnet-eu.magicblock.app/",
+        "source": "getDelegationStatus.fqdn",
+        "evidence": {
+          "delegationStatus": {
+            "isDelegated": true,
+            "fqdn": "https://devnet-eu.magicblock.app/",
+            "delegationRecord": {
+              "authority": "MEUGGrYPxKk17hCr7wpT6s8dtNokZj5U2L57vjYMS8e",
+              "owner": "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
+              "delegationSlot": 481938354,
+              "lamports": 1712160
+            }
+          },
+          "delegationStatusFields": [
+            "delegationRecord",
+            "fqdn",
+            "isDelegated"
+          ],
+          "routes": [],
+          "validatorIdentity": null,
+          "note": "getDelegationStatus carried an fqdn for a delegated account, which confirms the PRD's routing instruction."
+        }
+      }
+    },
+    {
+      "step": "ER owner before scheduling",
+      "runtime": "none",
+      "detail": {
+        "owner": "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
+        "isCoreProgram": true
+      }
+    },
+    {
+      "step": "schedule cohort",
+      "signature": "5GNFqCWagRWAGYQRYfVrDa9RjtStJtXjEcsmDuQhT2VDPty1n5fhZ3vFCaca3TPV8yNYhincksAco8ygRvpyHk2d",
+      "runtime": "er"
+    }
+  ],
+  "limitations": [
+    "Effects are read from base-layer account state. Nothing is inferred from the ER scheduling signature.",
+    "An action whose account could not be read is recorded as null, never as absent.",
+    "Whether all four BaseActions shared one TransactionStrategy is not directly observable from account state; the classification records what landed, not how it was grouped."
+  ]
+}

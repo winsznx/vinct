@@ -537,3 +537,67 @@ through `mb-stack`'s passthrough `--bpf-program`. The dump lives in `.toolchain/
 committed, since it is MagicBlock's binary rather than ours.
 
 This is a gap in the packaged local stack, not in VINCT.
+
+### D-0029 The delegated account is held untyped and serialized by hand
+
+Devnet rejected the scheduling instruction with `ExternalAccountDataModified` even after
+D-0025 moved the state write ahead of the intent builder. The local stack had accepted the
+same code.
+
+The remaining write was Anchor's, not mine. A typed `Account<'info, T>` is written back
+automatically when the instruction ends, and that happens after `commit_and_undelegate` has
+already taken the account into the intent. The local ER tolerated it; Devnet did not.
+
+`ScheduleSettlementCohort` now holds the operation as an `UncheckedAccount`, decoded and
+re-encoded by hand through `SettlementOperation::load` and `::store`, with explicit owner
+and discriminator checks so nothing a typed account would have verified is skipped. The
+operation ID moved into the instruction arguments so the PDA seeds can still be constrained
+without reading the account first.
+
+This is the pattern `magicblock-engine-examples/crank-counter/anchor` documents on its own
+context: "using UncheckedAccount to avoid Anchor re-serializing stale data after CPI". The
+comment is easy to read as a nicety. It is not.
+
+### D-0030 An ephemeral rollup serves a cached clone of an upgraded program
+
+After the base-layer upgrade succeeded, the Asia ER kept executing the previous binary. The
+symptom was a plausible-looking application error rather than anything that named staleness:
+the old code read the new instruction data under the old argument layout, took the first two
+bytes of the operation ID as `adapter_action_count`, and rejected it as
+`InvalidActionCount`.
+
+What settled it was the line number. The Anchor error pointed at a line that matched the
+previous build, not the one on disk. Reading the operation account confirmed every value the
+check tested was correct, so the failing code could not have been the code that was
+deployed.
+
+Delegating to the Europe validator instead routed to an ER with no cached clone, and the
+same transaction succeeded immediately.
+
+Two operational consequences. A program upgrade is not visible to an ER that has already
+cloned it, so a deployment plan cannot assume base and ER agree. And an error surfaced by a
+stale clone can look like a legitimate application error, which makes the Anchor line number
+a load-bearing diagnostic rather than noise.
+
+Recorded as an open question: how a cached clone is refreshed, or how long it persists, is
+not established. Routing to a different validator is a workaround, not an answer.
+
+### D-0031 Devnet confirms the local committor's cohort behaviour
+
+Both Phase 3 paths now have Devnet evidence, and it matches the local stack exactly.
+
+Success, ER signature `5GNFqCWagRWAGYQRYfVrDa9RjtStJtXjEcsmDuQhT2VDPty1n5fhZ3vFCaca3TPV8yNYhincksAco8ygRvpyHk2d`:
+three protocol markets paused, three adapter receipts written, settlement receipt finalized,
+operation account committed and undelegated. `ALL_ACTIONS_APPLIED`, every effect read back
+from base-layer account state.
+
+Deliberate failure, ER signature `2kqX3ewrFdwSQ4echtCorotg1PtAghvXBH5ieR8s1HmB9BvjhGxUcQFUHzRbbFPVgA2EnK4KSPJJYA1NL2PZjDi1`:
+gamma's market left without a registered adapter signer. Zero adapters applied, settlement
+not finalized, checkpoint committed. `COMMIT_WITHOUT_ACTIONS`.
+
+The finding of D-0027 therefore holds on Devnet and not only locally: one failing BaseAction
+removes the whole cohort. Alpha and beta were well-formed and still did not run.
+
+Measured on the successful Devnet run: 61,428 CU for the ER scheduling transaction, 848
+serialized bytes, 21 accounts, 280,000 CU declared across the four actions, and 19.2 seconds
+from intent acceptance to every base-layer effect being observable.

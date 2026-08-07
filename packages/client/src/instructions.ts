@@ -231,6 +231,7 @@ export function scheduleSettlementCohort(
   settlementComputeUnits: number,
 ): TransactionInstruction {
   const args = new ArgWriter()
+    .bytes32(accounts.operationId)
     .u16(accounts.adapters.length)
     .u32(adapterComputeUnits)
     .u32(settlementComputeUnits)
