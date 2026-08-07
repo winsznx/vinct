@@ -5,15 +5,20 @@ anchor_version = "1.0.2"
 resolution = true
 skip-lint = false
 
-[workspace]
-members = ["probes/magicblock-compat-probe"]
-
 [programs.localnet]
 magicblock_compat_probe = "8WGMvBi8nigXpfzR62Jsz62WQzPifKUKhoFYdPk4i5i5"
+vinct_adapter = "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4"
+vinct_core = "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
+vinct_mock_protocol = "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
 
 [provider]
 cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
+[workspace]
+members = ["programs/vinct-core", "programs/vinct-adapter", "programs/vinct-mock-protocol", "probes/magicblock-compat-probe"]
+
 [scripts]
 test = "pnpm exec tsx --test tests/**/*.test.ts"
+
+[hooks]

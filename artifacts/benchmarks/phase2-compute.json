@@ -1,0 +1,27 @@
+{
+  "phase": 2,
+  "environment": "LiteSVM 0.15.2, in-process, not an ephemeral rollup and not Devnet",
+  "measured": true,
+  "note": "Compute units read from compute_units_consumed on real executions of the built SBF programs. A floor and a regression guard; Phase 3 measures the real cohort inside a Magic Action attempt.",
+  "ceilings": {
+    "adapter_action_cu": 60000,
+    "settlement_action_cu": 40000
+  },
+  "execute_bounded_action_instruction": {
+    "account_count": 6,
+    "instruction_data_bytes": 8
+  },
+  "compute_units": {
+    "arm_capability": 3728,
+    "cohort_total": 153943,
+    "execute_bounded_action[alpha]": 49186,
+    "execute_bounded_action[beta]": 49186,
+    "execute_bounded_action[gamma]": 49186,
+    "finalize_settlement": 6385,
+    "initialize_adapter_receipt": 9663,
+    "initialize_settlement_receipt": 10726,
+    "install_capability": 13107,
+    "publish_certificate": 11228,
+    "set_adapter": 2494
+  }
+}

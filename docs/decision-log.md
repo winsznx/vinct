@@ -331,3 +331,99 @@ caller that submitted one is wrong about who the members are.
 Account metas are covered by neither rule. They are never sorted anywhere, and
 `sorting_account_metas_changes_the_digest` asserts that a sort is visible as a different
 hash.
+
+---
+
+## Phase 2 — 2026-08-07
+
+### D-0017 A protocol registers an adapter *signer*, never an adapter program
+
+A market's `set_adapter` stores one `Pubkey` and `pause_new_borrowing` requires that exact
+key to sign. The key is `["adapter-signer", capability]` under the adapter program, so only
+that program, executing that capability, can produce it.
+
+Registering a program ID instead would have been weaker in two ways. Every capability under
+one adapter program would share the same trust, so protocol alpha's covenant participation
+would implicitly authorise protocol beta's capability against alpha's market. And the
+protocol would be trusting a program's whole instruction surface rather than one derived
+authority.
+
+The market therefore trusts a key, not a codebase. `one_protocols_adapter_cannot_pause_another_protocols_market`
+and `the_target_protocol_independently_refuses_a_repeated_operation` cover it.
+
+### D-0018 Adapter receipts are seeded by operation and capability
+
+PRD section 9 gives the receipt PDA as `["adapter_receipt", operation_id, adapter]`, where
+"adapter" is ambiguous between the adapter program and the capability. It is the capability.
+
+Three protocols share one adapter program in the reference build, so seeding by program
+would give them one shared receipt per operation and the first execution would block the
+other two. Seeding by capability gives each protocol its own durable, independently
+observable receipt, which is also what the reconciler needs in order to say which of the
+three effects landed.
+
+### D-0019 Splitting the certificate checks between the adapter and the bundle builder
+
+PRD section 14 lists nineteen adapter validations, one of which is "action-bundle hash".
+An adapter cannot perform that one. The concrete bundle spans all three protocols' actions
+and an adapter can see only its own; it has no way to recompute the other two.
+
+The split:
+
+- The adapter enforces everything about its own action: certificate owner, cluster,
+  covenant, epoch, policy, member set, expiry, operation identity, armed state, target
+  program, discriminator, the exact ordered account metas, the exact instruction data, the
+  effect bound, prior consumption, and its own protocol state.
+- The concrete bundle hash is written onto the certificate by whoever built the bundle, and
+  is independently recomputable by anyone from the registered templates plus the operation
+  ID. The standalone verifier does exactly that.
+
+The adapter still asserts the certificate *names* a bundle and carries at least one
+approval, so a zeroed or empty certificate authorises nothing. Claiming to verify the whole
+bundle would have been claiming a guarantee the adapter cannot provide.
+
+### D-0020 The adapter refuses trailing accounts
+
+Found by the `adding_an_extra_writable_account_is_refused` adversarial test, which initially
+failed: Anchor moves any account beyond the declared context into `remaining_accounts` and
+ignores it, so an appended writable account was accepted.
+
+It was inert. The adapter never reads `remaining_accounts` and builds its CPI account list
+explicitly, so the extra account could not be written by anything. It is refused anyway,
+with `UnexpectedAccounts`: the ordered-meta commitment covers only the declared accounts, so
+tolerating extras would mean a protocol authority signed off on a shorter account list than
+the transaction actually carries. It also removes a class of future surprise if anyone later
+adds `remaining_accounts` handling.
+
+### D-0021 A failed CPI leaves no receipt and consumes no nonce
+
+The receipt write and the capability's consumption record both happen *after*
+`invoke_signed` returns. An adapter whose target CPI fails leaves the receipt unwritten and
+the capability nonce unchanged, so the operation stays executable once the underlying
+problem is fixed.
+
+This matters for Phase 3. A reconciler that found a receipt for an effect that never
+happened would classify a failure as success. `a_failing_adapter_still_leaves_no_partial_effect`
+covers both halves: nothing is written on failure, and the same operation succeeds
+afterwards.
+
+### D-0022 Program keypairs live outside the repository
+
+`anchor keys sync` adopted the generated keypairs and the resulting program IDs are
+committed in `declare_id!` and `Anchor.toml`. The keypairs themselves are backed up to
+`.toolchain/program-keys/`, which is gitignored, and are never committed.
+
+A program keypair is only needed for the initial deploy; upgrades run through a separate
+upgrade authority. Committing them would put a deploy credential in a public repository for
+no benefit, and losing them costs nothing that matters here because the deployed IDs on
+Devnet are the evidence and this repository records them.
+
+### D-0023 Test fixtures compute slot windows from the live clock
+
+LiteSVM starts at slot 435,888,000, a realistic mainnet-scale value. The first pass at the
+Phase 2 fixtures used absolute constants (`valid_from_slot: 0`, `expires_at_slot: 500_000`),
+which put every capability and certificate window in the past and made every execution fail
+with `CertificateExpired`.
+
+Fixtures now derive their windows from `Clock::slot`, which is also what production clients
+will have to do. A slot number is only meaningful relative to now.

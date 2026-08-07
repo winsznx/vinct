@@ -276,5 +276,121 @@
       "Classifies supplied observations. Whether the observations themselves are complete depends on the Phase 3 reconciler.",
       "The real committor's transaction-strategy grouping is still unmeasured, so which classifications actually occur on Devnet is unknown until Phase 3."
     ]
+  },
+  {
+    "id": "phase2-three-independent-protocols",
+    "wording": "Three reference protocols hold genuinely separate authorities, and each one registers its own adapter signer that no other protocol, the steward, or the circle can install.",
+    "status": "verified",
+    "proof_level": 3,
+    "network": "localnet",
+    "source_commit": "",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
+      "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4",
+      "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
+    ],
+    "transactions": [],
+    "commands": ["cargo test -p vinct-program-tests --test sovereignty"],
+    "artifacts": [
+      "crates/vinct-program-tests/tests/sovereignty.rs",
+      "programs/vinct-mock-protocol/src/lib.rs"
+    ],
+    "verified_at": "2026-08-07T20:10:00Z",
+    "limitations": [
+      "In-process SVM. Proves account and authority constraints, not delegation, PER, cranks, or Magic Action delivery.",
+      "The three protocols share one program binary the way three real protocols would share a forked codebase; they share no authority.",
+      "The protocols are reference fixtures, not real deployed protocols."
+    ]
+  },
+  {
+    "id": "phase2-adapter-is-bounded",
+    "wording": "The sovereign adapter exposes no path that forwards a caller-supplied program, discriminator, account list, or instruction data, and every capability field is enforced against a named error.",
+    "status": "verified",
+    "proof_level": 3,
+    "network": "localnet",
+    "source_commit": "",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
+      "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4",
+      "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
+    ],
+    "transactions": [],
+    "commands": ["cargo test -p vinct-program-tests --test adversarial"],
+    "artifacts": [
+      "crates/vinct-program-tests/tests/adversarial.rs",
+      "programs/vinct-adapter/src/lib.rs"
+    ],
+    "verified_at": "2026-08-07T20:10:00Z",
+    "limitations": [
+      "The adapter does not verify the whole-cohort action bundle hash; that binding lives on the certificate and in the standalone verifier. See docs/decision-log.md D-0019.",
+      "Adversarial coverage is over the instruction surface as built. A program upgrade needs the suite re-run.",
+      "39 adversarial cases cover certificate bindings, capability fields, account substitution, and replay."
+    ]
+  },
+  {
+    "id": "phase2-replay-is-refused-twice-over",
+    "wording": "An operation cannot be executed twice: the adapter refuses it, and the target protocol independently refuses it even if the adapter were bypassed.",
+    "status": "verified",
+    "proof_level": 3,
+    "network": "localnet",
+    "source_commit": "",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
+      "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4",
+      "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
+    ],
+    "transactions": [],
+    "commands": ["cargo test -p vinct-program-tests --test adversarial"],
+    "artifacts": ["crates/vinct-program-tests/tests/adversarial.rs"],
+    "verified_at": "2026-08-07T20:10:00Z",
+    "limitations": [
+      "Idempotency is per operation ID. A recovery operation deliberately carries a new one and is therefore executable, which is the intended behaviour.",
+      "The market's own record holds only the last operation, so it refuses an immediate repeat rather than every historical operation."
+    ]
+  },
+  {
+    "id": "phase2-compute-measured",
+    "wording": "One adapter action consumes 49,186 compute units and the four-action cohort totals 153,943, measured on real SBF execution rather than estimated.",
+    "status": "verified",
+    "proof_level": 3,
+    "network": "localnet",
+    "source_commit": "",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
+      "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4",
+      "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
+    ],
+    "transactions": [],
+    "commands": ["cargo test -p vinct-program-tests --test benchmarks"],
+    "artifacts": ["artifacts/benchmarks/phase2-compute.json"],
+    "verified_at": "2026-08-07T20:10:00Z",
+    "limitations": [
+      "Measured in LiteSVM, which is not an ephemeral rollup and not Devnet. A floor and a regression guard, not the Phase 3 budget.",
+      "Excludes commit overhead, committor overhead, and the ER-side scheduling cost, all of which Phase 3 must measure.",
+      "The four actions were executed as separate transactions here, not inside one Magic Action attempt."
+    ]
+  },
+  {
+    "id": "phase2-failed-action-leaves-no-trace",
+    "wording": "An adapter whose target CPI fails writes no receipt and consumes no capability nonce, so a reconciler can never mistake a failure for a delivered effect.",
+    "status": "verified",
+    "proof_level": 3,
+    "network": "localnet",
+    "source_commit": "",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
+      "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4",
+      "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
+    ],
+    "transactions": [],
+    "commands": ["cargo test -p vinct-program-tests --test benchmarks"],
+    "artifacts": [
+      "crates/vinct-program-tests/tests/benchmarks.rs",
+      "programs/vinct-adapter/src/lib.rs"
+    ],
+    "verified_at": "2026-08-07T20:10:00Z",
+    "limitations": [
+      "Covers a CPI that fails inside the target program. Phase 3 must observe what the committor does when a BaseAction fails inside a Magic Action attempt, which is a different failure mode."
+    ]
   }
 ]

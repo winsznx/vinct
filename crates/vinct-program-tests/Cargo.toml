@@ -1,0 +1,32 @@
+[package]
+name = "vinct-program-tests"
+version = "0.1.0"
+description = "Program-level tests for the VINCT sovereign adapter and reference protocols."
+edition = "2021"
+publish = false
+
+# Deliberately depends on none of the VINCT programs as libraries. Every instruction is
+# built from raw bytes the way an attacker would build it, so a test can construct account
+# lists and data the programs' own helpers would refuse to produce.
+[dependencies]
+vinct-types = { path = "../vinct-types" }
+vinct-reference = { path = "../vinct-reference" }
+borsh = { version = "=1.8.0", features = ["derive"] }
+sha2 = "=0.10.9"
+
+# The granular solana crates litesvm itself uses, rather than the solana-sdk umbrella.
+# The umbrella pulls a solana-short-vec line litesvm does not accept, and pinning the same
+# granular crates keeps one copy of each type in the tree.
+[dev-dependencies]
+litesvm = "=0.15.2"
+solana-account = "=4.3.0"
+solana-address = "=2.6.1"
+solana-instruction = "=3.4.0"
+solana-keypair = "=3.1.2"
+solana-message = "=4.2.4"
+solana-signer = "=3.0.1"
+solana-transaction = "=4.1.5"
+solana-transaction-error = "=3.3.1"
+solana-clock = "=3.1.1"
+serde_json = "=1.0.151"
+hex = "=0.4.3"
