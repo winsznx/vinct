@@ -38,6 +38,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::instruction::{AccountMeta, Instruction};
 use anchor_lang::solana_program::program::invoke_signed;
+use ephemeral_rollups_sdk::anchor::action;
 use sha2::{Digest, Sha256};
 
 declare_id!("2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4");
@@ -602,6 +603,11 @@ pub struct InitializeAdapterReceipt<'info> {
 /// The account order here is the committed order. Changing it changes
 /// `ordered_account_metas_hash` and invalidates every armed capability, which is the
 /// intended consequence: a protocol authority must re-review and re-arm.
+///
+/// `#[action]` appends `escrow_auth` and `escrow`. They are appended, not interleaved, so
+/// the six declared accounts keep their positions and the commitment is unaffected. A
+/// caller building the `ShortAccountMeta` list supplies only the six; the SDK adds the rest.
+#[action]
 #[derive(Accounts)]
 pub struct ExecuteBoundedAction<'info> {
     /// CHECK: owner and contents validated in the handler against the capability's bounds.

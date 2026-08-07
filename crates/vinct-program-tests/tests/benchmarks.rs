@@ -184,10 +184,20 @@ fn the_action_instruction_stays_small_enough_for_a_four_action_cohort() {
     world.arm_everything(operation_id);
 
     let instruction = world.execute_instruction(0, operation_id);
-    let short_meta_bytes = instruction.accounts.len() * 33;
+
+    // A direct call carries eight accounts: the six the capability commits to plus the
+    // escrow pair `#[action]` appends. A *scheduled* action's `ShortAccountMeta` list
+    // carries only the six, because the SDK supplies the escrow pair itself. The bundle
+    // footprint is therefore budgeted over six, not eight.
+    assert_eq!(
+        instruction.accounts.len(),
+        8,
+        "direct call account count changed"
+    );
+    const COMMITTED_ACCOUNTS: usize = 6;
+    let short_meta_bytes = COMMITTED_ACCOUNTS * 33;
     let action_bytes = short_meta_bytes + instruction.data.len() + 32 + 4;
 
-    assert_eq!(instruction.accounts.len(), 6);
     assert_eq!(instruction.data.len(), 8, "the action gained an argument");
     assert!(
         action_bytes < 300,

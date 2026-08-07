@@ -40,14 +40,7 @@ export const PROGRAM_IDS = {
  */
 export type RouterDelegationStatus = Awaited<ReturnType<typeof getDelegationStatus>>;
 
-/** The router's routing table entry shape, observed live via the `getRoutes` method. */
-export interface RouterRoute {
-  identity: string;
-  fqdn: string;
-  baseFee: number;
-  blockTimeMs: number;
-  countryCode: string;
-}
+// The routing table entry shape lives in ./routing.ts, alongside the resolver that uses it.
 
 /**
  * Endpoint resolution contract. Phase 0 fixes the shape only; the implementation

@@ -29,6 +29,9 @@ pub const ADAPTER_RECEIPT_SEED: &[u8] = b"adapter-receipt";
 pub const MARKET_SEED: &[u8] = b"market";
 pub const CERTIFICATE_SEED: &[u8] = b"certificate";
 pub const SETTLEMENT_SEED: &[u8] = b"settlement";
+/// The delegation program, whose escrow PDA the `#[action]` macro's injected accounts use.
+pub const DELEGATION_PROGRAM_ID: &str = "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh";
+pub const ESCROW_SEED: &[u8] = b"balance";
 
 /// A recognisable cluster genesis hash for the fixture.
 pub const CLUSTER: [u8; 32] = [0x11; 32];
@@ -570,9 +573,28 @@ impl World {
         self.send(instruction, &[&payer])
     }
 
+    /// The escrow authority and escrow account the `#[action]` macro injects.
+    ///
+    /// A scheduled Magic Action gets these from the SDK. A direct call has to supply them,
+    /// and the adapter never reads them, so any consistent pair works for a direct
+    /// invocation. They are deliberately excluded from the ordered-meta commitment, which is
+    /// what lets one capability be armed once and then be exercised both ways.
+    pub fn escrow_accounts(&self) -> (Address, Address) {
+        let authority = self.payer.pubkey();
+        let delegation_program: Address = DELEGATION_PROGRAM_ID.parse().expect("valid address");
+        let escrow =
+            Address::find_program_address(&[ESCROW_SEED, authority.as_ref()], &delegation_program)
+                .0;
+        (authority, escrow)
+    }
+
     /// The canonical `execute_bounded_action` instruction for one protocol.
+    ///
+    /// The first six accounts are the committed ones, in the adapter's declared order. The
+    /// last two are the escrow pair `#[action]` appends.
     pub fn execute_instruction(&self, index: usize, operation_id: [u8; 32]) -> Instruction {
         let protocol = &self.protocols[index];
+        let (escrow_auth, escrow) = self.escrow_accounts();
         Instruction {
             program_id: adapter_program(),
             accounts: vec![
@@ -582,6 +604,8 @@ impl World {
                 AccountMeta::new(self.receipt_address(index, operation_id), false),
                 AccountMeta::new_readonly(protocol.adapter_signer, false),
                 AccountMeta::new_readonly(mock_protocol_program(), false),
+                AccountMeta::new_readonly(escrow_auth, false),
+                AccountMeta::new_readonly(escrow, false),
             ],
             data: instruction_data_empty("execute_bounded_action"),
         }
@@ -659,16 +683,21 @@ impl World {
         self.send(instruction, &[&payer])
     }
 
+    /// `finalize_settlement` is the Magic Action target, so `#[action]` appends the escrow
+    /// pair here too. A direct call supplies them; a scheduled action gets them from the SDK.
     pub fn finalize_settlement_instruction(
         &self,
         operation_id: [u8; 32],
         observed_action_count: u16,
     ) -> Instruction {
+        let (escrow_auth, escrow) = self.escrow_accounts();
         Instruction {
             program_id: core_program(),
             accounts: vec![
                 AccountMeta::new(self.settlement_address(operation_id), false),
                 AccountMeta::new_readonly(self.certificate_address(operation_id), false),
+                AccountMeta::new_readonly(escrow_auth, false),
+                AccountMeta::new_readonly(escrow, false),
             ],
             data: instruction_data(
                 "finalize_settlement",

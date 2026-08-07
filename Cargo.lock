@@ -5737,6 +5737,7 @@ name = "vinct-adapter"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
+ "ephemeral-rollups-sdk",
  "sha2 0.10.9",
 ]
 
@@ -5745,6 +5746,7 @@ name = "vinct-core"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
+ "ephemeral-rollups-sdk",
 ]
 
 [[package]]
