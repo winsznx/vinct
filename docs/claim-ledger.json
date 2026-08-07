@@ -283,7 +283,7 @@
     "status": "verified",
     "proof_level": 3,
     "network": "localnet",
-    "source_commit": "",
+    "source_commit": "e0ea3ddd29bd808edcd73f1145e80126ffac9881",
     "program_ids": [
       "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
       "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4",
@@ -308,7 +308,7 @@
     "status": "verified",
     "proof_level": 3,
     "network": "localnet",
-    "source_commit": "",
+    "source_commit": "e0ea3ddd29bd808edcd73f1145e80126ffac9881",
     "program_ids": [
       "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
       "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4",
@@ -333,7 +333,7 @@
     "status": "verified",
     "proof_level": 3,
     "network": "localnet",
-    "source_commit": "",
+    "source_commit": "e0ea3ddd29bd808edcd73f1145e80126ffac9881",
     "program_ids": [
       "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
       "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4",
@@ -354,7 +354,7 @@
     "status": "verified",
     "proof_level": 3,
     "network": "localnet",
-    "source_commit": "",
+    "source_commit": "e0ea3ddd29bd808edcd73f1145e80126ffac9881",
     "program_ids": [
       "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
       "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4",
@@ -376,7 +376,7 @@
     "status": "verified",
     "proof_level": 3,
     "network": "localnet",
-    "source_commit": "",
+    "source_commit": "e0ea3ddd29bd808edcd73f1145e80126ffac9881",
     "program_ids": [
       "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
       "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4",
