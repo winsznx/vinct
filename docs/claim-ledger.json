@@ -871,5 +871,27 @@
       "The covenant is not yet deployed to Devnet: the program has outgrown its deployed capacity and the deployer balance cannot cover an extend plus the transient upgrade buffer. The Devnet gate for this is pending funding, not pending code.",
       "The adapter capability recorded on a membership is not yet cross-checked against vinct_adapter’s own capability account. That binding is the next composition step."
     ]
+  },
+  {
+    "id": "certification-earns-the-certificate",
+    "wording": "A certificate can only be produced by an incident that reached its covenant’s threshold. publish_certificate takes no arguments and no issuing authority: every field is derived from the released incident core, and its operation ID is the canonical derivation of the frozen snapshot, computed by the same function the reference model and the standalone verifier use.",
+    "status": "verified",
+    "proof_level": 4,
+    "network": "litesvm",
+    "source_commit": "bf8ad45",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
+    ],
+    "transactions": [],
+    "commands": [
+      "anchor build --ignore-keys",
+      "cargo test -p vinct-program-tests --test composition"
+    ],
+    "artifacts": [],
+    "verified_at": "2026-08-08T08:00:00Z",
+    "limitations": [
+      "The composition is proven up to the certificate. The Magic Action cohort beyond it still assumes a client-chosen operation ID, which Phase 5 no longer produces. See docs/decision-log.md D-0048.",
+      "Not yet run on Devnet: the program has outgrown its deployed capacity and the deployer is 1.76 SOL short of an extend plus the transient upgrade buffer."
+    ]
   }
 ]

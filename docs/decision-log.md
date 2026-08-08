@@ -1037,3 +1037,42 @@ had none.
 `scripts/phase3-seam.ts` could manufacture the certificate its cohort settled against. It
 cannot any more, and it now checks for one and says where to get it. That is the seam between
 the two halves of the product becoming real rather than assumed.
+
+### D-0048 A capability is bound to one operation, and arming happens before there is one
+
+Wiring the Phase 5 end-to-end runner surfaced an ordering problem the earlier phases could
+not have shown, because each of them only ever ran one operation whose ID the client chose in
+advance.
+
+`vinct_adapter`'s `ordered_account_metas_hash` commits to the concrete account list, and that
+list contains `adapter_receipt`, a PDA seeded by `[ADAPTER_RECEIPT_SEED, operation_id,
+capability]`. So a capability is armed against exactly one operation ID.
+
+That was consistent through Phase 3, where `scripts/phase3-seam.ts` picked the operation ID
+first and installed capabilities against it. It is not consistent with Phase 5. The operation
+ID is now derived by the program at certification, from the frozen snapshot and the
+certification slot, so it does not exist until the incident is over. A protocol cannot arm a
+capability for an operation that has not happened yet.
+
+And it has to. The covenant reaches `ARMED` only when every adapter-owning member has armed,
+and an incident may only open under an armed circle. The whole product premise is arming
+before the crisis rather than during it.
+
+The direction is the one D-0015 already took for the bundle template and the adapter's metas
+hash simply did not follow. The receipt is a *role* rather than an address: the commitment
+covers the five accounts whose addresses a protocol genuinely fixes in advance, and the
+adapter re-derives the expected receipt from `parsed.operation_id` and its own capability,
+both of which it already validates. A capability is then armed once, for any operation under
+its covenant, epoch, and policy, and the receipt binding is no weaker: the address is fully
+determined by two values the adapter checks.
+
+Not implemented yet, and deliberately not rushed. It changes what a protocol authority signs
+when it arms an adapter, which is the most safety-critical signature in the system, and it
+wants its own unit of work with the adversarial tests rewritten around the new commitment
+rather than adjusted to fit it.
+
+Until then the composition is proven up to the certificate: covenant, frozen snapshot,
+pre-created ballots, private claim, sealed attestations, in-memory certification, terminal
+scrub, release, and the certificate the adapter reads. The cohort beyond it is proven by the
+Phase 3 evidence against a client-chosen operation ID, which is a real result about Magic
+Actions and no longer the path Phase 5 takes.
