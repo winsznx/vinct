@@ -787,7 +787,7 @@
     "status": "verified",
     "proof_level": 4,
     "network": "litesvm",
-    "source_commit": "PENDING",
+    "source_commit": "984bb7d",
     "program_ids": [
       "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
     ],
@@ -808,7 +808,7 @@
     "status": "verified",
     "proof_level": 4,
     "network": "litesvm",
-    "source_commit": "PENDING",
+    "source_commit": "984bb7d",
     "program_ids": [
       "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
     ],
@@ -829,7 +829,7 @@
     "status": "verified",
     "proof_level": 4,
     "network": "litesvm",
-    "source_commit": "PENDING",
+    "source_commit": "984bb7d",
     "program_ids": [
       "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
     ],
