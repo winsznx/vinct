@@ -92,7 +92,21 @@
   --r-pill: 999px;
 
   --app-max: 1320px;
-  --marketing-max: 1200px;
+  /*
+   * One measure for every marketing band, so the hero headline and each section stamp share a
+   * left edge.
+   *
+   * design.md specifies 1200px. On a 1800px display that leaves a third of the screen empty on
+   * either side and reads as cramped rather than restrained, so this is wider. Giving the hero
+   * its own wider measure was worse: the stamp below it started 120px to the right of the
+   * headline, and a broken left edge is more noticeable than a narrow column. Prose is held to a
+   * readable line length by its own `ch` limits, so the extra width buys presence rather than
+   * long lines.
+   */
+  --marketing-max: 1400px;
+  --hero-max: 1400px;
+  /* design.md: sectionGap ~120px. */
+  --section-gap: 120px;
   --rail: 232px;
   --header: 56px;
 }
@@ -212,34 +226,53 @@ ol {
   letter-spacing: -0.01em;
 }
 
-/* The marketing register. Kept out of the application on purpose. */
+/*
+ * The marketing register, at the scale design.md actually specifies.
+ *
+ * The first pass shrank all of it: an 88px display became 84 at best, and the 74px stamped
+ * section label became 13px. At that size the stamp is a caption, the page loses its signposts,
+ * and the whole composition reads as a generic dark template. The spec's grammar is large on
+ * purpose, and this is the one place in the product where that belongs.
+ *
+ * Kept out of the application, where density is the point instead.
+ */
 .m-display {
   font-family: var(--font-display);
   font-style: italic;
   font-weight: 300;
-  letter-spacing: -0.03em;
-  line-height: 0.95;
-  font-size: clamp(38px, 7.5vw, 84px);
+  letter-spacing: -0.035em;
+  line-height: 0.86;
+  font-size: clamp(52px, 9vw, 132px);
 }
+/** design.md: 74px uppercase, 0.2em tracking, stamped like a boarding pass. */
 .m-stamp {
   font-family: var(--font-mono);
   font-weight: 400;
   text-transform: uppercase;
   letter-spacing: 0.2em;
   color: var(--soft-white);
-  line-height: 1;
-  font-size: clamp(18px, 3.4vw, 40px);
+  line-height: 0.9;
+  font-size: clamp(28px, 5.2vw, 74px);
+}
+/** The small stamp, for an eyebrow above a heading rather than a section signpost. */
+.m-eyebrow {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--steel);
+  font-size: 12px;
 }
 .m-heading {
-  font-size: clamp(26px, 3.6vw, 44px);
+  font-size: clamp(30px, 4.2vw, 64px);
   font-weight: 400;
   letter-spacing: -0.025em;
-  line-height: 1.12;
+  line-height: 1.08;
 }
 .m-lead {
-  font-size: clamp(16px, 1.8vw, 21px);
+  font-size: clamp(17px, 1.5vw, 22px);
   font-weight: 300;
-  line-height: 1.5;
+  line-height: 1.55;
   color: var(--almost-white);
 }
 
@@ -250,6 +283,34 @@ ol {
   max-width: var(--marketing-max);
   margin: 0 auto;
   padding: 0 var(--s5);
+}
+.wrap-hero {
+  width: 100%;
+  max-width: var(--hero-max);
+  margin: 0 auto;
+  padding: 0 var(--s5);
+}
+
+/**
+ * A full-bleed band with a content column inside it.
+ *
+ * design.md asks for edge-to-edge dark bands with no dividers between them, where rhythm comes
+ * from the gap and the stamped label rather than from a rule. The band is the page's unit.
+ */
+.band {
+  padding: var(--section-gap) 0;
+}
+.band-tight {
+  padding: calc(var(--section-gap) * 0.62) 0;
+}
+.band-raised {
+  background: var(--raised);
+}
+
+@media (max-width: 900px) {
+  :root {
+    --section-gap: 72px;
+  }
 }
 .wrap-app {
   width: 100%;
@@ -716,5 +777,29 @@ ol {
 @media (max-width: 520px) {
   .grid-stats {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/** The hero stacks before its columns get too narrow to hold a headline. */
+@media (max-width: 940px) {
+  .wrap-hero {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: var(--s6) !important;
+  }
+}
+
+/**
+ * Wider gutters on a large screen.
+ *
+ * The content column is 1400px, so a 1440px laptop leaves 20px either side and the composition
+ * touches the edges. design.md asks for comfortable density, and a band that runs to the bezel
+ * reads as cramped even when the column inside it is generous.
+ */
+@media (min-width: 1100px) {
+  .wrap,
+  .wrap-hero,
+  .wrap-app {
+    padding-left: var(--s7);
+    padding-right: var(--s7);
   }
 }

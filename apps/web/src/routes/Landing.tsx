@@ -4,10 +4,16 @@
  * One sentence about what VINCT does, one picture of the mechanism, and two places to go. No
  * covenant address, no jargon above the fold, and nothing a reader has to already know.
  *
- * The sections below the hero are ordered by what a sceptical protocol engineer asks next, in
- * the order they ask it: why does this exist, what do I give up, how does the private part
- * work, what happens when it fails, and can I check any of this myself. The last one is the
- * only section with a live link into real evidence, and it is the one that closes the argument.
+ * The composition follows `design.md` at the scale it actually specifies, which the first pass
+ * did not. An 88px display, a 74px stamped section label, and roughly 120px between bands. The
+ * hero owns the viewport rather than sitting in a 1200px column with a third of a wide screen
+ * empty on either side. Prose stays at a readable measure inside those wider bands, so the
+ * generosity buys presence rather than long lines.
+ *
+ * Section order is the order a sceptical protocol engineer asks: why does this exist, what do I
+ * give up, how does the private part work, what happens when it fails, and can I check any of
+ * this myself. The last one is the only section that links into real evidence, and it is the one
+ * that closes the argument.
  */
 
 import { Link, useLocation } from "react-router-dom";
@@ -25,31 +31,52 @@ export function Landing() {
   return (
     <>
       {/* ------------------------------------------------------------ hero */}
-      <section className="wrap" style={{ padding: "var(--s8) var(--s5) var(--s9)" }}>
+      <section
+        style={{
+          // Owns the screen without trapping the reader: tall enough to be the only thing in
+          // view, short enough that the next band's edge is visible on a laptop.
+          minHeight: "min(88vh, 900px)",
+          display: "flex",
+          alignItems: "center",
+          paddingTop: "var(--s8)",
+          paddingBottom: "var(--s8)",
+          background:
+            "radial-gradient(70% 55% at 78% 42%, rgba(175, 80, 255, 0.10), transparent 70%)",
+        }}
+      >
         <div
+          className="wrap-hero"
           style={{
             display: "grid",
-            gap: "var(--s7)",
-            gridTemplateColumns: "repeat(auto-fit, minmax(min(340px, 100%), 1fr))",
+            // design.md: roughly 55/45, text to card.
+            gridTemplateColumns: "minmax(0, 1.15fr) minmax(0, 1fr)",
+            gap: "var(--s8)",
             alignItems: "center",
           }}
         >
-          <div className="stack" style={{ gap: "var(--s5)" }}>
-            <Pill tone="attention">{network.label} · MagicBlock private rollup</Pill>
+          <div style={{ display: "grid", gap: "var(--s5)", minWidth: 0 }}>
+            <div>
+              <Pill tone="attention">{network.label} · MagicBlock private rollup</Pill>
+            </div>
 
-            <h1 style={{ maxWidth: "13ch" }}>
+            <h1 style={{ maxWidth: "12ch" }}>
               <span className="m-display">Coordinate</span>
               <br />
-              <span className="m-heading">without sharing keys</span>
+              <span className="m-heading" style={{ display: "inline-block", marginTop: "0.12em" }}>
+                without sharing keys
+              </span>
             </h1>
 
-            <p className="m-lead" style={{ maxWidth: "48ch" }}>
+            <p className="m-lead" style={{ maxWidth: "46ch" }}>
               Protocols that depend on the same oracle or bridge can agree in advance on exactly
               what each will do in an emergency, decide privately whether it is happening, and act
               together. Nobody hands anybody else authority.
             </p>
 
-            <div className="row" style={{ flexWrap: "wrap", gap: "var(--s3)" }}>
+            <div
+              className="row"
+              style={{ flexWrap: "wrap", gap: "var(--s3)", marginTop: "var(--s2)" }}
+            >
               <Link
                 to={{ pathname: "/demo", search }}
                 className="btn btn-signal btn-lg"
@@ -62,7 +89,7 @@ export function Landing() {
               </Link>
             </div>
 
-            <p className="t-small muted">
+            <p className="t-small muted" style={{ maxWidth: "48ch" }}>
               The demo needs no wallet. It replays a real incident recorded on Devnet, with the
               addresses and signatures it produced.
             </p>
@@ -73,9 +100,8 @@ export function Landing() {
       </section>
 
       {/* ------------------------------------------------------------- why */}
-      <Band>
-        <SectionHead
-          eyebrow="Why this exists"
+      <Band stamp="Why this exists">
+        <Head
           title="Everyone finds out from Twitter"
           lead="Three lending protocols use the same price feed. It starts printing garbage. Each of them has a runbook, each acts alone, and the slowest one absorbs the damage. They could have agreed months earlier, and there was nothing to agree with."
         />
@@ -96,9 +122,8 @@ export function Landing() {
       </Band>
 
       {/* ------------------------------------------------------- what you keep */}
-      <Band tone="raised">
-        <SectionHead
-          eyebrow="What your protocol keeps"
+      <Band stamp="Sovereignty" raised>
+        <Head
           title="You authorise one action, not a relationship"
           lead="A capability is a bound you place on yourself, before any incident exists. It names one instruction, one account it may touch, one effect ceiling, and a window outside which nothing is accepted at all."
         />
@@ -106,7 +131,7 @@ export function Landing() {
           <Card>
             <div className="stack">
               <div className="label">What a certificate can do</div>
-              <p className="t-body">
+              <p className="t-lead">
                 Exactly one thing: the instruction you named, against the account you named, inside
                 the limits you set.
               </p>
@@ -132,8 +157,8 @@ export function Landing() {
                 ["Publish a certificate", "Nobody. The incident earns it"],
               ].map(([action, who]) => (
                 <div key={action} className="row-between" style={{ gap: "var(--s4)" }}>
-                  <span className="t-base">{action}</span>
-                  <span className="t-base muted" style={{ textAlign: "right" }}>
+                  <span className="t-body">{action}</span>
+                  <span className="t-body muted" style={{ textAlign: "right" }}>
                     {who}
                   </span>
                 </div>
@@ -144,9 +169,8 @@ export function Landing() {
       </Band>
 
       {/* ------------------------------------------------------------ private */}
-      <Band>
-        <SectionHead
-          eyebrow="Private certification"
+      <Band stamp="Sealed quorum">
+        <Head
           title="Your response is sealed from every other member"
           lead="Not merely from the public. Each member's answer lives in its own account inside a private rollup, readable by exactly one key. The program counts them in memory and never writes the count anywhere."
         />
@@ -167,9 +191,8 @@ export function Landing() {
       </Band>
 
       {/* ----------------------------------------------------------- failure */}
-      <Band tone="raised">
-        <SectionHead
-          eyebrow="When it goes wrong"
+      <Band stamp="Commit without actions" raised>
+        <Head
           title="VINCT will tell you nothing happened"
           lead="This is the part most coordination systems get wrong. A transaction that schedules emergency actions can succeed while every one of those actions is stripped and never runs."
         />
@@ -211,17 +234,16 @@ export function Landing() {
       </Band>
 
       {/* -------------------------------------------------------------- proof */}
-      <Band>
-        <SectionHead
-          eyebrow="Check it yourself"
+      <Band stamp="Check it yourself">
+        <Head
           title="Nothing here asks you to trust this page"
           lead="Paste an operation ID and the verifier reads the incident and its covenant off the chain, re-derives the operation identity from the covenant's own frozen terms, and confirms every receipt carries it. It shares no code with the on-chain program, which is the only reason its agreement means anything."
         />
         <div className="row" style={{ flexWrap: "wrap", gap: "var(--s3)" }}>
-          <Link to={{ pathname: "/demo", search }} className="btn btn-signal">
+          <Link to={{ pathname: "/demo", search }} className="btn btn-signal btn-lg">
             Walk through a real incident
           </Link>
-          <Link to={{ pathname: "/proof", search }} className="btn">
+          <Link to={{ pathname: "/proof", search }} className="btn btn-lg">
             Verify an operation
           </Link>
         </div>
@@ -230,30 +252,48 @@ export function Landing() {
   );
 }
 
-function Band({ children, tone }: { children: React.ReactNode; tone?: "raised" }) {
+/**
+ * One edge-to-edge band, signposted by its stamp.
+ *
+ * design.md puts the rhythm in the gap and the stamped label rather than in dividers, so there
+ * is no rule between bands. The stamp is the thing a reader scrolls past and remembers.
+ */
+function Band({
+  stamp,
+  children,
+  raised,
+}: {
+  stamp: string;
+  children: React.ReactNode;
+  raised?: boolean;
+}) {
   return (
-    <section
-      style={{
-        padding: "var(--s9) 0",
-        background: tone === "raised" ? "var(--raised)" : undefined,
-        borderTop: "1px solid var(--line)",
-      }}
-    >
-      <div className="wrap stack" style={{ gap: "var(--s6)" }}>
+    <section className={`band ${raised ? "band-raised" : ""}`}>
+      <div className="wrap" style={{ display: "grid", gap: "var(--s7)" }}>
+        <h2 className="m-stamp">{stamp}</h2>
         {children}
       </div>
     </section>
   );
 }
 
-function SectionHead({ eyebrow, title, lead }: { eyebrow: string; title: string; lead: string }) {
+/**
+ * A section heading and its lead.
+ *
+ * Each gets its own measure. `ch` resolves against the element's own font size, so one limit on
+ * the container is set by the body font and then squeezes a 64px headline into a narrow column
+ * with a stranded last line. The headline wants a couple of generous lines; the lead wants a
+ * readable 60-odd characters.
+ */
+function Head({ title, lead }: { title: string; lead: string }) {
   return (
-    <div className="stack" style={{ gap: "var(--s3)", maxWidth: "62ch" }}>
-      <div className="m-stamp" style={{ fontSize: "clamp(11px, 1.4vw, 13px)" }}>
-        {eyebrow}
-      </div>
-      <h2 className="m-heading">{title}</h2>
-      <p className="t-lead muted">{lead}</p>
+    <div style={{ display: "grid", gap: "var(--s4)" }}>
+      <p className="m-heading" style={{ maxWidth: "17ch" }}>
+        {title}
+      </p>
+      <p className="t-lead muted" style={{ maxWidth: "58ch" }}>
+        {lead}
+      </p>
     </div>
   );
 }
@@ -265,7 +305,7 @@ function Point({ title, body }: { title: string; body: string }) {
         <div className="t-lead" style={{ fontWeight: 500 }}>
           {title}
         </div>
-        <p className="t-base muted">{body}</p>
+        <p className="t-body muted">{body}</p>
       </div>
     </Card>
   );
