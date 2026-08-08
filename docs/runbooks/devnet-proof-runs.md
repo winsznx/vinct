@@ -198,3 +198,48 @@ is a `FAIL`, not a warning.
 - every private field class was found inside the permission before the scrub, so the leak
   scan had something to find
 - the account returned to base ownership with `private_fields_zeroized` set
+
+## A public RPC cannot deploy this program
+
+`vinct_core.so` is roughly 700 KB, which `solana program deploy` uploads as about 600 write
+transactions before a finalize. `api.devnet.solana.com` will not carry that. Three attempts
+failed three different ways, and the variety is the point: none of them names the real cause.
+
+| Attempt | Symptom |
+| --- | --- |
+| 1 | `panicked at cli/src/program.rs: Should return a valid tpu client: PubsubError(ConnectionReset)` |
+| 2 | `HTTP status client error (429 Too Many Requests)` |
+| 3 | `Error: Data writes to account failed: Custom error: Max retries exceeded` |
+
+Each left an orphaned buffer holding 4.862 SOL. All three were reclaimed in full, so a failed
+deploy costs transaction fees and nothing else:
+
+```bash
+solana program show --buffers -u devnet -k .toolchain/keys/devnet-deployer.json
+solana program close <BUFFER> -u devnet -k .toolchain/keys/devnet-deployer.json --bypass-warning
+```
+
+Check for a leftover buffer before every retry. A second attempt while the first buffer is still
+open needs the rent twice.
+
+Two of the attempts produced a buffer that looked complete and was not:
+
+```
+Buffer account <ADDR> has invalid program data: "ELF error: Failed to parse ELF file"
+```
+
+Resuming from a buffer with `--buffer` is worth trying, because a complete one finishes the
+deploy in a single transaction. A partial one has to be closed and re-uploaded.
+
+Use a dedicated RPC. Everything in this repository reads `VINCT_BASE_RPC`:
+
+```bash
+export VINCT_BASE_RPC=https://<your-endpoint>
+solana config set --url "$VINCT_BASE_RPC"
+```
+
+Confirm `getProgramAccounts` is enabled on whatever tier you use. Covenant membership and
+capability discovery both depend on it, and some providers restrict it.
+
+The router and the rollup endpoints are not substitutable. They stay MagicBlock's, resolved
+live, and hardcoding a regional endpoint is a PRD violation regardless of what is convenient.
