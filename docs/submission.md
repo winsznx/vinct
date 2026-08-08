@@ -63,8 +63,8 @@ certification, the scrub, release to base, a permissionless certificate, a Magic
 and reconciliation from base-layer state. Plus the failure paths, which are the half worth
 watching, and a crank that settles an unanswered incident with nobody acting.
 
-Two seams have also run on Devnet: the Magic Actions cohort with a deliberately broken adapter,
-and live TEE attestation discovery.
+All of it also runs on Solana Devnet against a real MagicBlock ephemeral rollup, with its own
+artifacts under `artifacts/devnet/`.
 
 ## Verify it without trusting us
 
@@ -81,12 +81,12 @@ The same thing in a browser at `/proof?operation=<id>`, with no wallet and no lo
 
 ## What we did not prove
 
-The current build is not deployed to Devnet. Phases 5 and 6 grew the core program past its
-deployed capacity, and a public RPC cannot sustain the upload. The nine Devnet claims are
-stamped with the commit they were verified against.
-
-The attested Devnet rollup still serves a cached clone of an older build, and the freshness gate
-refuses to collect evidence from it, so the full private lifecycle has no Devnet artifact.
+Confidentiality has no Devnet artifact for this build. Attestation and runtime freshness are
+independent properties and no rollup currently has both: `devnet-us` executes this build and
+answers no TDX quote, `devnet-tee` answers a valid quote and executes a binary it cached before
+this build existed. The composition therefore ran on `devnet-us`, which proves the mechanism and
+says nothing about an enclave. The sealed-quorum property rests on the local stack and on the
+PER visibility experiment.
 
 Attestation proves a genuine TDX quote bound to a fresh challenge. It does not compare MRTD or
 RTMR against an expected workload, so it does not establish which code runs inside the enclave.
@@ -100,10 +100,10 @@ concealed. Its existence is public by design. Its contents are not.
 | --- | --- |
 | Every public claim, with commands and limitations | `docs/claim-ledger.json` |
 | What we got wrong and the gate each mistake left | `docs/audit-report.md` |
-| Seventy decisions, with the evidence behind each | `docs/decision-log.md` |
+| 72 decisions, with the evidence behind each | `docs/decision-log.md` |
 | Exactly what is and is not private | `docs/privacy-boundary.md` |
 | Run records from every proof | `artifacts/` |
 
-Fifty-six claims. Every one verified, stamped with a commit, reproducible by a named command,
+61 claims. Every one verified, stamped with a commit, reproducible by a named command,
 carrying its artifacts, and carrying at least one stated limitation. `pnpm audit-claims` checks
 that, and it is a gate because one claim once pointed at a file that had never been written.

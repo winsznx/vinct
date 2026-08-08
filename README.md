@@ -13,8 +13,7 @@ Each protocol owns its adapter and the one narrow action it permits.
 
 ## Status
 
-Phase 7 of 8 complete. The whole mechanism runs end to end on a local MagicBlock stack, and
-the two hardest seams have also run on Devnet.
+Phase 8. The whole mechanism runs end to end on a local MagicBlock stack and on Solana Devnet.
 
 Formation, a private incident, certification, settlement, and expiry all run in one sequence
 with nothing chosen by the runner. Three protocols form a covenant and arm their own adapters
@@ -49,9 +48,16 @@ database. The proof path takes an operation ID and re-derives it from the covena
 terms with an implementation that shares no code with the on-chain program, with no wallet and
 no login.
 
-What is not done: the Devnet deployment of the current build. The programs grew past their
-deployed capacity during Phases 5 and 6, and the public Devnet RPC cannot sustain the upload.
-The claim ledger marks every Devnet claim with the build it was verified against.
+Everything above runs on Solana Devnet too, against a real MagicBlock ephemeral rollup, with its
+own artifact under `artifacts/devnet/`. The composition, both failure paths, the expiry crank,
+and a cancellation that stopped a running task short of its iteration count.
+
+One claim has no Devnet evidence for this build. Confidentiality needs an attested rollup, and
+attestation and runtime freshness turn out to be independent: `devnet-us` executes this build and
+answers no TDX quote, while `devnet-tee` answers a valid quote and executes a binary it cached
+before this build existed. `pnpm exec tsx scripts/probe-runtimes.ts` prints the current state.
+The sealed-quorum property therefore rests on the local stack and on the PER visibility
+experiment.
 
 ## What the design rests on
 
@@ -170,9 +176,13 @@ wrong on Devnet and what to do about it is in
 
 ```bash
 pnpm audit-claims     # every ledger claim: stamped, reproducible, bounded, artifacts present
+pnpm scan-artifacts   # no credential and no private material in anything committed
 pnpm check-vectors    # committed vectors are what the Rust would generate today
 pnpm verify-vectors   # the standalone verifier agrees with them, byte for byte
 ```
+
+What went wrong and the gate each mistake left behind is in
+[docs/audit-report.md](docs/audit-report.md).
 
 ## Versions
 

@@ -101,7 +101,22 @@ the status. Every evidence-producing decoder is now pinned to a vector generated
 program's own Rust struct, and fails closed on discriminator, length, and version. See D-0051
 and D-0052.
 
-### 11. Two controls that stayed visible and stopped working
+### 11. A credential written into an artifact
+
+The Devnet runs record the endpoints they used, so `redactEndpoint` was applied to the
+`endpoints` field. The first run wrote the key into the artifact anyway: the runners print their
+own configuration at the top and `say()` keeps every line for the transcript, which nobody had
+thought to redact.
+
+Redaction happens where text is retained now, not at each place somebody remembered. The key
+never reached git, verified with `git log --all -S` rather than assumed, and the untracked
+artifacts were regenerated.
+
+`scripts/scan-artifacts.ts` is the gate, and it was verified by planting a file with a provider
+key, incident canary text, and a recorded decision, watching it fail, and watching it pass once
+removed. See D-0071.
+
+### 12. Two controls that stayed visible and stopped working
 
 A sticky nav that wraps to two rows on a phone and covers what the reader scrolled to, and a
 flex form whose label overflowed and swallowed every click aimed at the button beside it. Worse
@@ -141,6 +156,7 @@ place fails instead of passing.
 | Type suppression: `as any`, `@ts-ignore`, `@ts-expect-error` | none |
 | Secrets, keypairs, or tokens in tracked files | none |
 | AI attribution or co-author trailers in commit history | none |
+| Credentials or private material in any committed artifact | none, and `pnpm scan-artifacts` gates it |
 
 `#![forbid(unsafe_code)]` was added to the three programs during this audit. It was already on
 `vinct-types` and `vinct-reference`. A rule the build cannot check is a rule that holds until
@@ -148,16 +164,16 @@ somebody is in a hurry.
 
 ## Claims audit
 
-56 claims, every one verified, stamped with a reachable commit, reproducible by a named command,
+61 claims, every one verified, stamped with a reachable commit, reproducible by a named command,
 carrying its artifacts, and carrying at least one stated limitation.
 
 | Network | Claims |
 | --- | --- |
-| none (pure model, cross-language parity) | 14 |
+| none (pure model, cross-language parity) | 15 |
 | litesvm (program and authority constraints) | 11 |
 | localnet | 9 |
 | local MagicBlock stack | 13 |
-| devnet | 9 |
+| devnet | 13 |
 
 Run `pnpm audit-claims` to check them.
 
@@ -165,15 +181,18 @@ Run `pnpm audit-claims` to check them.
 
 Stated plainly, because a claim ledger is only as good as its refusals.
 
-The current build is not deployed to Devnet. Phases 5 and 6 grew the core program past its
-deployed capacity, and the public Devnet RPC could not sustain the upload: one attempt panicked
-on its TPU websocket and a second hit rate limits, both leaving orphaned buffers that were
-reclaimed in full. The nine Devnet claims are stamped with the commit they were verified
-against, which is not the current one.
+The confidentiality claim has no Devnet artifact for this build, and cannot yet have one.
+Attestation and runtime freshness are independent properties, and `pnpm exec tsx
+scripts/probe-runtimes.ts` shows no rollup currently has both: `devnet-us` executes this build
+and answers no TDX quote, `devnet-tee` answers a valid quote and executes a binary it cached
+before this build existed, and the other two never cloned the program at all. The composition
+therefore ran on `devnet-us`, which proves the mechanism and says nothing about an enclave. The
+sealed-quorum property rests on the local stack and on the earlier PER visibility experiment.
 
-The TEE-backed rollup on Devnet still serves a cached clone of an older build, and the
-freshness gate refuses to collect evidence from it. That is why the full private lifecycle has
-no Devnet artifact.
+A public Devnet RPC cannot deploy a program this size. Three attempts failed three different
+ways for one cause, each leaving an orphaned buffer that was reclaimed in full. That is an
+operational finding rather than an unproven claim, and it is written up in
+`docs/runbooks/devnet-proof-runs.md`.
 
 Attestation establishes a genuine TDX quote bound to a fresh challenge, from hardware Intel's
 chain vouches for. It does not compare MRTD or RTMR values against an expected workload, so it
@@ -198,10 +217,16 @@ specific, but it has not been run on another engine.
 
 CONDITIONAL PASS.
 
-Every mechanism the product depends on is proven on a local MagicBlock stack with artifacts, and
-the two hardest seams have also run on Devnet against an earlier build. The condition is the
-Devnet deployment of the current build, which is a funding and RPC-capacity problem rather than
-an engineering one, and the stale attested rollup, which is external.
+Every mechanism the product depends on is proven twice: on a local MagicBlock stack and on
+Solana Devnet against a real ephemeral rollup, each with its own artifact. That covers formation
+and arming, the private incident, certification, the Magic Action cohort, both failure paths,
+the expiry crank, and cancellation.
 
-The condition is not that anything is believed to work and untested. It is that a set of claims
-already proven on one runtime have not been re-proven on another.
+The condition is one claim. Confidentiality has no Devnet evidence for this build, because the
+only attested rollup is executing a binary it cached before this build existed and the freshness
+gate refuses to collect from it. That is external and outside this repository's control, and the
+claim it supports is proven on the local stack and by the PER visibility experiment.
+
+The condition is not that anything is believed to work and untested. It is that one claim
+already proven on two runtimes has not been proven on a third, and the reason is a cache in
+somebody else's infrastructure.
