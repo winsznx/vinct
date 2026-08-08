@@ -180,7 +180,6 @@ open_questions:
   - "Protocol operator acceptance of unarmed and armed sovereign adapters"
   # Raised by the Phase 0 probe; see docs/decision-log.md D-0009 and D-0008.
   - "Whether the TypeScript SDK 0.14.3 and Rust SDK 0.16.2 pairing holds at runtime for permission and intent encoding"
-  - "Which crank call path to use: raw MagicBlockInstruction::ScheduleTask bincode, or the SDK ScheduleCrankCpi driven from remaining_accounts"
 
 canonical_commitments:
   # Corrected in Phase 1. See docs/decision-log.md D-0012.
@@ -226,6 +225,16 @@ quarantine_semantics:
   consequence: "quarantine can make certification impossible, never easier"
 
 resolved_questions:
+  - question: "Which crank call path to use: raw MagicBlockInstruction::ScheduleTask bincode, or the SDK ScheduleCrankCpi driven from remaining_accounts"
+    answer: >-
+      The raw bincode path. `ScheduleCrankCpi` takes `&'a AccountInfo<'a>`, which an ordinary
+      Anchor handler cannot satisfy from `to_account_info()`, so it is only usable from
+      `remaining_accounts`. VINCT needs `remaining_accounts` for the ballot set, and reusing it
+      for the scheduling accounts would make the two indistinguishable at the call site.
+      Encoding the instruction directly also means the account list is written where it can be
+      read next to the accounts it commits to.
+    evidence: "artifacts/local-stack/crank-probe.json, artifacts/local-stack/phase6-expiry-expire.json"
+    decision: "docs/decision-log.md D-0059"
   - question: "Exact compatible Anchor and TypeScript version line after Phase 0 probe"
     resolution: "anchor-lang 1.0.2 with ephemeral-rollups-sdk 0.16.2 features [anchor, access-control]; Anchor CLI 1.0.2; Solana CLI 3.1.9 with platform tools v1.52; Rust 1.89.0; TypeScript client on @coral-xyz/anchor 0.32.1 and @magicblock-labs/ephemeral-rollups-sdk 0.14.3 over @solana/web3.js v1."
     evidence: "docs/source-lock.md; artifacts/source-lock/version-report.json"
