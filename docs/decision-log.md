@@ -1076,3 +1076,40 @@ pre-created ballots, private claim, sealed attestations, in-memory certification
 scrub, release, and the certificate the adapter reads. The cohort beyond it is proven by the
 Phase 3 evidence against a client-chosen operation ID, which is a real result about Magic
 Actions and no longer the path Phase 5 takes.
+
+### D-0049 The account audit for `execute_bounded_action`
+
+Derived from the instruction context as it stands, not from the PRD's description of it.
+
+| # | Account | Class | Why |
+| --- | --- | --- | --- |
+| 0 | `certificate` | dynamic | PDA `[CERTIFICATE_SEED, operation_id]` under the core program. The operation ID is drawn at certification. |
+| 1 | `capability` | static | The capability itself, at `[CAPABILITY_SEED, protocol, covenant, policy]`. Every seed is known when the authority arms it. |
+| 2 | `protocol_state` | static | The protocol's own market, chosen by its authority at install. |
+| 3 | `receipt` | dynamic | PDA `[ADAPTER_RECEIPT_SEED, operation_id, capability]`. |
+| 4 | `adapter_signer` | static | PDA `[ADAPTER_SIGNER_SEED, capability]`. |
+| 5 | `target_program` | static | Chosen at install. |
+| 6 | `escrow_auth` | dispatcher-injected | Appended by `#[action]`, non-mutable. Not part of what the authority chose. |
+| 7 | `escrow` | dispatcher-injected | Appended by `#[action]`. |
+
+Two dynamic, four static, two injected. That is the whole surface, and it makes the fix
+narrower than the diagnosis suggested.
+
+The adapter already re-derives or pins nearly everything: `adapter_signer` is seed-derived,
+`protocol_state` and `target_program` are compared against the capability, and the receipt is
+checked for its operation, its capability, and its own seeds. The only thing binding a
+capability to one operation was `ordered_account_metas_hash`, computed over the *concrete*
+addresses, and the certificate whose address was never derived at all — only its contents
+were.
+
+So the correction is not a new mechanism. `AccountRoleV1`, `TemplateAccountMetaV1`, and
+`ActionTemplateV1` already exist in `vinct-types` from D-0015, with a closed role enum and no
+seed DSL. The adapter simply never adopted them. Unifying means the capability commits to the
+template's *shape* rather than to one operation's addresses, and the adapter re-derives both
+dynamic slots itself.
+
+The role positions do not need to be told to the adapter, because `execute_bounded_action`
+declares a fixed account list: position 0 is the certificate and position 3 is the receipt, by
+construction. The capability stores the commitment the authority signed and the adapter
+rebuilds the same list from its own structure and its own pinned addresses. A shape the
+authority did not sign produces a different digest.
