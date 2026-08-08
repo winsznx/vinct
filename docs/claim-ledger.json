@@ -1112,5 +1112,141 @@
     "limitations": [
       "Router mismatch and service timeout are proven against stubs rather than a degraded live service, which is the honest rung for a failure you cannot ask a provider to produce on demand."
     ]
+  },
+  {
+    "id": "phase6-a-stale-incident-cannot-stay-open",
+    "wording": "An incident that nobody answers reaches a terminal status without any human acting. A task requested on the rollup was registered and executed by the scheduler, its early iterations did nothing while the response window was open, and the iteration after the deadline settled the incident to EXPIRED. The private accounts were then scrubbed, the permissions closed, and the family released to base with the scrub verified there.",
+    "status": "verified",
+    "proof_level": 5,
+    "network": "local-magicblock-stack",
+    "source_commit": "PENDING",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
+    ],
+    "transactions": [],
+    "commands": [
+      "bash scripts/bootstrap-local.sh start",
+      "pnpm exec tsx scripts/phase6-expiry.ts"
+    ],
+    "artifacts": [
+      "artifacts/local-stack/phase6-expiry-expire.json",
+      "artifacts/local-stack/crank-probe.json"
+    ],
+    "verified_at": "2026-08-08T00:00:00Z",
+    "limitations": [
+      "Local MagicBlock stack. Scheduler behaviour on the TEE-backed Devnet rollup is unverified.",
+      "A requested iteration count is not a delivered one, and nothing in the design depends on it. See docs/decision-log.md D-0059."
+    ]
+  },
+  {
+    "id": "phase6-the-expiry-handler-is-idempotent-and-monotonic",
+    "wording": "The scheduled handler does nothing before the deadline and does nothing after the incident is terminal, returning success in both cases so a scheduler does not retry work that is finished. Four iterations after settlement leave the incident's bytes unchanged, including the operation ID and the certification slot. It performs whatever terminal transition the tally implies, through the same function the manual path uses, so a crank-settled incident and a manually-settled one reach the same status.",
+    "status": "verified",
+    "proof_level": 4,
+    "network": "litesvm",
+    "source_commit": "PENDING",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
+    ],
+    "transactions": [],
+    "commands": [
+      "anchor build --ignore-keys",
+      "cargo test -p vinct-program-tests --test expiry"
+    ],
+    "artifacts": [],
+    "verified_at": "2026-08-08T00:00:00Z",
+    "limitations": [
+      "LiteSVM has no scheduler. What is proven is VINCT behaving correctly when called, not that the scheduler calls it; that is the live-stack claim."
+    ]
+  },
+  {
+    "id": "phase6-the-task-id-is-derived-and-collision-resistant",
+    "wording": "An incident's task ID is a domain-separated digest of the cluster, the covenant, and the incident, with the sign bit cleared. Two incidents under one covenant derive different IDs, forty consecutive incidents all derive positive ones, and the derivation is recomputed independently in the test rather than read from the program.",
+    "status": "verified",
+    "proof_level": 4,
+    "network": "litesvm",
+    "source_commit": "PENDING",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
+    ],
+    "transactions": [],
+    "commands": [
+      "cargo test -p vinct-program-tests --test expiry"
+    ],
+    "artifacts": [],
+    "verified_at": "2026-08-08T00:00:00Z",
+    "limitations": [
+      "Collision resistance rests on SHA-256 truncated to 63 bits. That is a birthday bound around 3 billion tasks per scheduler instance, which is far beyond any covenant's incident count but is not the full digest."
+    ]
+  },
+  {
+    "id": "phase6-only-the-opener-schedules-and-cancels",
+    "wording": "The scheduler takes the signer of a schedule request as the task's authority and silently drops a cancel from any other key. VINCT therefore requires the incident's opener to sign both. A stranger and a co-member are each refused with IncidentWrongOpener at the program, and a corrected live run cancels after 7 of 32 iterations and the task stops.",
+    "status": "verified",
+    "proof_level": 5,
+    "network": "local-magicblock-stack",
+    "source_commit": "PENDING",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
+    ],
+    "transactions": [],
+    "commands": [
+      "cargo test -p vinct-program-tests --test expiry",
+      "pnpm exec tsx scripts/phase6-expiry.ts --cancel"
+    ],
+    "artifacts": [
+      "artifacts/local-stack/phase6-expiry-cancel.json"
+    ],
+    "verified_at": "2026-08-08T00:00:00Z",
+    "limitations": [
+      "Removal is established by absence over a quiet window with exhaustion excluded, because this validator exposes no task registry. See docs/decision-log.md D-0061 and D-0063."
+    ]
+  },
+  {
+    "id": "phase6-a-task-outliving-its-accounts-is-harmless",
+    "wording": "VINCT cannot undelegate an incident that is still collecting, because release_incident requires a terminal status. In the remaining window, a finite task with iterations left after its accounts were released, 11 further iterations fired and all 11 failed with AccountOwnedByWrongProgram and InvalidWritableAccount. Both refusals come from the runtime and Anchor's account checks before any VINCT code runs. The incident stayed EXPIRED on base and the scrub still verified.",
+    "status": "verified",
+    "proof_level": 5,
+    "network": "local-magicblock-stack",
+    "source_commit": "PENDING",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
+    ],
+    "transactions": [],
+    "commands": [
+      "pnpm exec tsx scripts/phase6-expiry.ts"
+    ],
+    "artifacts": [
+      "artifacts/local-stack/phase6-expiry-expire.json"
+    ],
+    "verified_at": "2026-08-08T00:00:00Z",
+    "limitations": [
+      "Measured for one release. The failure mode is a property of the runtime's account checks rather than of VINCT, so it should be re-measured on any validator whose delegation semantics differ."
+    ]
+  },
+  {
+    "id": "phase6-scheduler-acceptance-is-not-execution",
+    "wording": "The pinned validator's own logs say request, for both scheduling and cancellation. Every state after REQUESTED and CANCELLATION_REQUESTED is read from the rollup: iterations from transactions where the crank executor ran and left its completion marker, the desired state from the incident account, and removal from absence over a quiet window with exhaustion excluded. Registration is inferred from an observed execution, which under-reports and never over-reports.",
+    "status": "verified",
+    "proof_level": 5,
+    "network": "local-magicblock-stack",
+    "source_commit": "PENDING",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
+    ],
+    "transactions": [],
+    "commands": [
+      "pnpm exec tsx scripts/probe-crank.ts",
+      "pnpm exec tsx scripts/phase6-expiry.ts"
+    ],
+    "artifacts": [
+      "artifacts/local-stack/crank-probe.json",
+      "artifacts/local-stack/phase6-expiry-expire.json",
+      "artifacts/local-stack/phase6-expiry-cancel.json"
+    ],
+    "verified_at": "2026-08-08T00:00:00Z",
+    "limitations": [
+      "This validator exposes no task registry, so REGISTRATION_OBSERVED cannot be established directly. The weakening is one-way and recorded in docs/decision-log.md D-0063."
+    ]
   }
 ]

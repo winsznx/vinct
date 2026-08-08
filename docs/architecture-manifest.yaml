@@ -151,6 +151,21 @@ settlement:
     ID rather than retrying the actions that appear to be missing.
   classification_source: "base-layer account state, read after the fact; a scheduling signature means INTENT_ACCEPTED and nothing more"
 
+expiry:
+  handler: "expire_incident, permissionless, no signer"
+  posture: "idempotent and monotonic; every reason not to act returns Ok so a scheduler does not retry finished work"
+  manual_fallback: "the same instruction, callable by anyone; the scheduler guarantees no wall-clock time"
+  task_id: "domain-separated SHA-256 over cluster, covenant, and incident, sign bit cleared"
+  task_authority: "the incident's opener, who must sign both the schedule and the cancel"
+  max_iterations: 64
+  scheduled_instruction_source: "built inside the program; no caller supplies an instruction"
+  # See docs/decision-log.md D-0059 through D-0063.
+  observed:
+    acceptance_means: "REQUESTED, for both scheduling and cancellation; the validator's own logs say request"
+    registration: "inferred from an observed execution; this validator exposes no task registry"
+    removal: "absence over a quiet window, with iteration exhaustion excluded"
+    after_release: "iterations that outlive the release fail with AccountOwnedByWrongProgram or InvalidWritableAccount, before any VINCT code runs"
+
 external_dependencies:
   - "MagicBlock base RPC"
   - "MagicBlock Router"

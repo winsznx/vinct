@@ -32,6 +32,11 @@ use ephemeral_rollups_sdk::cpi::DelegateConfig;
 use ephemeral_rollups_sdk::ephem::{CallHandler, MagicIntentBundleBuilder};
 use ephemeral_rollups_sdk::{ActionArgs, ShortAccountMeta};
 
+use anchor_lang::solana_program::instruction::{AccountMeta, Instruction};
+use anchor_lang::solana_program::program::invoke;
+use magicblock_magic_program_api::args::ScheduleTaskArgs;
+use magicblock_magic_program_api::instruction::MagicBlockInstruction;
+
 declare_id!("9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG");
 
 /// Seed for a certificate account.
@@ -42,6 +47,17 @@ pub const SETTLEMENT_SEED: &[u8] = b"settlement";
 pub const SETTLEMENT_AUTHORITY_SEED: &[u8] = b"settlement-authority";
 /// Seed for the delegated settlement operation account.
 pub const OPERATION_SEED: &[u8] = b"operation";
+
+/// Domain separator for the expiry task ID.
+pub const EXPIRY_TASK_DOMAIN: &[u8] = b"vinct:expiry-task:v1";
+
+/// The most iterations one expiry task may request.
+///
+/// Finite on purpose. An unbounded task outlives the incident it was scheduled for, keeps the
+/// incident's accounts pinned to the rollup, and turns every later failure into a repeating
+/// one. Renewal is a deliberate act, and the manual expiry path exists precisely so exhaustion
+/// is inconvenient rather than dangerous.
+pub const MAX_EXPIRY_ITERATIONS: i64 = 64;
 
 /// This build's fingerprint: SHA-256 over every source file in the crate, computed by
 /// `build.rs`.
@@ -790,47 +806,182 @@ pub mod vinct_core {
         let expired = ctx.accounts.core.is_expired(clock.slot);
         require!(certified || expired, CoreError::IncidentNotTerminal);
 
-        let core = &mut ctx.accounts.core;
-        core.approval_count_after_terminal = tally.approvals;
-        core.rejection_count_after_terminal = tally.rejections;
-        core.certified_at_slot = clock.slot;
+        settle_terminal(&mut ctx.accounts.core, &tally, clock.slot);
+        Ok(())
+    }
 
-        // The operation identity, derived from the frozen snapshot by the same function the
-        // reference model and the standalone verifier use. Three implementations of one
-        // digest would be three chances to disagree about which operation a certificate
-        // authorises.
-        //
-        // The certification slot is the nonce. It is drawn once, at the only moment that can
-        // produce a certificate for this incident, and it is public by the time anyone can
-        // read it.
-        core.operation_id =
-            vinct_types::action::operation_id(&vinct_types::action::OperationInputsV1 {
-                cluster_genesis_hash: core.cluster_genesis_hash,
-                covenant: vinct_types::Address::from(core.covenant.to_bytes()),
-                circle_epoch: core.circle_epoch,
+    /// Ephemeral rollup. The scheduled terminal handler.
+    ///
+    /// The same transition `certify_incident` performs, with the opposite failure posture.
+    /// `certify_incident` is called by someone who believes the incident is terminal and gets
+    /// an error when it is not. This is called by a scheduler that has no idea, so every
+    /// reason not to act returns `Ok` and changes nothing.
+    ///
+    /// Idempotent and monotonic, which are separate properties and both required. Idempotent:
+    /// running it twice leaves the same state, because the second run sees a terminal status
+    /// and returns. Monotonic: it only ever moves an incident from `Collecting` to a terminal
+    /// status, never back, and never between terminal statuses.
+    ///
+    /// Firing early is normal and does nothing. The scheduler does not guarantee a wall-clock
+    /// time, and an incident whose window has not closed still has a threshold that might be
+    /// met by someone who has not voted yet. Only the deadline decides.
+    ///
+    /// Permissionless, and carries no signer. The scheduled transaction is paid and signed by
+    /// the validator identity rather than by whoever requested the task, so a handler that
+    /// demanded the requester's signature could never run. See docs/decision-log.md D-0059.
+    pub fn expire_incident<'info>(ctx: Context<'info, ExpireIncident<'info>>) -> Result<()> {
+        let clock = Clock::get()?;
+        let core = &ctx.accounts.core;
+
+        // Nothing to do, said three ways. None of them is an error: a scheduler that receives
+        // one would keep retrying a task whose work is already finished.
+        if core.status != incident::IncidentStatus::Collecting {
+            emit!(ExpirySkipped {
                 incident_id: core.incident_id,
-                policy_id: core.policy_id,
-                member_set_hash: core.member_set_hash,
-                action_bundle_template_hash: core.action_bundle_template_hash,
-                certificate_nonce: clock.slot,
+                reason: ExpirySkipReason::AlreadyTerminal,
             });
-        // Three terminal outcomes, matching the reference model's. The rejected case is
-        // recorded distinctly rather than folded into expiry, so the covenant can tell a
-        // blocked incident from one nobody answered. It is only ever reached at or after the
-        // deadline, so naming it costs no timing information.
-        core.status = if certified {
-            incident::IncidentStatus::CertifiedPendingSettlement
-        } else if tally.rejections > core.maximum_rejections {
-            incident::IncidentStatus::RejectedByThreshold
-        } else {
-            incident::IncidentStatus::Expired
+            return Ok(());
+        }
+        if !core.is_expired(clock.slot) {
+            emit!(ExpirySkipped {
+                incident_id: core.incident_id,
+                reason: ExpirySkipReason::WindowStillOpen,
+            });
+            return Ok(());
+        }
+        // A ballot set that does not reconstruct is a scheduling mistake, not a reason to
+        // guess. Reporting it as skipped keeps the task alive and leaves the manual path open.
+        let Ok(attestations) =
+            reconstruct_frozen_ballots(core, ctx.accounts.core.key(), ctx.remaining_accounts)
+        else {
+            emit!(ExpirySkipped {
+                incident_id: core.incident_id,
+                reason: ExpirySkipReason::BallotSetUnavailable,
+            });
+            return Ok(());
         };
 
-        emit!(IncidentCertified {
-            incident_id: core.incident_id,
-            status: core.status,
-            approval_count: core.approval_count_after_terminal,
-            rejection_count: core.rejection_count_after_terminal,
+        let tally = incident::tally(&attestations);
+        settle_terminal(&mut ctx.accounts.core, &tally, clock.slot);
+        Ok(())
+    }
+
+    /// Ephemeral rollup. Asks the scheduler to run `expire_incident` after the deadline.
+    ///
+    /// The instruction the task will execute is built here, from this incident's own accounts.
+    /// A caller supplies the cadence and nothing else. An instruction accepting a caller's
+    /// instruction would let anyone schedule arbitrary work under VINCT's identity, which is
+    /// the single most dangerous shape a scheduling wrapper can have.
+    ///
+    /// The task ID is derived, never chosen. It is a domain-separated digest of the cluster,
+    /// the covenant, and the incident, so no two VINCT incidents collide, no other application
+    /// using a small counter collides with VINCT, and re-requesting the same incident's task
+    /// lands on the same ID rather than creating a second one.
+    ///
+    /// A successful return means the request was accepted. The validator's own log says
+    /// `Scheduled task request with ID`. Registration and execution are separate observations
+    /// and neither may be inferred from this signature.
+    ///
+    /// remaining_accounts: the frozen ballot set, in canonical order, which becomes the tail
+    /// of the scheduled instruction's account list.
+    pub fn request_expiry_crank<'info>(
+        ctx: Context<'info, RequestExpiryCrank<'info>>,
+        execution_interval_millis: i64,
+        iterations: i64,
+    ) -> Result<()> {
+        require!(execution_interval_millis > 0, CoreError::CrankIntervalZero);
+        require!(
+            iterations > 0 && iterations <= MAX_EXPIRY_ITERATIONS,
+            CoreError::CrankIterationsOutOfRange
+        );
+        require!(
+            ctx.accounts.core.status == incident::IncidentStatus::Collecting,
+            CoreError::IncidentNotCollecting
+        );
+        // Reconstructed rather than trusted, exactly as certification does. The accounts that
+        // go into a scheduled instruction are accounts nobody will re-check at execution time,
+        // so this is the last moment they can be checked at all.
+        reconstruct_frozen_ballots(
+            &ctx.accounts.core,
+            ctx.accounts.core.key(),
+            ctx.remaining_accounts,
+        )?;
+
+        let mut accounts = vec![AccountMeta::new(ctx.accounts.core.key(), false)];
+        for ballot in ctx.remaining_accounts {
+            accounts.push(AccountMeta::new_readonly(ballot.key(), false));
+        }
+        let inner = Instruction {
+            program_id: crate::ID,
+            accounts,
+            data: anchor_lang::InstructionData::data(&crate::instruction::ExpireIncident {}),
+        };
+
+        let task_id = expiry_task_id(&ctx.accounts.core);
+        let data = bincode::serialize(&MagicBlockInstruction::ScheduleTask(ScheduleTaskArgs {
+            task_id,
+            execution_interval_millis,
+            iterations,
+            instructions: vec![inner],
+        }))
+        .map_err(|_| error!(CoreError::CrankEncodingFailed))?;
+
+        invoke(
+            &Instruction::new_with_bytes(
+                MAGIC_PROGRAM_ID,
+                &data,
+                vec![
+                    AccountMeta::new(ctx.accounts.opener.key(), true),
+                    AccountMeta::new(ctx.accounts.core.key(), false),
+                ],
+            ),
+            &[
+                ctx.accounts.opener.to_account_info(),
+                ctx.accounts.core.to_account_info(),
+            ],
+        )?;
+
+        emit!(ExpiryCrankRequested {
+            incident_id: ctx.accounts.core.incident_id,
+            task_id,
+            execution_interval_millis,
+            iterations,
+        });
+        Ok(())
+    }
+
+    /// Ephemeral rollup. Asks the scheduler to remove this incident's expiry task.
+    ///
+    /// Only the incident's opener may request it. The task exists to stop this incident
+    /// hanging open, so letting a stranger cancel it would let a stranger keep it open.
+    ///
+    /// Like the schedule request, this returns once the request is accepted. Removal is a
+    /// separate observation, and an incident's accounts must not be undelegated until it is
+    /// observed: a task whose accounts have left the rollup fails on every remaining
+    /// iteration.
+    pub fn cancel_expiry_crank(ctx: Context<CancelExpiryCrank>) -> Result<()> {
+        let task_id = expiry_task_id(&ctx.accounts.core);
+        let data = bincode::serialize(&MagicBlockInstruction::CancelTask { task_id })
+            .map_err(|_| error!(CoreError::CrankEncodingFailed))?;
+
+        invoke(
+            &Instruction::new_with_bytes(
+                MAGIC_PROGRAM_ID,
+                &data,
+                vec![
+                    AccountMeta::new(ctx.accounts.opener.key(), true),
+                    AccountMeta::new(ctx.accounts.core.key(), false),
+                ],
+            ),
+            &[
+                ctx.accounts.opener.to_account_info(),
+                ctx.accounts.core.to_account_info(),
+            ],
+        )?;
+
+        emit!(ExpiryCrankCancellationRequested {
+            incident_id: ctx.accounts.core.incident_id,
+            task_id,
         });
         Ok(())
     }
@@ -1338,6 +1489,87 @@ fn reconstruct_frozen_ballots(
     Ok(ballots)
 }
 
+/// Moves an incident from `Collecting` to the terminal status its tally implies.
+///
+/// One function, used by the caller-driven `certify_incident` and by the scheduled
+/// `expire_incident`, because two copies of a terminal transition are two chances for a
+/// crank-expired incident and a manually-expired one to disagree about what happened.
+///
+/// The caller decides *whether* to transition. This decides *what to*.
+fn settle_terminal(core: &mut incident::IncidentCore, tally: &incident::Tally, slot: u64) {
+    core.approval_count_after_terminal = tally.approvals;
+    core.rejection_count_after_terminal = tally.rejections;
+    core.certified_at_slot = slot;
+
+    // The operation identity, derived from the frozen snapshot by the same function the
+    // reference model and the standalone verifier use. Three implementations of one digest
+    // would be three chances to disagree about which operation a certificate authorises.
+    //
+    // The certification slot is the nonce. It is drawn once, at the only moment that can
+    // produce a certificate for this incident, and it is public by the time anyone can read
+    // it.
+    core.operation_id =
+        vinct_types::action::operation_id(&vinct_types::action::OperationInputsV1 {
+            cluster_genesis_hash: core.cluster_genesis_hash,
+            covenant: vinct_types::Address::from(core.covenant.to_bytes()),
+            circle_epoch: core.circle_epoch,
+            incident_id: core.incident_id,
+            policy_id: core.policy_id,
+            member_set_hash: core.member_set_hash,
+            action_bundle_template_hash: core.action_bundle_template_hash,
+            certificate_nonce: slot,
+        });
+
+    // Three terminal outcomes, matching the reference model's. The rejected case is recorded
+    // distinctly rather than folded into expiry, so the covenant can tell a blocked incident
+    // from one nobody answered. It is only ever reached at or after the deadline, so naming it
+    // costs no timing information.
+    core.status = if tally.meets(core) {
+        incident::IncidentStatus::CertifiedPendingSettlement
+    } else if tally.rejections > core.maximum_rejections {
+        incident::IncidentStatus::RejectedByThreshold
+    } else {
+        incident::IncidentStatus::Expired
+    };
+
+    emit!(IncidentCertified {
+        incident_id: core.incident_id,
+        status: core.status,
+        approval_count: core.approval_count_after_terminal,
+        rejection_count: core.rejection_count_after_terminal,
+    });
+}
+
+/// This incident's scheduler task ID.
+///
+/// A task ID is global to a scheduler instance and is not part of a key, so a small counter
+/// is a collision waiting for a second application. This is a domain-separated digest of the
+/// cluster, the covenant, and the incident, folded into the signed 64-bit integer the
+/// scheduler takes.
+///
+/// Derived rather than stored, so re-requesting an incident's task lands on the same ID and
+/// becomes an update rather than a second task, and so cancellation needs no lookup.
+///
+/// The sign bit is cleared instead of the value being reinterpreted. `i64::MIN` has no
+/// positive counterpart, so negating would have one input with no valid output, and reserving
+/// negative IDs costs one bit of a 64-bit space that is already far larger than the number of
+/// incidents any covenant will open.
+pub fn expiry_task_id(core: &incident::IncidentCore) -> i64 {
+    let mut preimage = Vec::with_capacity(EXPIRY_TASK_DOMAIN.len() + 32 + 32 + 8);
+    preimage.extend_from_slice(EXPIRY_TASK_DOMAIN);
+    preimage.extend_from_slice(&core.cluster_genesis_hash);
+    preimage.extend_from_slice(core.covenant.as_ref());
+    preimage.extend_from_slice(&core.incident_id.to_le_bytes());
+
+    let digest: [u8; 32] = {
+        use sha2::Digest;
+        sha2::Sha256::digest(&preimage).into()
+    };
+    let mut head = [0u8; 8];
+    head.copy_from_slice(&digest[..8]);
+    i64::from_le_bytes(head) & i64::MAX
+}
+
 /// The account list for an exit, with every private account gated on its own bytes.
 ///
 /// One helper for both doors, because a gate applied to one exit and not the other is the
@@ -1797,6 +2029,91 @@ pub struct CertifyIncident<'info> {
     pub core: Account<'info, incident::IncidentCore>,
 }
 
+/// The scheduled handler's accounts.
+///
+/// No signer, and no payer. The scheduled transaction is signed by the validator identity, so
+/// there is no caller here to authenticate and nothing to charge. Seed-constrained for the
+/// same reason certification is: a substituted core would settle this incident's ballots
+/// against another's threshold.
+///
+/// remaining_accounts: the frozen ballot set, in canonical order.
+#[derive(Accounts)]
+pub struct ExpireIncident<'info> {
+    #[account(
+        mut,
+        seeds = [
+            incident::INCIDENT_SEED,
+            core.covenant.as_ref(),
+            &core.incident_id.to_le_bytes()
+        ],
+        bump = core.bump
+    )]
+    pub core: Account<'info, incident::IncidentCore>,
+}
+
+/// remaining_accounts: the frozen ballot set, in canonical order. It is validated here and
+/// then baked into the scheduled instruction, so this is the last moment it can be checked.
+#[derive(Accounts)]
+pub struct RequestExpiryCrank<'info> {
+    /// Writable, and not written to.
+    ///
+    /// The magic program's `ScheduleTask` takes the task context account as writable, and a CPI
+    /// cannot hand out a privilege the calling instruction does not hold. Declaring this
+    /// read-only produces `PrivilegeEscalation` at the CPI rather than anything that names the
+    /// cause, which is worth a sentence here because the next person to hit it will be looking
+    /// at a scheduling failure with no logs.
+    #[account(
+        mut,
+        seeds = [
+            incident::INCIDENT_SEED,
+            core.covenant.as_ref(),
+            &core.incident_id.to_le_bytes()
+        ],
+        bump = core.bump
+    )]
+    pub core: Account<'info, incident::IncidentCore>,
+    /// The opener, who becomes the task's authority.
+    ///
+    /// The scheduler takes the signer of the schedule request as the task's owner, and only
+    /// that owner may cancel or replace it later. Letting anyone request the task would
+    /// therefore hand a stranger the only key that can remove it, and a first run of this
+    /// phase did exactly that: a payer scheduled, the opener cancelled, the cancel request was
+    /// accepted, and the task ran all 32 of its iterations anyway. Wrong-authority
+    /// cancellation is a silent no-op, not a refusal.
+    #[account(mut, address = core.opener @ CoreError::IncidentWrongOpener)]
+    pub opener: Signer<'info>,
+    /// CHECK: address-checked against the SDK constant; the magic program is native and owns
+    /// no account this program reads.
+    #[account(address = MAGIC_PROGRAM_ID @ CoreError::UnexpectedMagicProgram)]
+    pub magic_program: UncheckedAccount<'info>,
+}
+
+/// Only the opener may ask for the task to be removed.
+///
+/// The task is what stops this incident hanging open past its deadline. A stranger who could
+/// cancel it could keep the incident alive indefinitely, which is the exact outcome the whole
+/// phase exists to prevent.
+#[derive(Accounts)]
+pub struct CancelExpiryCrank<'info> {
+    /// Writable for the same reason as in `RequestExpiryCrank`, and written to for none.
+    #[account(
+        mut,
+        seeds = [
+            incident::INCIDENT_SEED,
+            core.covenant.as_ref(),
+            &core.incident_id.to_le_bytes()
+        ],
+        bump = core.bump,
+        has_one = opener @ CoreError::IncidentWrongOpener
+    )]
+    pub core: Account<'info, incident::IncidentCore>,
+    #[account(mut)]
+    pub opener: Signer<'info>,
+    /// CHECK: address-checked against the SDK constant.
+    #[account(address = MAGIC_PROGRAM_ID @ CoreError::UnexpectedMagicProgram)]
+    pub magic_program: UncheckedAccount<'info>,
+}
+
 #[derive(Accounts)]
 pub struct ScrubClaim<'info> {
     pub core: Account<'info, incident::IncidentCore>,
@@ -1846,6 +2163,42 @@ pub struct IncidentCertified {
     pub status: incident::IncidentStatus,
     pub approval_count: u8,
     pub rejection_count: u8,
+}
+
+/// Why a scheduled expiry did nothing.
+///
+/// Emitted rather than returned as an error, because every one of these is a normal outcome
+/// for a task that fires on a cadence rather than on a condition. An operator watching a task
+/// needs to tell "ran and had nothing to do" from "never ran", and without this they look
+/// identical from outside.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug)]
+pub enum ExpirySkipReason {
+    /// The incident had already reached a terminal status.
+    AlreadyTerminal,
+    /// The response window had not closed.
+    WindowStillOpen,
+    /// The ballot set did not reconstruct against the frozen commitment.
+    BallotSetUnavailable,
+}
+
+#[event]
+pub struct ExpirySkipped {
+    pub incident_id: u64,
+    pub reason: ExpirySkipReason,
+}
+
+#[event]
+pub struct ExpiryCrankRequested {
+    pub incident_id: u64,
+    pub task_id: i64,
+    pub execution_interval_millis: i64,
+    pub iterations: i64,
+}
+
+#[event]
+pub struct ExpiryCrankCancellationRequested {
+    pub incident_id: u64,
+    pub task_id: i64,
 }
 /// No accounts. `build_info` must stay callable on any runtime, including one whose state
 /// this program has never touched.
@@ -2246,4 +2599,14 @@ pub enum CoreError {
     AdapterNotArmed,
     #[msg("The incident has not certified, so it has no certificate to publish")]
     IncidentNotCertified,
+    #[msg("Only the incident's opener may do this")]
+    IncidentWrongOpener,
+    #[msg("The account supplied as the magic program is not the magic program")]
+    UnexpectedMagicProgram,
+    #[msg("A crank interval of zero would schedule a task that never waits")]
+    CrankIntervalZero,
+    #[msg("Crank iterations must be between one and MAX_EXPIRY_ITERATIONS")]
+    CrankIterationsOutOfRange,
+    #[msg("The crank instruction could not be encoded")]
+    CrankEncodingFailed,
 }

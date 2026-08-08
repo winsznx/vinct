@@ -1442,3 +1442,88 @@ pinned `magicblock-magic-program-api 0.10.1` exposes a single global `CRANK_SIGN
 `["crank-executor"]` under `Crank1111...`. VINCT depends on neither: its expiry handler is
 permissionless by design, so the scheduled instruction carries no signer meta at all and there
 is nothing for the handler to validate an authority against.
+
+### D-0060 Whoever schedules the task owns it, so the opener must be the one who does
+
+The first Phase 6 run scheduled the expiry task with a payer and cancelled it with the
+incident's opener. Both transactions succeeded. The task then ran all 32 of its requested
+iterations.
+
+The scheduler takes the signer of the schedule request as the task's authority, and a cancel
+from any other key is not refused. It is accepted, stashed, and silently dropped when applied.
+The crank reference says this outright and it is still worth having watched happen: a
+wrong-authority cancellation looks identical to a working one from the client's side, because
+both are requests and neither reports back.
+
+So `request_expiry_crank` now requires the opener's signature, checked against `core.opener`,
+and the opener is what goes into the CPI. One key schedules, one key cancels, and they are the
+same key. Anyone else asking for the task is refused at the program rather than at a scheduler
+that will not tell them.
+
+The corrected run cancels after 7 of 32 iterations and the task stops.
+
+### D-0061 A task that ran out of iterations is not a task that was removed
+
+The same first run exposed a fault in the observer, and it is the more dangerous of the two.
+
+`watchCancellation` established removal by watching the iteration count hold still. When the
+task ran to exhaustion the count held still for exactly that reason, and the monitor reported
+`REMOVAL_OBSERVED` for a cancellation that had done nothing. The artifact said the cancel
+worked. The chain said the task ran to completion.
+
+The observer now takes the requested iteration count and refuses to call exhaustion removal.
+`iterationsExhausted` is reported separately, and a run whose count reached the request cannot
+reach `REMOVAL_OBSERVED` at all. The script's verdict requires the same thing, so a cancel run
+that passes has to have stopped a task that was still running.
+
+The general shape is worth naming, because it is the second time this build has produced it.
+Absence of evidence is being used as evidence of absence, which is sometimes the only tool
+available, and the way to use it honestly is to enumerate the other things that produce the
+same silence. Here there was exactly one and it was the common case.
+
+### D-0062 What a task does after its accounts leave the rollup
+
+The crank reference warns that undelegating or closing a task's accounts while it is still
+scheduled creates a predictable failure path. VINCT's exposure is narrower than the general
+case, because `release_incident` requires a terminal status: an incident that is still
+collecting cannot be undelegated at all, whatever a caller wants.
+
+What remains is the window after a terminal incident is released while a finite task still has
+iterations left. The `expire` run measured it. After the release, 11 further iterations fired
+and all 11 failed, with `AccountOwnedByWrongProgram` and `InvalidWritableAccount`.
+
+Both refusals come from the runtime and Anchor's account checks, before any VINCT code runs.
+Nothing was corrupted, the incident stayed `Expired` on base, and the scrub still verified.
+That is the outcome the design wants and it is now measured rather than assumed.
+
+It is also the argument for `MAX_EXPIRY_ITERATIONS`. A finite task's failures end. An unbounded
+one would produce this forever, and an operator watching a task that fails every iteration
+cannot tell a harmless tail from a real problem.
+
+### D-0063 The crank state machine, and what each state is actually made of
+
+PRD section 11.6 names six states. `packages/monitor/src/crank.ts` implements them, and each
+one is worth saying where its evidence comes from, because they are not equally strong.
+
+`REQUESTED` is a transaction. It is the only state that is, and it means what the validator's
+log says: a request was stashed.
+
+`REGISTRATION_OBSERVED` is inferred from the first observed execution, not from a registry.
+This validator exposes no way to ask whether a task is registered, so the inference is one-way:
+a task that is registered and has not yet fired reads as `REQUESTED`. Under-reporting is the
+safe direction and the module never reports the other one.
+
+`ITERATION_OBSERVED` requires a rollup transaction in which the crank executor is among the
+accounts and the executor's own completion marker is in the logs. Matching on the target
+program alone would count ordinary user transactions, which is how a state machine ends up
+reporting an iteration that a person performed by hand.
+
+`DESIRED_STATE_REACHED` is the incident's own status, read from the account.
+
+`CANCELLATION_REQUESTED` is a transaction, with the same weight as `REQUESTED` and no more.
+
+`REMOVAL_OBSERVED` is absence over a quiet window, with exhaustion excluded. See D-0061.
+
+`safeToUndelegate` is the one question the module exists to answer, and it is deliberately
+conservative: either removal was observed, or the incident is terminal and the handler will
+no-op for whatever iterations remain.

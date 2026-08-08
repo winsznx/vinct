@@ -10,6 +10,8 @@
  * built IDL in `tests/program/incident-client-parity.test.ts`. Nothing here sorts a list.
  */
 
+import { createHash } from "node:crypto";
+
 import {
   EPHEMERAL_VAULT_ID,
   MAGIC_CONTEXT_ID,
@@ -501,6 +503,104 @@ export function certifyIncident(core: PublicKey, members: PublicKey[]): Transact
       })),
     ],
     data: withDiscriminator(discriminator(CORE_IDL, "certify_incident")),
+  });
+}
+
+/**
+ * This incident's scheduler task ID, derived the way the program derives it.
+ *
+ * A task ID is global to a scheduler instance and is not part of any key, so a counter would
+ * eventually collide with whatever else is scheduling on the same validator. Both sides
+ * compute the same domain-separated digest, and the parity is asserted in
+ * `tests/program/crank-monitor.test.ts` rather than assumed.
+ */
+export function expiryTaskId(core: IncidentCoreView): bigint {
+  const preimage = Buffer.concat([
+    Buffer.from("vinct:expiry-task:v1", "utf8"),
+    Buffer.from(core.clusterGenesisHash),
+    core.covenant.toBuffer(),
+    (() => {
+      const out = Buffer.alloc(8);
+      out.writeBigUInt64LE(core.incidentId);
+      return out;
+    })(),
+  ]);
+  const digest = createHash("sha256").update(preimage).digest();
+  // The program clears the sign bit rather than negating: `i64::MIN` has no positive
+  // counterpart, so negation would have one input with no valid output.
+  return digest.readBigInt64LE(0) & 0x7fffffffffffffffn;
+}
+
+/**
+ * Asks the scheduler to run `expire_incident` on a cadence.
+ *
+ * The instruction the task will execute is built inside the program, not here. This carries
+ * the cadence and the ballot set, and the program decides what gets scheduled.
+ *
+ * The returned signature means the request was accepted. Registration and execution are
+ * separate observations; see `packages/monitor/src/crank.ts`.
+ */
+export function requestExpiryCrank(
+  core: PublicKey,
+  opener: PublicKey,
+  members: PublicKey[],
+  executionIntervalMillis: bigint,
+  iterations: bigint,
+): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: CORE_PROGRAM_ID,
+    keys: [
+      // Writable because the magic program takes the task context account writable, and a CPI
+      // cannot escalate a privilege the outer instruction does not hold.
+      { pubkey: core, isSigner: false, isWritable: true },
+      { pubkey: opener, isSigner: true, isWritable: true },
+      { pubkey: MAGIC_PROGRAM_ID, isSigner: false, isWritable: false },
+      ...canonicalMemberOrder(members).map((member) => ({
+        pubkey: attestationAddress(core, member),
+        isSigner: false,
+        isWritable: false,
+      })),
+    ],
+    data: withDiscriminator(
+      discriminator(CORE_IDL, "request_expiry_crank"),
+      new ArgWriter().i64(executionIntervalMillis).i64(iterations).finish(),
+    ),
+  });
+}
+
+/** Asks the scheduler to remove this incident's expiry task. Opener only. */
+export function cancelExpiryCrank(core: PublicKey, opener: PublicKey): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: CORE_PROGRAM_ID,
+    keys: [
+      { pubkey: core, isSigner: false, isWritable: true },
+      { pubkey: opener, isSigner: true, isWritable: true },
+      { pubkey: MAGIC_PROGRAM_ID, isSigner: false, isWritable: false },
+    ],
+    data: withDiscriminator(discriminator(CORE_IDL, "cancel_expiry_crank")),
+  });
+}
+
+/**
+ * The scheduled terminal handler, callable by hand.
+ *
+ * The manual fallback the PRD requires. A scheduler that does not guarantee wall-clock timing
+ * cannot be the only way an incident reaches a terminal state, so the same instruction the
+ * task runs is available to anyone. It is permissionless and carries no signer, because the
+ * scheduled version has none either.
+ */
+export function expireIncident(core: PublicKey, members: PublicKey[]): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: CORE_PROGRAM_ID,
+    keys: [
+      { pubkey: core, isSigner: false, isWritable: true },
+      ...canonicalMemberOrder(members).map((member) => ({
+        pubkey: attestationAddress(core, member),
+        isSigner: false,
+        isWritable: false,
+      })),
+    ],
+    data: withDiscriminator(discriminator(CORE_IDL, "expire_incident")),
   });
 }
 

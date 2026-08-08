@@ -39,6 +39,13 @@ export class ArgWriter {
     return this.#push(buffer);
   }
 
+  /** Signed, because the scheduler's task ids, intervals, and iteration counts are `i64`. */
+  i64(value: bigint): this {
+    const buffer = Buffer.alloc(8);
+    buffer.writeBigInt64LE(value);
+    return this.#push(buffer);
+  }
+
   bytes32(value: Uint8Array): this {
     if (value.length !== 32) {
       throw new RangeError(`expected 32 bytes, got ${value.length}`);

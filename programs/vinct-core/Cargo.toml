@@ -24,6 +24,10 @@ custom-panic = []
 anchor-lang = { version = "=1.0.2", features = ["init-if-needed"] }
 ephemeral-rollups-sdk = { version = "=0.16.2", features = ["anchor", "access-control"] }
 sha2 = "=0.10.9"
+# The crank surface. Same versions the Phase 0 probe compiled and the Phase 6 probe verified
+# against a running validator; see docs/source-lock.md and docs/decision-log.md D-0059.
+magicblock-magic-program-api = { version = "=0.10.1", default-features = false }
+bincode = "=1.3.3"
 # The canonical digests, shared with the reference model and the standalone verifier rather
 # than reimplemented. An operation ID computed three ways is three chances to disagree.
 vinct-types = { path = "../../crates/vinct-types" }
