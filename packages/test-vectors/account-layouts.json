@@ -1,0 +1,215 @@
+{
+  "accounts": {
+    "AdapterReceipt": {
+      "account": "AdapterReceipt",
+      "byte_length": 83,
+      "bytes": "8feb764d43e26e91b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b201016202000000000000f4",
+      "discriminator": "8feb764d43e26e91",
+      "fields": {
+        "capability": "D2ZcUbtpG5sKq7XLeB4YnpNnTGSptKCxTddoNeydzJQq",
+        "executed": true,
+        "executedAtSlot": "610",
+        "operationId": "b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1",
+        "targetEffectApplied": true
+      }
+    },
+    "Covenant": {
+      "account": "Covenant",
+      "byte_length": 226,
+      "bytes": "ea4f2d643866d8e801001111111111111111111111111111111111111111111111111111111111111111080706050403020107000000000000002121212121212121212121212121212121212121212121212121212121212121022222222222222222222222222222222222222222222222222222222222222222232323232323232323232323232323232323232323232323232323232323232302018813000000000000a0860100000000000303030324242424242424242424242424242424242424242424242424242424242424248403000000000000049a980000000000fe",
+      "discriminator": "ea4f2d643866d8e8",
+      "fields": {
+        "actionBundleTemplateHash": "2323232323232323232323232323232323232323232323232323232323232323",
+        "adapterCount": 3,
+        "armedCount": 3,
+        "certificateLifetimeSlots": "100000",
+        "circleEpoch": "7",
+        "clusterGenesisHash": "2121212121212121212121212121212121212121212121212121212121212121",
+        "covenantId": "72623859790382856",
+        "expiresAtSlot": "10000900",
+        "maximumRejections": 1,
+        "memberCount": 3,
+        "memberSetHash": "2424242424242424242424242424242424242424242424242424242424242424",
+        "policyId": "2222222222222222222222222222222222222222222222222222222222222222",
+        "ratifiedCount": 3,
+        "requiredApprovals": 2,
+        "responseWindowSlots": "5000",
+        "status": 2,
+        "steward": "29d2S7vB453rNYFdR5Ycwt7y9haRT5fwVwL9zTmBhfV2",
+        "validFromSlot": "900",
+        "version": 1
+      }
+    },
+    "CovenantMember": {
+      "account": "CovenantMember",
+      "byte_length": 112,
+      "bytes": "c38f6664453855c001003131313131313131313131313131313131313131313131313131313131313131323232323232323232323232323232323232323232323232323232323232323200333333333333333333333333333333333333333333333333333333333333333309000101fd",
+      "discriminator": "c38f6664453855c0",
+      "fields": {
+        "adapterCapability": "4Ss5JMkXAD9Z7cktFEdrqeMuT6jGMF1pVozTyPHZ6zT4",
+        "adapterVersion": 9,
+        "armed": true,
+        "covenant": "4K2V1kpVycZ6qSFsNdz2FtpNxnJs17eBNzf9rdCMcKoe",
+        "protocol": "4NwnA4HWZurKyXWNowJwYmb9CwX4gBKzwQKov1ExMf8M",
+        "ratified": true,
+        "role": 0,
+        "version": 1
+      }
+    },
+    "IncidentCertificate": {
+      "account": "IncidentCertificate",
+      "byte_length": 275,
+      "bytes": "bd9e6c7e4f30f60471717171717171717171717171717171717171717171717171717171717171717272727272727272727272727272727272727272727272727272727272727272737373737373737373737373737373737373737373737373737373737373737307000000000000002a0000000000000074747474747474747474747474747474747474747474747474747474747474747575757575757575757575757575757575757575757575757575757575757575767676767676767676767676767676767676767676767676767676767676767677777777777777777777777777777777777777777777777777777777777777772602000000000000020026020000000000004e25000000000000f9",
+      "discriminator": "bd9e6c7e4f30f604",
+      "fields": {
+        "actionBundleHash": "7676767676767676767676767676767676767676767676767676767676767676",
+        "approvalCount": 2,
+        "certificateNonce": "550",
+        "certifiedAtSlot": "550",
+        "circleEpoch": "7",
+        "clusterGenesisHash": "7272727272727272727272727272727272727272727272727272727272727272",
+        "covenant": "8mfzTdZB1JA43QmNAMWfTfkj5GC9TJxJFveThi9tvK6J",
+        "expiresAtSlot": "9550",
+        "incidentId": "42",
+        "issuingAuthority": "8dqQB2d9phZbmEGMHkrpsvDCawmk7Baf97K9ax4hReSt",
+        "memberSetHash": "7575757575757575757575757575757575757575757575757575757575757575",
+        "operationId": "7777777777777777777777777777777777777777777777777777777777777777",
+        "policyId": "7474747474747474747474747474747474747474747474747474747474747474",
+        "rejectionCount": 0
+      }
+    },
+    "IncidentClaim": {
+      "account": "IncidentClaim",
+      "byte_length": 480,
+      "bytes": "c766de5f35b3af28010051515151515151515151515151515151515151515151515151515151515151515252525252525252525252525252525252525252525252525252525252525252000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001fb",
+      "discriminator": "c766de5f35b3af28",
+      "fields": {
+        "incident": "6URwbPipuA4MJLG7LCRRZuWnms3JZ9cRG3z9indXWz8G",
+        "opener": "6YMEjhBqVTMaSRWcmVkLrnHZ22FWEDJEpTeonAg8GKSy",
+        "privateFieldsZeroized": true,
+        "version": 1
+      }
+    },
+    "IncidentCore": {
+      "account": "IncidentCore",
+      "byte_length": 329,
+      "bytes": "95d1739ff2b9c60b0100414141414141414141414141414141414141414141414141414141414141414107000000000000002a00000000000000424242424242424242424242424242424242424242424242424242424242424202434343434343434343434343434343434343434343434343434343434343434344444444444444444444444444444444444444444444444444444444444444444545454545454545454545454545454545454545454545454545454545454545020164000000000000005802000000000000f40100000000000046464646464646464646464646464646464646464646464646464646464646464747474747474747474747474747474747474747474747474747474747474747484848484848484848484848484848484848484848484848484848484848484826020000000000002823000000000000030200fc",
+      "discriminator": "95d1739ff2b9c60b",
+      "fields": {
+        "actionBundleTemplateHash": "4646464646464646464646464646464646464646464646464646464646464646",
+        "approvalCountAfterTerminal": 2,
+        "certificateLifetimeSlots": "9000",
+        "certifiedAtSlot": "550",
+        "circleEpoch": "7",
+        "claimDigest": "4747474747474747474747474747474747474747474747474747474747474747",
+        "clusterGenesisHash": "4545454545454545454545454545454545454545454545454545454545454545",
+        "covenant": "5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx",
+        "expiresAtSlot": "600",
+        "incidentId": "42",
+        "maximumRejections": 1,
+        "memberCount": 3,
+        "memberSetHash": "4444444444444444444444444444444444444444444444444444444444444444",
+        "openedAtSlot": "100",
+        "opener": "5TeWSsjg2gbxCyWVniXeCmwM7UtHTCK7svzJr5xYJzHf",
+        "operationId": "4848484848484848484848484848484848484848484848484848484848484848",
+        "policyId": "4343434343434343434343434343434343434343434343434343434343434343",
+        "rejectionCountAfterTerminal": 0,
+        "requiredApprovals": 2,
+        "responseWindowSlots": "500",
+        "status": 2,
+        "version": 1
+      }
+    },
+    "MemberAttestation": {
+      "account": "MemberAttestation",
+      "byte_length": 127,
+      "bytes": "95ac3280583f13ea01006161616161616161616161616161616161616161616161616161616161616161626262626262626262626262626262626262626262626262626262626262626263636363636363636363636363636363636363636363636363636363636363630300000000000000000000000000000000000001fa",
+      "discriminator": "95ac3280583f13ea",
+      "fields": {
+        "incident": "7Z8ftDAzMvoyXnGEJye8DurzgQQXLAbYCaeeesM7UKHa",
+        "member": "7d3y2WdzxE7CfsWjkGy3WndkvZcj1EHMkzKJiFPiDecH",
+        "opener": "7gyGAp71YXQRoxmFBaHxofQXAipvgHyBKPyxmdSJxyvz",
+        "privateFieldsZeroized": true,
+        "state": 3,
+        "version": 1
+      }
+    },
+    "ProtocolMarket": {
+      "account": "ProtocolMarket",
+      "byte_length": 154,
+      "bytes": "8a801bd27515de40c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c10100000000000000c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c201c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c305000000000000000000000000000000000000000000000000000000000000000000000000000000f3",
+      "discriminator": "8a801bd27515de40",
+      "fields": {
+        "adapterSigner": "E7GLmRLyircx4ZXTcxHFSpizMop3fLC5QAJJJjhDwda9",
+        "authority": "E3M3d7sy8ZKivUGxBexL9wxE7ebqzGWFqkdeFMedCJFS",
+        "lastOperationId": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+        "marketId": "1",
+        "newBorrowingPaused": true,
+        "updateCount": "5"
+      }
+    },
+    "SettlementOperation": {
+      "account": "SettlementOperation",
+      "byte_length": 118,
+      "bytes": "6d79bf268bcce043919191919191919191919191919191919191919191919191919191919191919192929292929292929292929292929292929292929292929292929292929292929393939393939393939393939393939393939393939393939393939393939393040001f4010000000000000100f7",
+      "discriminator": "6d79bf268bcce043",
+      "fields": {
+        "attemptCount": 1,
+        "authority": "Aw5T3GTVvqfJWJmc7ux4mgT8tLvb1LvY8yyTZsb4pyQv",
+        "certificate": "AsA9txzVLYN5NDX6gcd9UogNeBiPLHEiaaJoWVYU5e6D",
+        "expectedActionCount": 4,
+        "operationId": "9191919191919191919191919191919191919191919191919191919191919191",
+        "scheduled": true,
+        "scheduledAtSlot": "500"
+      }
+    },
+    "SettlementReceipt": {
+      "account": "SettlementReceipt",
+      "byte_length": 84,
+      "bytes": "34f9fc7904e8bb04818181818181818181818181818181818181818181818181818181818181818182828282828282828282828282828282828282828282828282828282828282820104005802000000000000f8",
+      "discriminator": "34f9fc7904e8bb04",
+      "fields": {
+        "certificate": "9nTRc9YKsmcT8mWyhqQSpoLAjeMAZGFbe3eJaQpt8Jvu",
+        "finalized": true,
+        "finalizedAtSlot": "600",
+        "observedActionCount": 4,
+        "operationId": "8181818181818181818181818181818181818181818181818181818181818181"
+      }
+    },
+    "SovereignCapability": {
+      "account": "SovereignCapability",
+      "byte_length": 417,
+      "bytes": "9e6b62339e2377c4a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a30100a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a50700000000000000a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a700a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a80102030405060708a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa010000000000000000006400000000000000a0bb0d000000000001000300000000000000ababababababababababababababababababababababababababababababababf6f5",
+      "discriminator": "9e6b62339e2377c4",
+      "fields": {
+        "actionCategory": 0,
+        "actionTemplateHash": "a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9",
+        "adapterVersion": 1,
+        "armed": true,
+        "capabilityNonce": "3",
+        "circleEpoch": "7",
+        "clusterGenesisHash": "a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4",
+        "coreProgram": "C1nBL5ufPcQvjkmj6hAmRgoLntHonMuf5WdxVxJenJaE",
+        "covenant": "C9cmcgqgaD1P1wGjyHpc1SLsHCiD8VHJCKyGciPrGyDe",
+        "expiresAtSlot": "900000",
+        "instructionDataHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "instructionDiscriminator": "0102030405060708",
+        "lastOperationId": "abababababababababababababababababababababababababababababababab",
+        "maxEffect": {
+          "maxValueMoved": "0",
+          "mayPause": true,
+          "mayUnpause": false
+        },
+        "memberSetHash": "a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7",
+        "policyId": "a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6",
+        "protocolAuthority": "Bswb3UyeD1pUTaGiE6WvqwFpJZsQSEY1xhJePCDTHdvp",
+        "protocolState": "BwrtBnSeoK7hbfXDfPqr8p2aYj5c7JDqX6yJSaG42yFX",
+        "suspended": false,
+        "targetProgram": "CMNf3bEiM6u4SD2GHBoMt4fA1gLp9gLksYyEnrXeWyBm",
+        "validFromSlot": "100"
+      }
+    }
+  },
+  "note": "Generated from the programs' own Rust types by crates/vinct-layouts. Never edited by hand. Regenerate with `pnpm gen-account-vectors` whenever an account layout changes.",
+  "why": "Every account VINCT reads has a hand-written TypeScript decoder, and a drifted decoder returns plausible numbers rather than an error. See docs/decision-log.md D-0051."
+}

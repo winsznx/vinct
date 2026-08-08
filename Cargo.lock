@@ -5760,6 +5760,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "vinct-layouts"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "hex",
+ "serde_json",
+ "sha2 0.10.9",
+ "vinct-adapter",
+ "vinct-core",
+ "vinct-mock-protocol",
+]
+
+[[package]]
 name = "vinct-mock-protocol"
 version = "0.1.0"
 dependencies = [

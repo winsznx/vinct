@@ -19,6 +19,7 @@
     "stack:cycle": "bash scripts/bootstrap-local.sh cycle",
     "verify-vectors": "tsx packages/verifier/src/cli.ts",
     "gen-vectors": "cargo run -q -p vinct-reference --features vectors --bin gen-vectors",
+    "gen-account-vectors": "cargo run -q -p vinct-layouts --bin gen-account-vectors",
     "test:ts": "tsx --test \"tests/**/*.test.ts\""
   },
   "dependencies": {

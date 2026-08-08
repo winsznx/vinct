@@ -25,6 +25,7 @@ import {
 } from "@solana/web3.js";
 
 import { covenantMemberAddress } from "./covenant.js";
+import { expectAccount, expectVersion } from "./accounts.js";
 import { ArgWriter, withDiscriminator } from "./encoding.js";
 import { CORE_IDL, CORE_PROGRAM_ID, discriminator } from "./ids.js";
 
@@ -613,6 +614,34 @@ export interface IncidentCoreView {
  * is why `the_client_decodes_the_core_the_program_wrote` exists.
  */
 export function decodeIncidentCore(data: Buffer): IncidentCoreView {
+  expectAccount(
+    data,
+    "IncidentCore",
+    8 +
+      2 +
+      32 +
+      8 +
+      8 +
+      32 +
+      1 +
+      32 +
+      32 +
+      32 +
+      1 +
+      1 +
+      8 +
+      8 +
+      8 +
+      32 +
+      32 +
+      32 +
+      8 +
+      8 +
+      1 +
+      1 +
+      1 +
+      1,
+  );
   const body = data.subarray(8);
   let offset = 0;
   const pubkey = (): PublicKey => {
@@ -638,7 +667,7 @@ export function decodeIncidentCore(data: Buffer): IncidentCoreView {
   const u8 = (): number => body[offset++] ?? 0;
 
   return {
-    version: u16(),
+    version: expectVersion("IncidentCore", u16()),
     covenant: pubkey(),
     circleEpoch: u64(),
     incidentId: u64(),
@@ -660,6 +689,67 @@ export function decodeIncidentCore(data: Buffer): IncidentCoreView {
     memberCount: u8(),
     approvalCountAfterTerminal: u8(),
     rejectionCountAfterTerminal: u8(),
+  };
+}
+
+/**
+ * What a client may learn from a private account without reading anyone's secret.
+ *
+ * Deliberately not a decoder for the contents. These two accounts hold the claim and the
+ * ballots, and a client that decoded those would be a client reading private state. What a
+ * verifier legitimately needs is the opposite question: whether the protected region is
+ * actually zero once the incident is terminal, which is a property of the bytes rather than
+ * of what they used to say.
+ */
+export interface ScrubbedAccountView {
+  version: number;
+  incident: PublicKey;
+  /** Whether the program marked it scrubbed. Never trusted on its own. */
+  privateFieldsZeroized: boolean;
+  /** Whether every byte of the protected region is actually zero. */
+  protectedRegionAllZero: boolean;
+}
+
+/**
+ * Reads a claim account's public shell and checks its protected region is zero.
+ *
+ * The claim's bytes are never returned. If the region is not zero, that is reported as a
+ * boolean and the contents stay where they are.
+ */
+export function decodeIncidentClaim(data: Buffer): ScrubbedAccountView & { opener: PublicKey } {
+  const size = 8 + 2 + 32 + 32 + 256 + 2 + 128 + 2 + 8 + 8 + 1 + 1;
+  expectAccount(data, "IncidentClaim", size);
+  const body = data.subarray(8);
+  const version = expectVersion("IncidentClaim", body.readUInt16LE(0));
+  const protectedStart = CLAIM_PROTECTED_REGION.offset - 8;
+  const protectedEnd = protectedStart + CLAIM_PROTECTED_REGION.length;
+  return {
+    version,
+    incident: new PublicKey(body.subarray(2, 34)),
+    opener: new PublicKey(body.subarray(34, 66)),
+    privateFieldsZeroized: body[protectedEnd] === 1,
+    protectedRegionAllZero: body.subarray(protectedStart, protectedEnd).every((byte) => byte === 0),
+  };
+}
+
+/** The same for one member's ballot. Its decision is never returned. */
+export function decodeMemberAttestation(
+  data: Buffer,
+): ScrubbedAccountView & { member: PublicKey; opener: PublicKey; state: number } {
+  const size = 8 + 2 + 32 + 32 + 32 + 1 + 1 + 8 + 8 + 1 + 1 + 1;
+  expectAccount(data, "MemberAttestation", size);
+  const body = data.subarray(8);
+  const version = expectVersion("MemberAttestation", body.readUInt16LE(0));
+  const protectedStart = ATTESTATION_PROTECTED_REGION.offset - 8;
+  const protectedEnd = protectedStart + ATTESTATION_PROTECTED_REGION.length;
+  return {
+    version,
+    incident: new PublicKey(body.subarray(2, 34)),
+    member: new PublicKey(body.subarray(34, 66)),
+    opener: new PublicKey(body.subarray(66, 98)),
+    state: body[98] ?? 0,
+    privateFieldsZeroized: body[protectedEnd] === 1,
+    protectedRegionAllZero: body.subarray(protectedStart, protectedEnd).every((byte) => byte === 0),
   };
 }
 

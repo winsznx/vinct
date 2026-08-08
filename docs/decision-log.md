@@ -1182,3 +1182,41 @@ suite before it reaches a runner at all.
 
 The general shape: every hand-written decoder in this repository is a second implementation of
 a layout, and the layout is the one that moves. Where one exists, something has to pin it.
+
+### D-0052 Every decoder that produces evidence is pinned to a generated vector
+
+D-0051 found one drifted decoder. This is the audit that followed, and the mechanism that
+stops the next one.
+
+Eleven accounts have hand-written TypeScript decoders: `Covenant`, `CovenantMember`,
+`IncidentCore`, `IncidentClaim`, `MemberAttestation`, `IncidentCertificate`,
+`SettlementReceipt`, `SettlementOperation`, `SovereignCapability`, `AdapterReceipt`, and
+`ProtocolMarket`. They stay hand-written on purpose: the settlement monitor has to read
+base-layer state without trusting a client library, and a judge has to be able to read one
+file and check it against the program. What they cannot stay is unpinned.
+
+`crates/vinct-layouts` builds each account from the program's own Rust struct, serialises it
+the way Anchor does, and writes the bytes next to the values they encode.
+`tests/program/account-layout-parity.test.ts` decodes those bytes and checks every field. A
+field added, moved, resized, or reordered in Rust changes the vectors and the test fails until
+the TypeScript follows. It is the only crate that depends on the programs as libraries, which
+is the point: a vector written any other way would be a second opinion about the layout rather
+than a record of it.
+
+Every decoder now also fails closed three ways. The discriminator is asserted, so reading one
+account as another throws instead of returning a plausible different account. The length is
+asserted, so a truncated buffer or a `dataSlice` read throws instead of reading zeros off the
+end. And the versioned accounts refuse a version this build does not know, rather than
+interpreting an unfamiliar layout optimistically.
+
+Two decisions inside that are worth stating.
+
+The private accounts have decoders now, and they do not decode anything private. A claim and a
+ballot are exactly what a client must not read, but a verifier legitimately needs the opposite
+question answered: whether the protected region is actually zero once the incident is
+terminal. So `decodeIncidentClaim` and `decodeMemberAttestation` return the public shell, the
+zeroization flag, and a boolean computed from the protected bytes. If the region is not zero
+that is reported as `false`, and the contents stay where they are.
+
+The committed vectors carry a zeroed protected region. A fixture holding bytes that look like
+evidence is a fixture somebody will eventually mistake for evidence.

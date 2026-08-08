@@ -10,6 +10,11 @@
 
 import { PublicKey, SystemProgram, TransactionInstruction } from "@solana/web3.js";
 
+import {
+  expectAccount as expectCovenantAccount,
+  expectVersion as expectCovenantVersion,
+} from "./accounts.js";
+
 import { ArgWriter, withDiscriminator } from "./encoding.js";
 import { CORE_IDL, CORE_PROGRAM_ID, discriminator } from "./ids.js";
 import { canonicalMemberOrder } from "./incident.js";
@@ -176,6 +181,46 @@ export function armCovenant(covenant: PublicKey): TransactionInstruction {
   });
 }
 
+/** One protocol's membership. Public, like everything else about a covenant. */
+export interface CovenantMemberView {
+  version: number;
+  covenant: PublicKey;
+  protocol: PublicKey;
+  role: MemberRole;
+  adapterCapability: PublicKey;
+  adapterVersion: number;
+  ratified: boolean;
+  armed: boolean;
+}
+
+export function decodeCovenantMember(data: Buffer): CovenantMemberView {
+  expectCovenantAccount(data, "CovenantMember", 8 + 2 + 32 + 32 + 1 + 32 + 2 + 1 + 1 + 1);
+  const body = data.subarray(8);
+  let offset = 0;
+  const u16 = (): number => {
+    const value = body.readUInt16LE(offset);
+    offset += 2;
+    return value;
+  };
+  const pubkey = (): PublicKey => {
+    const value = new PublicKey(body.subarray(offset, offset + 32));
+    offset += 32;
+    return value;
+  };
+  const u8 = (): number => body[offset++] ?? 0;
+
+  return {
+    version: expectCovenantVersion("CovenantMember", u16()),
+    covenant: pubkey(),
+    protocol: pubkey(),
+    role: u8() as MemberRole,
+    adapterCapability: pubkey(),
+    adapterVersion: u16(),
+    ratified: u8() === 1,
+    armed: u8() === 1,
+  };
+}
+
 /** The public covenant. Everything here is readable by anyone, by design. */
 export interface CovenantView {
   version: number;
@@ -201,6 +246,11 @@ export interface CovenantView {
 }
 
 export function decodeCovenant(data: Buffer): CovenantView {
+  expectCovenantAccount(
+    data,
+    "Covenant",
+    8 + 2 + 32 + 8 + 8 + 32 + 1 + 32 + 32 + 1 + 1 + 8 + 8 + 1 + 1 + 1 + 1 + 32 + 8 + 8 + 1,
+  );
   const body = data.subarray(8);
   let offset = 0;
   const u16 = (): number => {
@@ -226,7 +276,7 @@ export function decodeCovenant(data: Buffer): CovenantView {
   const u8 = (): number => body[offset++] ?? 0;
 
   return {
-    version: u16(),
+    version: expectCovenantVersion("Covenant", u16()),
     steward: pubkey(),
     covenantId: u64(),
     circleEpoch: u64(),
