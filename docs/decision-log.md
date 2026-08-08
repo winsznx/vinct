@@ -1382,3 +1382,63 @@ is reported alongside, explicitly not verified, because a cohort that was schedu
 has correctly bound receipts and no effects. Folding the two together would let a verified
 identity read as a completed settlement, which is the exact confusion the whole settlement model
 exists to prevent.
+
+### D-0059 The crank surface, answered against a running validator
+
+Phase 0 carried an open question into Phase 6: which crank call path to use, raw
+`MagicBlockInstruction::ScheduleTask` bincode or the SDK's `ScheduleCrankCpi`. Nothing in the
+repository had ever sent either to a validator. `scripts/probe-crank.ts` asks directly.
+
+Findings on the pinned local ephemeral validator (`mAGicPQYBMvcYveUZA5F5UNNwyHvfYh5xkLS2Fr1mev`),
+recorded in `artifacts/local-stack/crank-probe.json`:
+
+`ScheduleTask` is variant 6 of the enum in `magicblock-magic-program-api 0.10.1`, and bincode's
+default fixed-int encoding is what the validator accepts: enum discriminant as a little-endian
+u32, sequence lengths as u64, `Pubkey` as 32 raw bytes, `bool` as one byte. The instruction is
+accepted submitted directly, not only through a CPI, which the open question had assumed either
+way without evidence.
+
+The task context account slot is not enforced by this validator. A submission with the payer
+alone was accepted, as was one with an arbitrary writable account in slot 1. VINCT will still
+pass a meaningful account there, because a validator that does not check something today is not
+a validator that never will.
+
+The log line on success is `Scheduled task request with ID: <n>`, and cancel says
+`Successfully added cancel request for task <n>`. Both say request. That is the PRD's crank
+state machine appearing verbatim in the validator's own wording, and it is why a schedule
+transaction's signature is `REQUESTED` and nothing more.
+
+Execution was then observed independently, which is the part that matters. A task scheduled with
+an inner `vinct_core::build_info` instruction produced this on the rollup:
+
+```text
+Program Magic11111111111111111111111111111111111111 success
+Program Crank11111111111111111111111111111111111111 invoke [1]
+Program 9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG invoke [2]
+Program log: Instruction: BuildInfo
+Program log: VINCT_BUILD_FINGERPRINT=60d9a7e93d967c0f281a2f32dc4f7fd320987dfbaec38fe1b89bff244d2b0ca9
+Executed crank with 1 instructions
+```
+
+So the executor is the `Crank11111111111111111111111111111111111111` program, the transaction is
+paid and signed by the validator identity rather than by the scheduling payer, and the inner
+instruction runs as a CPI beneath it. A scheduled handler therefore cannot rely on the
+scheduler's payer having signed anything.
+
+One thing the probe did not confirm. A task requesting two iterations at a 1000ms interval
+produced one observed execution in a 20 second window. Either the interval is not what it
+appears to be at this scale, or iteration accounting differs from the argument's name. VINCT's
+design does not depend on the answer, because the expiry handler is a no-op before the deadline
+and idempotent after it, but nothing in this repository may assume a requested iteration count
+is a delivered one.
+
+Two consequences for the design. The scheduled instruction is built inside the program, never
+supplied by the caller, so no caller can schedule an arbitrary instruction under VINCT's
+identity. And the permissionless manual expiry path stays, because a crank whose exact timing is
+not guaranteed cannot be the only way an incident reaches a terminal state.
+
+The skill's reference describes a per-authority `crank_signer_pda(task_authority)`, while the
+pinned `magicblock-magic-program-api 0.10.1` exposes a single global `CRANK_SIGNER` derived from
+`["crank-executor"]` under `Crank1111...`. VINCT depends on neither: its expiry handler is
+permissionless by design, so the scheduled instruction carries no signer meta at all and there
+is nothing for the handler to validate an authority against.

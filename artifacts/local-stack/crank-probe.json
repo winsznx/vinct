@@ -1,0 +1,88 @@
+{
+  "captured_at": "2026-08-08T11:18:40.181Z",
+  "question": "Does the pinned ephemeral validator accept MagicBlockInstruction::ScheduleTask, and on what terms?",
+  "endpoints": {
+    "base": "http://127.0.0.1:8899",
+    "er": "http://127.0.0.1:7799"
+  },
+  "validator_identity": "mAGicPQYBMvcYveUZA5F5UNNwyHvfYh5xkLS2Fr1mev",
+  "encoding": "bincode, default fixed-int: enum discriminant as u32 LE, sequence length as u64 LE, Pubkey as 32 raw bytes, bool as one byte",
+  "schedule_task_variant_index": 6,
+  "source": "magicblock-magic-program-api 0.10.1, src/instruction.rs; variant index counted from the enum declaration order",
+  "any_accepted": true,
+  "iteration_observed": true,
+  "iteration_signatures": [
+    "3MB8gvck7U4W4tEteE9D8PsxRQhgm4PuTjCr1ZWuxqoNxtT9ZVgGWPkAXzToi7S77b6hiyc3m52Pn9W7MvpDvMT"
+  ],
+  "iteration_watch_ms": 20000,
+  "attempts": [
+    {
+      "attempt": "schedule-direct",
+      "question": "Is ScheduleTask recognised when submitted directly rather than through a CPI?",
+      "accounts": [
+        {
+          "pubkey": "2dcvpZyRmR7bfncjxRPZ844yNNKVrQEfyuLYqkjTYSxH",
+          "isSigner": true,
+          "isWritable": true
+        },
+        {
+          "pubkey": "2dcvpZyRmR7bfncjxRPZ844yNNKVrQEfyuLYqkjTYSxH",
+          "isSigner": false,
+          "isWritable": true
+        }
+      ],
+      "dataLength": 92,
+      "accepted": true,
+      "signature": "5eF7DxaRhdcU3bvDF97MufU4S8dnWoCQWS55C7meeZ9mRWAVJkiNTJ4jnuQR6BvXUxmje85tdbsAt8HFCWXPAvnU",
+      "logs": [
+        "Program Magic11111111111111111111111111111111111111 invoke [1]",
+        "Scheduled task request with ID: 4242",
+        "Program Magic11111111111111111111111111111111111111 success"
+      ]
+    },
+    {
+      "attempt": "schedule-payer-only",
+      "question": "Does the task context slot need to be filled at all?",
+      "accounts": [
+        {
+          "pubkey": "2dcvpZyRmR7bfncjxRPZ844yNNKVrQEfyuLYqkjTYSxH",
+          "isSigner": true,
+          "isWritable": true
+        }
+      ],
+      "dataLength": 92,
+      "accepted": true,
+      "signature": "4tdWvjsvE4tnjtAM3zsEE2jLucPnGdCtLnBmPBdyJPuZrMufUv2LiAEYNzh2cYBg5ocYFQZzK5xx9eA4xxgTQdUA",
+      "logs": [
+        "Program Magic11111111111111111111111111111111111111 invoke [1]",
+        "Scheduled task request with ID: 4243",
+        "Program Magic11111111111111111111111111111111111111 success"
+      ]
+    },
+    {
+      "attempt": "cancel-direct",
+      "question": "Is CancelTask recognised, and does it refuse an id nobody scheduled?",
+      "accounts": [
+        {
+          "pubkey": "2dcvpZyRmR7bfncjxRPZ844yNNKVrQEfyuLYqkjTYSxH",
+          "isSigner": true,
+          "isWritable": true
+        },
+        {
+          "pubkey": "2dcvpZyRmR7bfncjxRPZ844yNNKVrQEfyuLYqkjTYSxH",
+          "isSigner": false,
+          "isWritable": true
+        }
+      ],
+      "dataLength": 12,
+      "accepted": true,
+      "signature": "4LTw9p8uqGtVoHC6EygUHpUBL9Psik7jygjQEYeQhSv1vQCPQXCbRXPfZNbVUwQBQKYugJKUuKT6ZpR7HHeXPXiP",
+      "logs": [
+        "Program Magic11111111111111111111111111111111111111 invoke [1]",
+        "Successfully added cancel request for task 4242",
+        "Program Magic11111111111111111111111111111111111111 success"
+      ]
+    }
+  ],
+  "note": "A refusal here is evidence about the validator, not about the encoding. Both are recorded so a later run can tell which changed."
+}
