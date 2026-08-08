@@ -1119,7 +1119,7 @@
     "status": "verified",
     "proof_level": 5,
     "network": "local-magicblock-stack",
-    "source_commit": "PENDING",
+    "source_commit": "9a937bc",
     "program_ids": [
       "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
     ],
@@ -1144,7 +1144,7 @@
     "status": "verified",
     "proof_level": 4,
     "network": "litesvm",
-    "source_commit": "PENDING",
+    "source_commit": "9a937bc",
     "program_ids": [
       "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
     ],
@@ -1165,7 +1165,7 @@
     "status": "verified",
     "proof_level": 4,
     "network": "litesvm",
-    "source_commit": "PENDING",
+    "source_commit": "9a937bc",
     "program_ids": [
       "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
     ],
@@ -1185,7 +1185,7 @@
     "status": "verified",
     "proof_level": 5,
     "network": "local-magicblock-stack",
-    "source_commit": "PENDING",
+    "source_commit": "9a937bc",
     "program_ids": [
       "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
     ],
@@ -1208,7 +1208,7 @@
     "status": "verified",
     "proof_level": 5,
     "network": "local-magicblock-stack",
-    "source_commit": "PENDING",
+    "source_commit": "9a937bc",
     "program_ids": [
       "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
     ],
@@ -1230,7 +1230,7 @@
     "status": "verified",
     "proof_level": 5,
     "network": "local-magicblock-stack",
-    "source_commit": "PENDING",
+    "source_commit": "9a937bc",
     "program_ids": [
       "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
     ],
