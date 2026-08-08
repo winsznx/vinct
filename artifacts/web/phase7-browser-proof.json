@@ -169,7 +169,7 @@
     "pnpm --filter @vinct/web build",
     "pnpm exec playwright test"
   ],
-  "source_commit": "af93032",
+  "source_commit": "0dba619",
   "limitations": [
     "The chain-dependent assertions need VINCT_COVENANT and VINCT_OPERATION from a real run. Without them they skip rather than pass, because a green tick for a test that read nothing is worse than a skip.",
     "Local stack only. The same suite against Devnet needs a funded deployment.",
