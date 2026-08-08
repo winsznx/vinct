@@ -196,7 +196,18 @@ export async function verifyOperation(
     `status ${core.status}`,
   );
 
-  const certificateAccount = await connection.getAccountInfo(targets.certificate);
+  // Every remaining account in one read.
+  //
+  // These were five sequential `getAccountInfo` calls. On a public Devnet endpoint each one
+  // takes around three seconds, which put a browser verification past ninety seconds and made
+  // the page look broken. None of them depends on another, so there was never a reason to
+  // serialise them.
+  const [certificateAccount, settlementAccount, ...receiptAccounts] =
+    await connection.getMultipleAccountsInfo([
+      targets.certificate,
+      targets.settlementReceipt,
+      ...targets.adapterReceipts.map((receipt) => receipt.address),
+    ]);
   if (!certificateAccount) {
     check(
       checks,
@@ -237,7 +248,6 @@ export async function verifyOperation(
     );
   }
 
-  const settlementAccount = await connection.getAccountInfo(targets.settlementReceipt);
   if (!settlementAccount) {
     check(checks, "settlement receipt readable", false, "the receipt does not exist");
   } else {
@@ -251,8 +261,8 @@ export async function verifyOperation(
     delivery.settlementFinalized = settlement.finalized;
   }
 
-  for (const receipt of targets.adapterReceipts) {
-    const account = await connection.getAccountInfo(receipt.address);
+  for (const [index, receipt] of targets.adapterReceipts.entries()) {
+    const account = receiptAccounts[index];
     if (!account) {
       check(checks, `${receipt.label} receipt readable`, false, "the receipt does not exist");
       continue;

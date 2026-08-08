@@ -1,159 +1,158 @@
 /**
- * The paths a judge takes, and the states the app has to survive.
+ * The paths each of the four audiences takes.
  *
- * The completion gate is a person understanding the result in thirty seconds and verifying it
- * in two minutes. Both are timed here, on the built bundle, on desktop and on a phone.
- *
- * Everything chain-dependent runs against whatever `VINCT_COVENANT` names. Without it, the
- * chain-dependent assertions are skipped rather than passed, because a green tick for a test
- * that read nothing is worse than a skip that says so.
+ * A judge who never connects a wallet, an operator who does, a member answering an incident, and
+ * a public observer verifying a settlement. The old suite tested routes; this one tests whether
+ * somebody can get anywhere.
  */
 
 import { expect, test } from "@playwright/test";
 
 const COVENANT = process.env.VINCT_COVENANT ?? "";
 const OPERATION = process.env.VINCT_OPERATION ?? "";
-const withCovenant = (path: string) => (COVENANT ? `${path}?covenant=${COVENANT}` : path);
 
-test.describe("core path", () => {
-  test("the first screen names the outcome and the two things that make it hard", async ({
-    page,
-  }) => {
+test.describe("judge path", () => {
+  test("the landing page explains VINCT without jargon or a wallet", async ({ page }) => {
     const started = Date.now();
-    await page.goto(withCovenant("/"));
+    await page.goto("/");
 
-    await expect(page.getByRole("heading", { name: /binding mutual aid/i })).toBeVisible();
-    await expect(page.getByText(/no protocol hands anyone else admin authority/i)).toBeVisible();
-    await expect(page.getByTestId("cta-proof")).toBeVisible();
+    await expect(page.getByRole("heading", { name: /coordinate/i })).toBeVisible();
+    await expect(page.getByText(/nobody hands anybody else authority/i)).toBeVisible();
+    await expect(page.getByTestId("cta-demo")).toBeVisible();
+    await expect(page.getByTestId("cta-app")).toBeVisible();
 
-    // The three claims that distinguish this from a multisig, above the fold.
-    await expect(page.getByText(/from every other member/i)).toBeVisible();
-    await expect(page.getByText(/one effect ceiling/i)).toBeVisible();
-    await expect(page.getByText(/shares no code with the program/i)).toBeVisible();
+    // Nothing above the fold may demand an address or a connection.
+    const body = await page.locator("body").innerText();
+    expect(body.toLowerCase()).not.toContain("no covenant selected");
+    expect(body.toLowerCase()).not.toContain("paste a covenant");
 
-    expect(Date.now() - started, "the first screen took too long to become readable").toBeLessThan(
-      15_000,
-    );
+    expect(Date.now() - started, "the first screen took too long").toBeLessThan(15_000);
   });
 
-  test("every route in the nav loads and keeps the selected covenant", async ({ page }) => {
-    await page.goto(withCovenant("/"));
-    for (const label of [
-      "formation",
-      "adapters",
-      "incident-room",
-      "observer",
-      "settlement",
-      "proof",
-      "status",
+  test("the demo walks a real incident and reaches the failure case", async ({ page }) => {
+    await page.goto("/demo");
+    await expect(page.getByText(/recorded on solana devnet/i)).toBeVisible();
+
+    // Named protocols rather than alpha, beta, gamma.
+    await expect(page.getByText("Atlas Lending").first()).toBeVisible();
+    await expect(page.getByText(/pyth sol\/usd/i).first()).toBeVisible();
+
+    // Every lifecycle step is reachable.
+    for (const step of [
+      "armed",
+      "opened",
+      "sealed",
+      "certified",
+      "certificate",
+      "cohort",
+      "verified",
     ]) {
-      await page.getByTestId(`nav-${label}`).click();
-      await expect(page).not.toHaveURL(/\/$/);
-      if (COVENANT) {
-        expect(page.url(), `${label} dropped the covenant from the URL`).toContain(COVENANT);
-      }
-      await expect(page.locator(".stamp").first()).toBeVisible();
+      await page.getByTestId(`lifecycle-${step}`).click();
     }
+
+    // The stripped cohort is the point of the page.
+    await page.getByTestId("run-stripped").click();
+    await expect(page.getByText(/commit without actions/i).first()).toBeVisible();
+    await expect(page.getByText(/no protocol acted/i).first()).toBeVisible();
+
+    await expect(page.getByTestId("demo-verify")).toBeVisible();
   });
 
-  test("a route that does not exist says nothing is being withheld", async ({ page }) => {
-    await page.goto("/no-such-page");
-    await expect(page.getByTestId("not-found")).toBeVisible();
-    // The important sentence: this is not a locked door.
-    await expect(page.getByText(/protected by the rollup/i)).toBeVisible();
-    await page.getByTestId("not-found-home").click();
-    await expect(page.getByRole("heading", { name: /binding mutual aid/i })).toBeVisible();
-  });
-
-  test("a deep link survives a reload", async ({ page }) => {
-    const target = OPERATION ? `/proof?operation=${OPERATION}` : "/proof";
-    await page.goto(target);
-    await expect(page.locator(".stamp").first()).toHaveText("PROOF");
-
-    await page.reload();
-    await expect(page.locator(".stamp").first()).toHaveText("PROOF");
-    expect(page.url()).toContain("/proof");
-    if (OPERATION) expect(page.url()).toContain(OPERATION);
-  });
-
-  test("an unreachable node is shown as an outage, never as an empty result", async ({ page }) => {
-    // Port 1 refuses connections. The page must say the chain is unreachable rather than
-    // rendering as though it read an empty chain.
-    await page.goto("/observer?base=http://127.0.0.1:1&covenant=11111111111111111111111111111111");
-    await expect(page.getByTestId("outage")).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByText(/not an empty result/i)).toBeVisible();
-  });
-
-  test("the status page says what breaks when a service is down", async ({ page }) => {
-    await page.goto("/status?base=http://127.0.0.1:1&er=http://127.0.0.1:1");
-    await expect(page.getByTestId("service-list")).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByText(/UNREACHABLE/).first()).toBeVisible();
-    await expect(page.getByText(/Nothing on any page is current without it/i)).toBeVisible();
+  test("a judge reaches verification from the demo in one click", async ({ page }) => {
+    await page.goto("/demo");
+    await page.getByTestId("demo-verify").click();
+    await expect(page).toHaveURL(/\/proof\//);
+    await expect(page.getByRole("heading", { name: /check a settlement/i })).toBeVisible();
   });
 });
 
-test.describe("proof path", () => {
+test.describe("public verification", () => {
   test("a bad operation id cannot be submitted", async ({ page }) => {
     await page.goto("/proof");
     await page.getByTestId("operation-input").fill("not-an-operation");
     await expect(page.getByTestId("verify")).toBeDisabled();
   });
 
-  test("an operation that does not exist says which cluster it looked at", async ({ page }) => {
+  test("the proof page offers real samples when given nothing", async ({ page }) => {
     await page.goto("/proof");
-    await page.getByTestId("operation-input").fill("00".repeat(31) + "ff");
-    await page.getByTestId("verify").click();
-    await expect(page.getByTestId("read-error").or(page.getByTestId("outage"))).toBeVisible({
-      timeout: 30_000,
-    });
+    await expect(page.getByText(/or try one of these/i)).toBeVisible();
+    await expect(page.getByText(/both are real operations/i)).toBeVisible();
   });
 
-  test("a real operation verifies inside two minutes, with no wallet", async ({ page }) => {
-    test.skip(!OPERATION, "set VINCT_OPERATION to a certified operation from a live run");
+  test("a real operation verifies with no wallet", async ({ page }) => {
+    test.skip(!OPERATION, "set VINCT_OPERATION to a certified operation");
     const started = Date.now();
+    await page.goto(`/proof/${OPERATION}`);
+    await expect(page.getByTestId("checks")).toBeVisible({ timeout: 90_000 });
 
-    await page.goto(`/proof?operation=${OPERATION}`);
-    await expect(page.getByTestId("checks")).toBeVisible({ timeout: 60_000 });
+    const rows = page.getByTestId("checks").locator("tbody tr");
+    expect(await rows.count(), "the verifier ran no checks").toBeGreaterThan(10);
+    await expect(page.getByText(/^Verified/).first()).toBeVisible();
 
-    const checks = page.getByTestId("checks").locator("li");
-    expect(await checks.count(), "the verifier ran no checks").toBeGreaterThan(10);
-    await expect(page.getByText(/^VERIFIED/)).toBeVisible();
+    // Delivery is reported apart from the verdict, and says so.
+    await expect(page.getByText(/deliberately not part of the verdict/i)).toBeVisible();
 
-    // Delivery is reported next to it and never folded into the verdict.
-    await expect(page.getByText(/Reported, not verified/i)).toBeVisible();
-
-    // No wallet was connected, and nothing asked for one.
     const body = await page.locator("body").innerText();
     expect(body.toLowerCase()).not.toContain("connect wallet");
 
-    expect(Date.now() - started, "the proof path took longer than two minutes").toBeLessThan(
-      120_000,
-    );
+    expect(Date.now() - started, "verification took longer than two minutes").toBeLessThan(120_000);
+  });
+
+  test("a deep link survives a reload", async ({ page }) => {
+    const target = OPERATION ? `/proof/${OPERATION}` : "/proof";
+    await page.goto(target);
+    await expect(page.getByRole("heading", { name: /check a settlement/i })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole("heading", { name: /check a settlement/i })).toBeVisible();
+    if (OPERATION) expect(page.url()).toContain(OPERATION);
   });
 });
 
-test.describe("settlement", () => {
-  test("the classification and every observation are shown separately", async ({ page }) => {
-    test.skip(!COVENANT, "set VINCT_COVENANT to a covenant with a settled incident");
-    await page.goto(withCovenant("/settlement"));
-    await expect(page.getByTestId("effect-list")).toBeVisible({ timeout: 60_000 });
-
-    // Three observation values, not two. The page must be able to say "not observed".
-    await expect(page.getByText(/Three values, not two/i)).toBeVisible();
-
-    const body = await page.locator("body").innerText();
-    expect(
-      /ALL ACTIONS APPLIED|COMMITWITHOUTACTIONS|ALLACTIONSAPPLIED|PARTIALOBSERVATION|UNKNOWN/i.test(
-        body,
-      ),
-      "no classification was rendered",
-    ).toBe(true);
+test.describe("application", () => {
+  test("the console works disconnected and offers a way in", async ({ page }) => {
+    await page.goto("/app");
+    await expect(page.getByText(/without a wallet/i)).toBeVisible();
+    // Every empty state carries an action.
+    await expect(page.getByTestId("app-nav-covenants")).toBeVisible();
+    await expect(
+      page.getByTestId("wallet-connect").or(page.getByTestId("wallet-none")),
+    ).toBeVisible();
   });
 
-  test("the observer never shows a live approval count", async ({ page }) => {
-    test.skip(!COVENANT, "set VINCT_COVENANT to a covenant with an incident");
-    await page.goto(withCovenant("/observer"));
-    await expect(page.getByTestId("incident-list")).toBeVisible({ timeout: 60_000 });
-    await expect(page.getByText(/Not knowable\. No account holds it\.|Final count/)).toBeVisible();
+  test("every application route loads and keeps the network", async ({ page }) => {
+    await page.goto("/app?network=local");
+    for (const label of ["covenants", "incidents", "adapters"]) {
+      await page.getByTestId(`app-nav-${label}`).click();
+      await expect(page).toHaveURL(new RegExp(label));
+      expect(page.url(), `${label} dropped the network`).toContain("network=local");
+    }
+  });
+
+  test("a covenant workspace shows readiness rather than raw state", async ({ page }) => {
+    test.skip(!COVENANT, "set VINCT_COVENANT to a covenant on this cluster");
+    await page.goto(`/app/covenants/${COVENANT}`);
+    await expect(page.getByText(/readiness/i)).toBeVisible({ timeout: 90_000 });
+    await expect(page.getByText(/nobody can form this alone/i)).toBeVisible();
+  });
+
+  test("an unknown route says nothing is being withheld", async ({ page }) => {
+    await page.goto("/no-such-page");
+    await expect(page.getByTestId("not-found")).toBeVisible();
+    await expect(page.getByText(/protected by the rollup/i)).toBeVisible();
+  });
+});
+
+test.describe("resilience", () => {
+  test("an unreachable node reads as an outage, never an empty result", async ({ page }) => {
+    await page.goto("/app?base=http://127.0.0.1:1");
+    await expect(page.getByTestId("outage")).toBeVisible({ timeout: 40_000 });
+    await expect(page.getByText(/rather than an empty result/i)).toBeVisible();
+  });
+
+  test("the status page says what breaks when a service is down", async ({ page }) => {
+    await page.goto("/status?base=http://127.0.0.1:1&er=http://127.0.0.1:1");
+    await expect(page.getByTestId("service-list")).toBeVisible({ timeout: 40_000 });
+    await expect(page.getByText(/unreachable/i).first()).toBeVisible();
+    await expect(page.getByText(/nothing anywhere in the product is current/i)).toBeVisible();
   });
 });

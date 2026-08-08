@@ -1,37 +1,43 @@
 /**
  * An address that is not a route.
  *
- * There is nothing to "unlock" here. Every surface in this app reads public chain state, and the
- * one genuinely private thing, a member's ballot, is protected by the rollup's permission model
- * rather than by which URL somebody typed. So this page says that plainly instead of implying a
- * login would help.
+ * Nothing is being withheld here, and the page says so rather than implying a login would help.
+ * Every public surface reads chain state, and the one genuinely private thing, a member's
+ * answer, is protected by the rollup's permission model rather than by which URL somebody typed.
  */
 
 import { Link, useLocation } from "react-router-dom";
 
-import { Button, Empty, Eyebrow, Stamp } from "../components/ui";
+import { SiteChrome } from "../components/SiteChrome";
+import { Empty } from "../components/primitives";
 
 export function NotFound() {
   const location = useLocation();
   return (
-    <div data-testid="not-found">
-      <Eyebrow>No route</Eyebrow>
-      <Stamp>NOT FOUND</Stamp>
-      <div style={{ marginTop: "var(--spacing-24)", display: "grid", gap: "var(--spacing-24)" }}>
-        <Empty>
+    <SiteChrome>
+      <div className="wrap" style={{ padding: "var(--s8) var(--s5) var(--s9)" }}>
+        <Empty
+          title="No page at that address"
+          testId="not-found"
+          action={
+            <>
+              <Link
+                to={{ pathname: "/", search: location.search }}
+                className="btn btn-primary btn-sm"
+              >
+                Back to the start
+              </Link>
+              <Link to={{ pathname: "/demo", search: location.search }} className="btn btn-sm">
+                Explore the demo
+              </Link>
+            </>
+          }
+        >
           <span className="mono">{location.pathname}</span> is not a page. Nothing is being
-          withheld: every surface here reads public chain state, and the one private thing, a
-          member&rsquo;s ballot, is protected by the rollup&rsquo;s permission model rather than by
-          a URL.
+          withheld: every public surface here reads chain state, and the one private thing, a
+          member&rsquo;s answer, is protected by the rollup rather than by a URL.
         </Empty>
-        <div>
-          <Link to={{ pathname: "/", search: location.search }}>
-            <Button variant="filled" testId="not-found-home">
-              Back to the overview
-            </Button>
-          </Link>
-        </div>
       </div>
-    </div>
+    </SiteChrome>
   );
 }

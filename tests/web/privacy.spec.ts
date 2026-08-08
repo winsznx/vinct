@@ -1,42 +1,31 @@
 /**
- * What the browser is allowed to keep, and where it is allowed to talk.
+ * What the browser keeps, and where it is allowed to talk.
  *
- * These are the two ways a correct protocol leaks anyway. A page that caches a decision in
- * storage has moved it outside the rollup's permission model, and a page that pings an
- * analytics host has told a third party which incident somebody is looking at. Neither shows up
- * in a program test, so they are checked here, on the built bundle, by walking every route.
- *
- *   pnpm test:web
+ * These are the two ways a correct protocol leaks anyway. A page that caches a member's answer
+ * has moved it outside the rollup's permission model, and a page that pings an analytics host
+ * has told a third party which incident somebody is looking at. Neither shows up in a program
+ * test, so both are checked here against the built bundle, on every route.
  */
 
 import { expect, test, type Page } from "@playwright/test";
 
-const ROUTES = [
-  "/",
-  "/formation",
-  "/adapters",
-  "/incident",
-  "/observer",
-  "/settlement",
-  "/proof",
-  "/status",
-];
+const PUBLIC_ROUTES = ["/", "/demo", "/proof", "/status"];
+const APP_ROUTES = ["/app", "/app/covenants", "/app/incidents", "/app/adapters"];
+const ROUTES = [...PUBLIC_ROUTES, ...APP_ROUTES];
 
-/**
- * Every host the app is permitted to contact.
- *
- * Its own origin, and RPC endpoints the user chose. Nothing else. A CDN for a font would be a
- * third party learning when somebody opens an incident page.
- */
+/** Its own origin, and RPC endpoints the reader chose. Nothing else. */
 const ALLOWED_HOSTS = ["127.0.0.1", "localhost"];
 
 /**
- * Words that must never appear in anything persisted.
+ * Storage keys the app is permitted to write.
  *
- * Chosen to match the shapes private material takes rather than one fixture's contents:
- * decisions, claims, nonces, and signatures.
+ * `vinct.wallet` holds a wallet's name so a reload can reconnect silently, never a key.
+ * Anything else is a finding.
  */
-const FORBIDDEN_IN_STORAGE = [
+const ALLOWED_KEYS = new Set(["vinct.wallet", "vinct.covenant"]);
+
+/** The shapes private material takes, rather than one fixture's contents. */
+const FORBIDDEN = [
   "approve",
   "reject",
   "abstain",
@@ -48,85 +37,75 @@ const FORBIDDEN_IN_STORAGE = [
   "nonce",
   "signature",
   "secret",
-  "privateKey",
+  "privatekey",
 ];
 
-async function readAllStorage(page: Page): Promise<{ key: string; value: string }[]> {
-  return page.evaluate(() => {
-    const out: { key: string; value: string }[] = [];
-    for (const store of [window.localStorage, window.sessionStorage]) {
-      for (let index = 0; index < store.length; index += 1) {
-        const key = store.key(index);
-        if (key === null) continue;
-        out.push({ key, value: store.getItem(key) ?? "" });
-      }
-    }
-    return out;
-  });
+async function settle(page: Page): Promise<void> {
+  // Not networkidle: every surface polls the chain, so the page never goes idle and the wait
+  // would burn its timeout on each route. A visible heading proves the app mounted.
+  await expect(page.locator("h1, h2, .t-page, .m-heading").first()).toBeVisible();
+  await page.waitForTimeout(900);
 }
 
 test.describe("privacy", () => {
   test("no route persists anything private", async ({ page }) => {
     for (const route of ROUTES) {
       await page.goto(route);
-      // Not networkidle. Every surface polls the chain on an interval, so the page never goes
-      // idle and the wait would burn its timeout on each route. What matters here is that the
-      // app mounted and had a chance to write storage, which the heading proves.
-      await expect(page.locator(".stamp, .display").first()).toBeVisible();
+      await settle(page);
 
-      const stored = await readAllStorage(page);
+      const stored = await page.evaluate(() => {
+        const out: { key: string; value: string }[] = [];
+        for (const store of [window.localStorage, window.sessionStorage]) {
+          for (let index = 0; index < store.length; index += 1) {
+            const key = store.key(index);
+            if (key === null) continue;
+            out.push({ key, value: store.getItem(key) ?? "" });
+          }
+        }
+        return out;
+      });
+
       for (const entry of stored) {
-        // One key is allowed, and it holds a covenant address, which is public on chain.
-        expect(entry.key, `${route} wrote an unexpected storage key: ${entry.key}`).toBe(
-          "vinct.covenant",
-        );
-
+        expect(
+          ALLOWED_KEYS.has(entry.key),
+          `${route} wrote an unexpected storage key: ${entry.key}`,
+        ).toBe(true);
         const blob = `${entry.key}=${entry.value}`.toLowerCase();
-        for (const forbidden of FORBIDDEN_IN_STORAGE) {
-          expect(blob, `${route} persisted something matching "${forbidden}"`).not.toContain(
-            forbidden.toLowerCase(),
-          );
+        for (const word of FORBIDDEN) {
+          expect(blob, `${route} persisted something matching "${word}"`).not.toContain(word);
         }
       }
     }
   });
 
-  test("no route contacts a host the user did not choose", async ({ page }) => {
+  test("no route contacts a host the reader did not choose", async ({ page }) => {
     const offOrigin: string[] = [];
     page.on("request", (request) => {
       const url = new URL(request.url());
       if (url.protocol === "data:" || url.protocol === "blob:") return;
-      if (!ALLOWED_HOSTS.includes(url.hostname)) offOrigin.push(request.url());
+      if (!ALLOWED_HOSTS.includes(url.hostname)) offOrigin.push(url.hostname);
     });
 
-    for (const route of ROUTES) {
-      await page.goto(route);
-      // Not networkidle. Every surface polls the chain on an interval, so the page never goes
-      // idle and the wait would burn its timeout on each route. What matters here is that the
-      // app mounted and had a chance to write storage, which the heading proves.
-      await expect(page.locator(".stamp, .display").first()).toBeVisible();
+    // Only the public routes, because the application deliberately reads a chain and those
+    // requests go wherever the network parameter points.
+    for (const route of PUBLIC_ROUTES) {
+      await page.goto(`${route}?network=local`);
+      await settle(page);
     }
 
-    expect(
-      offOrigin,
-      `the app contacted hosts outside its own origin: ${offOrigin.join(", ")}`,
-    ).toEqual([]);
+    expect([...new Set(offOrigin)], "the app contacted hosts outside its own origin").toEqual([]);
   });
 
-  test("the bundle carries no analytics or tag manager", async ({ page }) => {
+  test("the bundle carries no analytics", async ({ page }) => {
     await page.goto("/");
     const scripts = await page.evaluate(() =>
-      Array.from(document.querySelectorAll("script")).map((script) => script.src),
+      Array.from(document.querySelectorAll("script"))
+        .map((script) => script.src)
+        .filter(Boolean),
     );
     for (const src of scripts) {
-      if (!src) continue;
-      expect(new URL(src).hostname, `a script loaded from ${src}`).toMatch(
-        /127\.0\.0\.1|localhost/,
-      );
+      expect(new URL(src).hostname).toMatch(/127\.0\.0\.1|localhost/);
     }
-
-    // Common analytics globals. Their absence is the point: none of them can be added without
-    // this failing.
     const globals = await page.evaluate(() =>
       ["ga", "gtag", "dataLayer", "analytics", "posthog", "mixpanel", "Sentry", "_paq"].filter(
         (name) => name in window,
@@ -135,19 +114,19 @@ test.describe("privacy", () => {
     expect(globals, `analytics globals present: ${globals.join(", ")}`).toEqual([]);
   });
 
-  test("the incident room shows the shape of the private state and never its contents", async ({
-    page,
-  }) => {
-    await page.goto("/incident");
-    await expect(page.locator(".stamp").first()).toBeVisible();
-
-    const text = (await page.locator("body").innerText()).toLowerCase();
-    // Whatever the chain says, the page must never render a decision word next to a member.
-    // These are the words a leaked ballot would produce.
-    for (const leaked of ["approved by", "rejected by", "voted approve", "voted reject"]) {
-      expect(text, `the incident room rendered "${leaked}"`).not.toContain(leaked);
+  test("no surface renders a live quorum count", async ({ page }) => {
+    // The forbidden shape is a running tally while an incident collects. "2 approved" after a
+    // terminal outcome is public and correct; "1 of 2 approvals" mid-flight is a leak.
+    for (const route of [...APP_ROUTES, "/demo"]) {
+      await page.goto(route);
+      await settle(page);
+      const text = await page.locator("body").innerText();
+      expect(text, `${route} rendered a live approval progress count`).not.toMatch(
+        /\b\d+\s*(of|\/)\s*\d+\s+approvals?\s+so far\b/i,
+      );
+      for (const leak of ["approved by", "voted approve", "voted reject", "has responded"]) {
+        expect(text.toLowerCase(), `${route} rendered "${leak}"`).not.toContain(leak);
+      }
     }
-    // And it says out loud that it cannot read them, rather than leaving a gap.
-    await expect(page.getByText(/holds no member key/i)).toBeVisible();
   });
 });

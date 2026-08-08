@@ -1,0 +1,272 @@
+/**
+ * The first fifteen seconds.
+ *
+ * One sentence about what VINCT does, one picture of the mechanism, and two places to go. No
+ * covenant address, no jargon above the fold, and nothing a reader has to already know.
+ *
+ * The sections below the hero are ordered by what a sceptical protocol engineer asks next, in
+ * the order they ask it: why does this exist, what do I give up, how does the private part
+ * work, what happens when it fails, and can I check any of this myself. The last one is the
+ * only section with a live link into real evidence, and it is the one that closes the argument.
+ */
+
+import { Link, useLocation } from "react-router-dom";
+
+import { Mechanism } from "../components/Mechanism";
+import { Card, Pill } from "../components/primitives";
+import { STRIPPED_RUN, SUCCESS_RUN } from "../lib/demo";
+import { useNetwork } from "../lib/network";
+
+export function Landing() {
+  const location = useLocation();
+  const network = useNetwork();
+  const search = location.search;
+
+  return (
+    <>
+      {/* ------------------------------------------------------------ hero */}
+      <section className="wrap" style={{ padding: "var(--s8) var(--s5) var(--s9)" }}>
+        <div
+          style={{
+            display: "grid",
+            gap: "var(--s7)",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(340px, 100%), 1fr))",
+            alignItems: "center",
+          }}
+        >
+          <div className="stack" style={{ gap: "var(--s5)" }}>
+            <Pill tone="attention">{network.label} · MagicBlock private rollup</Pill>
+
+            <h1 style={{ maxWidth: "13ch" }}>
+              <span className="m-display">Coordinate</span>
+              <br />
+              <span className="m-heading">without sharing keys</span>
+            </h1>
+
+            <p className="m-lead" style={{ maxWidth: "48ch" }}>
+              Protocols that depend on the same oracle or bridge can agree in advance on exactly
+              what each will do in an emergency, decide privately whether it is happening, and act
+              together. Nobody hands anybody else authority.
+            </p>
+
+            <div className="row" style={{ flexWrap: "wrap", gap: "var(--s3)" }}>
+              <Link
+                to={{ pathname: "/demo", search }}
+                className="btn btn-signal btn-lg"
+                data-testid="cta-demo"
+              >
+                Explore live demo
+              </Link>
+              <Link to={{ pathname: "/app", search }} className="btn btn-lg" data-testid="cta-app">
+                Open VINCT
+              </Link>
+            </div>
+
+            <p className="t-small muted">
+              The demo needs no wallet. It replays a real incident recorded on Devnet, with the
+              addresses and signatures it produced.
+            </p>
+          </div>
+
+          <Mechanism />
+        </div>
+      </section>
+
+      {/* ------------------------------------------------------------- why */}
+      <Band>
+        <SectionHead
+          eyebrow="Why this exists"
+          title="Everyone finds out from Twitter"
+          lead="Three lending protocols use the same price feed. It starts printing garbage. Each of them has a runbook, each acts alone, and the slowest one absorbs the damage. They could have agreed months earlier, and there was nothing to agree with."
+        />
+        <div className="grid-cards">
+          <Point
+            title="A multisig is the wrong shape"
+            body="It asks every protocol to hand authority to a group. No serious protocol will, and they are right not to."
+          />
+          <Point
+            title="A shared vote leaks"
+            body="Any account holding a running tally can be read by whoever can touch it. Knowing that two of three have already approved is a tradeable fact."
+          />
+          <Point
+            title="A scheduling receipt is not an outcome"
+            body="Coordinated action across protocols usually reports success when the request was accepted, which is not the same as anything having happened."
+          />
+        </div>
+      </Band>
+
+      {/* ------------------------------------------------------- what you keep */}
+      <Band tone="raised">
+        <SectionHead
+          eyebrow="What your protocol keeps"
+          title="You authorise one action, not a relationship"
+          lead="A capability is a bound you place on yourself, before any incident exists. It names one instruction, one account it may touch, one effect ceiling, and a window outside which nothing is accepted at all."
+        />
+        <div className="grid-2">
+          <Card>
+            <div className="stack">
+              <div className="label">What a certificate can do</div>
+              <p className="t-body">
+                Exactly one thing: the instruction you named, against the account you named, inside
+                the limits you set.
+              </p>
+              <hr className="sep" />
+              <div className="label">What it cannot do</div>
+              <ul className="stack-sm t-body muted">
+                <li>Call any other instruction, or reach any other account.</li>
+                <li>Act twice. Three separate refusals stand in the way of a replay.</li>
+                <li>Outlive your suspension, even if it was issued first.</li>
+                <li>Exist at all without your covenant reaching its threshold.</li>
+              </ul>
+            </div>
+          </Card>
+          <Card>
+            <div className="stack">
+              <div className="label">Who signs what</div>
+              {[
+                ["Convene the covenant", "The steward, and nothing else ever"],
+                ["Join it", "Each protocol, for itself only"],
+                ["Arm an adapter", "Each protocol, for itself only"],
+                ["Suspend an adapter", "Each protocol, at any moment"],
+                ["Answer an incident", "Each member, once, privately"],
+                ["Publish a certificate", "Nobody. The incident earns it"],
+              ].map(([action, who]) => (
+                <div key={action} className="row-between" style={{ gap: "var(--s4)" }}>
+                  <span className="t-base">{action}</span>
+                  <span className="t-base muted" style={{ textAlign: "right" }}>
+                    {who}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </Band>
+
+      {/* ------------------------------------------------------------ private */}
+      <Band>
+        <SectionHead
+          eyebrow="Private certification"
+          title="Your response is sealed from every other member"
+          lead="Not merely from the public. Each member's answer lives in its own account inside a private rollup, readable by exactly one key. The program counts them in memory and never writes the count anywhere."
+        />
+        <div className="grid-cards">
+          <Point
+            title="No account holds a tally"
+            body="There is nothing to leak, even to somebody who could read everything. The counts appear only once the incident is over."
+          />
+          <Point
+            title="Silence costs nothing"
+            body="A member who does not answer does not delay the outcome, and their silence is not visible either."
+          />
+          <Point
+            title="Then it is erased"
+            body="When the incident ends, the claim and every ballot are overwritten before the accounts leave the rollup, and the erasure is checked on the base layer."
+          />
+        </div>
+      </Band>
+
+      {/* ----------------------------------------------------------- failure */}
+      <Band tone="raised">
+        <SectionHead
+          eyebrow="When it goes wrong"
+          title="VINCT will tell you nothing happened"
+          lead="This is the part most coordination systems get wrong. A transaction that schedules emergency actions can succeed while every one of those actions is stripped and never runs."
+        />
+        <div className="grid-2">
+          <Card>
+            <div className="stack">
+              <Pill tone="ok">Settled</Pill>
+              <div className="t-title">All three protocols paused</div>
+              <p className="t-body muted">
+                Three adapter receipts, three target protocols changed, one settlement receipt. Each
+                read back off the base layer rather than inferred.
+              </p>
+              <Link
+                to={{ pathname: `/proof/${SUCCESS_RUN.operationId}`, search }}
+                className="btn btn-sm"
+              >
+                Verify this one
+              </Link>
+            </div>
+          </Card>
+          <Card tone="attention">
+            <div className="stack">
+              <Pill tone="attention">Commit without actions</Pill>
+              <div className="t-title">Scheduling succeeded. Nothing executed.</div>
+              <p className="t-body muted">
+                One protocol&rsquo;s adapter could not act, so none of them did. Zero markets
+                paused, not two of three. VINCT reports that instead of reporting success, and
+                blocks any automatic retry.
+              </p>
+              <Link
+                to={{ pathname: `/proof/${STRIPPED_RUN.operationId}`, search }}
+                className="btn btn-sm"
+              >
+                Verify this one too
+              </Link>
+            </div>
+          </Card>
+        </div>
+      </Band>
+
+      {/* -------------------------------------------------------------- proof */}
+      <Band>
+        <SectionHead
+          eyebrow="Check it yourself"
+          title="Nothing here asks you to trust this page"
+          lead="Paste an operation ID and the verifier reads the incident and its covenant off the chain, re-derives the operation identity from the covenant's own frozen terms, and confirms every receipt carries it. It shares no code with the on-chain program, which is the only reason its agreement means anything."
+        />
+        <div className="row" style={{ flexWrap: "wrap", gap: "var(--s3)" }}>
+          <Link to={{ pathname: "/demo", search }} className="btn btn-signal">
+            Walk through a real incident
+          </Link>
+          <Link to={{ pathname: "/proof", search }} className="btn">
+            Verify an operation
+          </Link>
+        </div>
+      </Band>
+    </>
+  );
+}
+
+function Band({ children, tone }: { children: React.ReactNode; tone?: "raised" }) {
+  return (
+    <section
+      style={{
+        padding: "var(--s9) 0",
+        background: tone === "raised" ? "var(--raised)" : undefined,
+        borderTop: "1px solid var(--line)",
+      }}
+    >
+      <div className="wrap stack" style={{ gap: "var(--s6)" }}>
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function SectionHead({ eyebrow, title, lead }: { eyebrow: string; title: string; lead: string }) {
+  return (
+    <div className="stack" style={{ gap: "var(--s3)", maxWidth: "62ch" }}>
+      <div className="m-stamp" style={{ fontSize: "clamp(11px, 1.4vw, 13px)" }}>
+        {eyebrow}
+      </div>
+      <h2 className="m-heading">{title}</h2>
+      <p className="t-lead muted">{lead}</p>
+    </div>
+  );
+}
+
+function Point({ title, body }: { title: string; body: string }) {
+  return (
+    <Card>
+      <div className="stack-sm">
+        <div className="t-lead" style={{ fontWeight: 500 }}>
+          {title}
+        </div>
+        <p className="t-base muted">{body}</p>
+      </div>
+    </Card>
+  );
+}

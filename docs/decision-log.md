@@ -1739,3 +1739,80 @@ than failing halfway through.
 The artifact directory also follows the cluster now. It was a constant, and a Devnet run
 silently overwrote the local record: two files with the same name from different chains, each
 saying PASS, with no way to tell which was which except by reading the endpoint buried inside.
+
+### D-0073 The frontend was engineering surfaces, not a product
+
+The first web build exposed VINCT's internals as navigation: Formation, Observer, Settlement,
+Incident Room. Those are stages of one thing and a permission mode, not products, and naming
+them in a nav bar is why the application read as a technical demo. A visitor landed on "No
+covenant selected" and had to paste an address to learn what VINCT was.
+
+Four audiences want different things, and one interface trying to serve all of them serves
+none.
+
+A judge wants to understand the product without owning a wallet, creating a covenant, or
+reading documentation. A protocol operator wants to know whether anything needs them. A member
+in an incident wants to answer. A public observer wants to check that a settlement happened.
+
+So there are two frames now. `/`, `/demo`, `/proof`, and `/status` are public and need no
+wallet. `/app/*` is the operator console, and Formation became a workflow inside Covenants,
+Settlement became part of an incident, and Observer became what a non-member sees on the same
+incident route rather than a separate destination.
+
+`design.md` stayed the visual grammar and stopped being applied literally. It describes a
+marketing composition, and rendering every dashboard as a sparse typographic poster is not what
+it asks for. The system has two registers now: the marketing one keeps the display serif, the
+stamped mono, and the generous section gaps; the application one runs at 13 and 14px on an 8px
+rhythm with tables that stay tables. Palette, weights, radii, and the shadowless discipline are
+shared. Only scale and density change.
+
+The demo is built from committed Devnet artifacts rather than fixtures, and says so on the page.
+Every address, signature, receipt, and classification is from a run that happened. Protocol
+names are the one addition: the runs use `alpha`, `beta`, and `gamma`, which are fine in a log
+and useless to somebody meeting the product, so they are relabelled and the mapping is exposed.
+
+Two components carry most of the meaning. `Sealed` is a value the viewer is not entitled to
+read, deliberately distinct from empty: nothing is missing, and rendering a blank would say the
+opposite of what is true. `Empty` requires an action, because a screen that says "nothing here"
+and stops is where people leave.
+
+The privacy model is now legible rather than only enforced. The incident room shows no live
+approval count and says why: while an incident collects, no account holds that number at all.
+A browser test asserts that no surface renders a running tally.
+
+### D-0074 Four bugs the rebuild's own screenshots and tests found
+
+`Buffer` is not a browser global, and the shared client decodes accounts with it. Fixed with a
+shim imported before anything that touches it.
+
+The proof page passed capability addresses where adapter receipt addresses belong, and the
+decoder's discriminator check refused it loudly rather than returning a plausible wrong answer.
+That is D-0052 paying for itself on a surface written months later.
+
+Two pages read `capability.authority`, and the field is `protocolAuthority`. It should have
+been a type error, and finding out why exposed the fourth: `tsconfig.web.json` extended a base
+config whose `exclude` covers `apps`, `exclude` is inherited rather than merged with `include`,
+and the project resolved to zero files while `tsc` reported success. The web app had never been
+typechecked. Found by breaking a field name on purpose and watching the gate stay green.
+
+The mobile viewport found two layout bugs where a control stayed visible and stopped working: a
+sticky nav that wraps to two rows on a phone and covers what the reader scrolled to, and a flex
+form whose label overflowed and swallowed every click aimed at the button beside it. Both are
+worse than a broken layout, because neither a screenshot nor a human skim catches them.
+
+### D-0075 A dashboard that takes ninety seconds is not a dashboard
+
+The first covenant loader read one account at a time. On a public Devnet endpoint a single
+`getAccountInfo` takes about three seconds, so thirty sequential reads left the console showing
+skeletons for over a minute, and the browser verification exceeded its ninety-second timeout.
+
+Both are now batched. Covenant discovery is four round trips regardless of how many covenants
+are in view: memberships in one scan, covenant accounts in one multi-read, capabilities in one
+scan, and every candidate incident in one more. The verifier's five independent account reads
+became one `getMultipleAccountsInfo`, which took a Devnet verification from over ninety seconds
+to 5.4.
+
+Worth stating as a rule rather than a fix: none of those reads ever depended on another, so
+there was never a reason to serialise them. Sequential reads are the default shape of code
+written against a fast local validator, and they only reveal themselves as a product defect on
+a real endpoint.
