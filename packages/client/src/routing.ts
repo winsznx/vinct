@@ -30,7 +30,11 @@ export interface RouterRoute {
 }
 
 export type ResolutionSource =
-  "getDelegationStatus.fqdn" | "getRoutes+delegationRecord" | "configured" | "unresolved";
+  | "getDelegationStatus.fqdn"
+  | "getRoutes+delegationRecord"
+  | "configured"
+  | "router-mismatch"
+  | "unresolved";
 
 export interface ResolvedEndpoint {
   endpoint: string | null;
@@ -117,6 +121,17 @@ export async function resolveEphemeralEndpoint(options: {
           evidence.note =
             "getDelegationStatus carried no fqdn. Resolved by matching the delegation record's validator identity against the router's getRoutes table.";
           return { endpoint: match.fqdn, source: "getRoutes+delegationRecord", evidence };
+        }
+
+        // The router answered, published a routing table, and that table does not contain the
+        // validator this account is actually delegated to. Falling through to a configured
+        // endpoint here would send private incident state to a rollup other than the one the
+        // delegation record names, which is the failure D-0041 exists to prevent. The caller
+        // gets no endpoint and an explicit reason.
+        if (evidence.routes.length > 0) {
+          evidence.note =
+            "Router mismatch: the delegation record names a validator that the router's getRoutes table does not list. No endpoint is resolved, and a configured endpoint is deliberately not substituted, because it would land delegated state on a rollup this account is not delegated to.";
+          return { endpoint: null, source: "router-mismatch", evidence };
         }
       }
     }

@@ -230,6 +230,174 @@ impl Formation {
             .expect("covenant exists")
             .data[8 + 2 + 32 + 8 + 8 + 32]
     }
+
+    /// Opens an incident under this covenant.
+    fn open_incident(
+        &mut self,
+        incident_id: u64,
+        opener_index: usize,
+    ) -> Result<TransactionMetadata, FailedTransactionMetadata> {
+        let opener = self.members[opener_index].insecure_clone();
+        let (core, _) = Address::find_program_address(
+            &[
+                b"incident",
+                self.covenant.as_ref(),
+                &incident_id.to_le_bytes(),
+            ],
+            &core_program(),
+        );
+        self.world.send(
+            Instruction {
+                program_id: core_program(),
+                accounts: vec![
+                    AccountMeta::new(core, false),
+                    AccountMeta::new_readonly(self.covenant, false),
+                    AccountMeta::new_readonly(
+                        covenant_membership(&self.covenant, &opener.pubkey()),
+                        false,
+                    ),
+                    AccountMeta::new(opener.pubkey(), true),
+                    AccountMeta::new_readonly(Address::default(), false),
+                ],
+                data: instruction_data(
+                    "initialize_incident",
+                    &InitializeIncidentArgs {
+                        incident_id,
+                        covenant: self.covenant.to_bytes(),
+                    },
+                ),
+            },
+            &[&opener],
+        )
+    }
+
+    /// The slot after which this covenant's epoch is over.
+    fn expires_at_slot(&self) -> u64 {
+        const OFFSET: usize =
+            8 + 2 + 32 + 8 + 8 + 32 + 1 + 32 + 32 + 1 + 1 + 8 + 8 + 1 + 1 + 1 + 1 + 32 + 8;
+        let data = self
+            .world
+            .svm
+            .get_account(&self.covenant)
+            .expect("covenant exists")
+            .data;
+        let mut bytes = [0u8; 8];
+        bytes.copy_from_slice(&data[OFFSET..OFFSET + 8]);
+        u64::from_le_bytes(bytes)
+    }
+}
+
+#[derive(borsh::BorshSerialize)]
+struct InitializeIncidentArgs {
+    incident_id: u64,
+    covenant: [u8; 32],
+}
+
+/// A covenant whose epoch has run out cannot host a new incident.
+///
+/// The epoch window is not decoration. It is what stops a covenant formed for one dependency,
+/// one member set, and one policy from being used indefinitely after the circumstances that
+/// justified it have changed. An incident opened under a lapsed covenant would freeze a member
+/// set nobody has reconfirmed.
+#[test]
+fn a_stale_covenant_cannot_host_a_new_incident() {
+    let mut formation = Formation::convened(3);
+    for index in 0..3 {
+        formation.ratify_member(index).expect("member ratifies");
+    }
+    formation.ratify().expect("covenant ratifies");
+    for index in 0..3 {
+        formation.arm_member(index).expect("member arms");
+    }
+    formation.arm().expect("covenant arms");
+
+    formation
+        .open_incident(1, 0)
+        .expect("an incident opens inside the window");
+
+    let expiry = formation.expires_at_slot();
+    formation.world.svm.warp_to_slot(expiry);
+
+    assert_failed_with(formation.open_incident(2, 0), "CovenantOutOfWindow");
+}
+
+/// A covenant that never armed cannot host an incident either.
+///
+/// Ratified is not armed. Between the two, every adapter-owning member still has to arm its own
+/// capability, and an incident opened in the gap could certify against protocols that never
+/// agreed to act.
+#[test]
+fn an_unarmed_covenant_cannot_host_an_incident() {
+    let mut formation = Formation::convened(3);
+    for index in 0..3 {
+        formation.ratify_member(index).expect("member ratifies");
+    }
+    formation.ratify().expect("covenant ratifies");
+
+    assert_failed_with(formation.open_incident(1, 0), "CovenantNotArmed");
+}
+
+/// A member cannot be swapped after the set is frozen.
+///
+/// Ratification computes the commitment every later incident is bound to. Adding a member after
+/// it would leave the covenant naming a set that its own frozen digest does not describe, and
+/// substituting one would do it silently.
+#[test]
+fn a_member_cannot_be_replaced_after_the_set_is_frozen() {
+    let mut formation = Formation::convened(3);
+    for index in 0..3 {
+        formation.ratify_member(index).expect("member ratifies");
+    }
+    formation.ratify().expect("covenant ratifies");
+
+    let replacement = Keypair::new();
+    formation
+        .world
+        .svm
+        .airdrop(&replacement.pubkey(), 10_000_000_000)
+        .expect("replacement funded");
+    let steward = formation.world.steward.insecure_clone();
+
+    assert!(
+        formation.add_as(&steward, replacement.pubkey()).is_err(),
+        "a member was added to a covenant whose set is already frozen"
+    );
+    assert!(
+        formation
+            .ratify_member_as(&replacement, replacement.pubkey())
+            .is_err(),
+        "a stranger ratified themselves into a frozen covenant"
+    );
+}
+
+/// Ratifying with a substituted member is refused, even when the count is right.
+///
+/// The interesting shape: three memberships exist, one belongs to somebody who was never added
+/// to this covenant, and the caller supplies it in place of a real member. The count matches,
+/// the ordering can be made to match, and the commitment still has to be over the members the
+/// steward actually added.
+#[test]
+fn ratification_refuses_a_substituted_member() {
+    let mut formation = Formation::convened(3);
+    for index in 0..3 {
+        formation.ratify_member(index).expect("member ratifies");
+    }
+
+    let outsider = Keypair::new();
+    formation
+        .world
+        .svm
+        .airdrop(&outsider.pubkey(), 10_000_000_000)
+        .expect("outsider funded");
+
+    let mut order: Vec<Address> = formation.members.iter().map(|m| m.pubkey()).collect();
+    order[1] = outsider.pubkey();
+    order.sort_by_key(|address| address.to_bytes());
+
+    assert!(
+        formation.ratify_with(&order).is_err(),
+        "a covenant ratified over a member set containing somebody it never added"
+    );
 }
 
 /// The whole sequence, and the state it leaves behind.

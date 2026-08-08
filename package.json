@@ -20,7 +20,9 @@
     "verify-vectors": "tsx packages/verifier/src/cli.ts",
     "gen-vectors": "cargo run -q -p vinct-reference --features vectors --bin gen-vectors",
     "gen-account-vectors": "cargo run -q -p vinct-layouts --bin gen-account-vectors",
-    "test:ts": "tsx --test \"tests/**/*.test.ts\""
+    "test:ts": "tsx --test \"tests/**/*.test.ts\"",
+    "verify-operation": "tsx packages/verifier/src/verify-operation.ts",
+    "check-vectors": "bash scripts/check-vectors.sh"
   },
   "dependencies": {
     "@coral-xyz/anchor": "0.32.1",

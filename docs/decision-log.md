@@ -1220,3 +1220,165 @@ that is reported as `false`, and the contents stay where they are.
 
 The committed vectors carry a zeroed protected region. A fixture holding bytes that look like
 evidence is a fixture somebody will eventually mistake for evidence.
+
+### D-0053 The whole mechanism runs on a certificate nobody chose
+
+Every previous cohort run picked an operation ID up front and published a certificate to match.
+That proved the settlement half worked. It could not prove the two halves were the same
+system, because the value joining them was chosen by the test.
+
+`scripts/phase5-composition.ts` runs the sequence with nothing chosen. Three protocols form a
+covenant, ratify their own memberships, and arm their own capabilities before any incident
+exists. An incident opens under that covenant, collects a private claim and two sealed
+attestations inside the rollup, certifies in memory, scrubs, and releases to base. The
+operation ID is whatever `certify_incident` derived from the frozen snapshot. The certificate
+is published permissionlessly from the released core. Only then is the cohort built, and it is
+built from that operation ID.
+
+Three runs, on the local stack:
+
+| Run | What changed | Observed |
+| --- | --- | --- |
+| `success` | nothing | `ALL_ACTIONS_APPLIED` — three markets paused, three adapter receipts, settlement finalized |
+| `--fail-one` | one protocol never registered its adapter signer | `COMMIT_WITHOUT_ACTIONS` |
+| `--suspend-one` | one protocol suspended its capability after certification | `COMMIT_WITHOUT_ACTIONS` |
+
+The two failure runs are the same classification, and that is the finding worth recording. One
+BaseAction that cannot succeed removes the whole strategy, so the other two protocols' pauses
+never landed either. Nothing partial was observed. This is why `COMMIT_WITHOUT_ACTIONS` is a
+required state rather than an edge case, and why recovery is a governed proposal under a new
+operation ID rather than a retry of the one action that appears to be missing: the other two
+actions did not run, and retrying only the visible gap would leave the cohort half applied.
+
+Every classification in all three runs is read from base-layer account state after the fact.
+The scheduling signature is recorded as `INTENT_ACCEPTED` and used for nothing else.
+
+The scrub was re-checked on base after release in all three runs. A settlement that fails does
+not un-scrub an incident, which is worth stating because the failure paths are exactly where a
+partially-applied cleanup would hide.
+
+Artifacts: `artifacts/local-stack/phase5-composition-{success,fail-one,suspend-one}.json`.
+
+### D-0054 Reuse, mutation, and replay, proven on earned certificates
+
+D-0050 argued that a capability commits to a shape rather than to an operation.
+`adversarial.rs` tested that against manufactured certificates, which is the right tool for a
+refusal test: forging is the point when the question is whether a forgery is refused.
+
+It is the wrong tool for the positive claim. "One arming serves every incident the covenant
+certifies" cannot be demonstrated with certificates a test wrote, because a test that writes
+two certificates has not shown that two incidents produce two certificates.
+
+`composition.rs` now carries three tests that use only earned certificates:
+
+`one_armed_capability_settles_two_certified_incidents` arms three protocols once, then runs two
+separate incidents under the same covenant to certification. Both settle through the same
+capabilities. Each market's `update_count` reaches two, each capability's nonce reaches two,
+and no capability was re-armed, re-installed, or touched by its authority in between.
+
+`a_real_certificate_does_not_license_a_mutated_bundle` takes one earned certificate and swaps a
+single account of the canonical list for the corresponding account of a different armed
+protocol — its market, its adapter signer, its capability. Every substitution is a real account
+of a real protocol, so nothing is malformed, only mismatched. All three are refused, and the
+canonical list still executes afterwards.
+
+`a_certified_operation_settles_once` settles an earned operation and then retries both the
+adapter execution and the settlement finalization. Three independent refusals stand in the way:
+the adapter's receipt, the target protocol's own `last_operation_id`, and the settlement
+receipt. All three are asserted rather than just one, because they fail at different layers and
+a change that removes one should not be able to hide behind the others. The refused replay
+moved no state.
+
+Supporting this needed one fixture change: `World::refocus_on_covenant` re-seeds the fixture's
+capabilities against a covenant that actually exists. The default fixture seeds them against an
+opaque address, which is all the adapter tests need since they never certify anything. A
+capability that must honour an earned certificate has to carry the real covenant in both its
+PDA and its armed commitment.
+
+### D-0055 The vectors were stale, and both sides agreed on the wrong layout
+
+D-0052 pinned every TypeScript decoder to a generated vector. It did not pin the vectors to
+the Rust.
+
+`ActionTemplateV1` gained six fields in the capability-template correction: `template_version`,
+`cluster_genesis_hash`, `covenant`, `circle_epoch`, `policy_id`, and `action_category`.
+`gen-vectors` was never re-run. The committed vectors kept describing the old ten-field layout,
+the TypeScript encoder kept matching them, and the parity test kept passing. Both sides agreed
+with each other and neither agreed with the program.
+
+It surfaced only because this phase added a new vector and regeneration was unavoidable. That
+is not a detection mechanism, it is luck, so `scripts/check-vectors.sh` now regenerates both
+vector files and fails on any diff. Committed vectors that are not what the Rust would produce
+today are a failing build.
+
+Two things were wrong and both are fixed. `template_action_json` emitted a subset of the
+struct's fields, so even a fresh vector would not have described the whole thing; it now emits
+every field. And the TypeScript `ActionTemplate` interface, writer, and reader now carry all
+sixteen fields in the program's order.
+
+The general rule: a cross-language vector is only evidence while it is current. A stale vector
+is worse than none, because it converts a missing check into a passing one.
+
+### D-0056 The settlement monitor is a module, and the runner classifies nothing
+
+The composition runner used to decide its own verdict inline: three booleans, a ternary, and a
+string. A runner that classifies its own run can be made to pass by editing the runner.
+
+`packages/monitor` now owns it. `classify` is a mirror of
+`crates/vinct-types/src/settlement.rs`, checked against it on all 729 observations of a
+two-action cohort rather than on a handful of chosen cases. All four classifications are
+reachable in that sweep, which is asserted separately: an earlier version of the generator
+pinned one action to a fixed outcome and made `AllActionsApplied` unreachable, so the sweep
+would have been exhaustive over a space that excluded the answer that matters most.
+
+`observeSettlement` reads base-layer accounts with a per-read timeout and reports `NotObserved`
+for anything it could not read. That distinction is the module's reason to exist. An RPC that
+hangs and a cohort that did not deliver look identical to a naive observer, and reporting the
+first as the second opens a recovery proposal for an operation that settled fine. There is a
+test that runs the real observer against a server that accepts connections and never answers.
+
+`packages/monitor/src/recovery.ts` turns a classification into a governed proposal, or refuses
+with a reason. Only `CommitWithoutActions` permits one. `PartialObservation` is blocked
+deliberately: a half-applied cohort means an assumption about transaction-strategy grouping was
+wrong, and automating a retry before someone understands why is how a bounded action becomes
+unbounded. The missing action list comes from the observations, never from the caller, because
+a caller that names missing effects could name one that applied.
+
+### D-0057 A router that disagrees with the chain resolves nothing
+
+`resolveEphemeralEndpoint` fell through to the configured endpoint whenever the router failed
+to produce a match, including the case where the router was up, published a routing table, and
+that table did not list the validator the account is actually delegated to.
+
+Those are different situations. A router that is down has no opinion, and the configured
+endpoint is the honest fallback for the local stack. A router that lists routes and does not
+list yours is a contradiction between two sources of truth, and substituting a configured
+endpoint there would send delegated private state to a rollup the account is not delegated to.
+That is D-0041's failure arriving from the other direction: there a stranger chose the rollup,
+here a stale routing table would.
+
+There is now a `router-mismatch` source that resolves no endpoint and says why. An empty
+routing table stays an absence of evidence rather than a mismatch, because a router with
+nothing to report contradicts nothing.
+
+### D-0058 A bound receipt is not a settled one
+
+`packages/verifier/src/operation.ts` verifies one real operation against the chain: it reads
+the released core, reads the covenant that core names, checks the core's frozen snapshot really
+is the covenant's terms, and re-derives the operation ID from those terms with the verifier's
+own canonical implementation. Then it checks that the certificate, the settlement receipt, and
+every adapter receipt carry that same ID. A judge needs the RPC and the artifact's addresses,
+and nothing the artifact claims is trusted.
+
+The first version got one thing wrong and it is worth recording. Its receipt checks were named
+"settled the derived operation" while what they actually checked was the operation binding. Run
+against the `--fail-one` artifact it printed `PASS alpha settled the derived operation` for a
+cohort where nothing had executed: the receipts existed, because they are initialised before
+scheduling, and they carried the right operation ID.
+
+Identity and delivery are now separate. The checks verify that an operation ID is the honest
+derivation of terms the members agreed to and that every account involved carries it. Delivery
+is reported alongside, explicitly not verified, because a cohort that was scheduled and stripped
+has correctly bound receipts and no effects. Folding the two together would let a verified
+identity read as a completed settlement, which is the exact confusion the whole settlement model
+exists to prevent.

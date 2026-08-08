@@ -96,7 +96,15 @@ fn action_json(action: &CanonicalActionV1) -> Value {
 fn template_action_json(action: &ActionTemplateV1) -> Value {
     json!({
         "domain": hex32(&action.domain),
+        "template_version": action.template_version,
         "action_index": action.action_index,
+        "cluster_genesis_hash": hex32(&action.cluster_genesis_hash),
+        "covenant": address_hex(&action.covenant),
+        "circle_epoch": action.circle_epoch.to_string(),
+        "policy_id": hex32(&action.policy_id),
+        "action_category": match action.action_category {
+            ActionCategoryV1::PauseNewBorrowing => "pause_new_borrowing",
+        },
         "adapter_program_id": address_hex(&action.adapter_program_id),
         "adapter_version": action.adapter_version,
         "adapter_capability": address_hex(&action.adapter_capability),
@@ -428,6 +436,8 @@ fn main() {
             "sha256": hex32(&recovery_id),
             "differs_from_original": recovery_id != issued.operation_id,
         },
+
+        "settlement_classification": settlement_classification_vectors(),
     });
 
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -443,6 +453,113 @@ fn main() {
     )
     .expect("writes vectors");
     println!("wrote {}", path.display());
+}
+
+/// Every classification the reconciler can reach, enumerated rather than chosen.
+///
+/// A hand-picked set of cases proves the classifier agrees with the vectors on the cases
+/// somebody thought of. The whole input space for a two-action cohort is 3^6 = 729
+/// observations, which is small enough to emit in full, so the TypeScript monitor is checked
+/// against the Rust classifier on all of them and there is no case anyone had to think of.
+///
+/// Two actions is the smallest cohort where `PartialObservation` is reachable at all, which is
+/// what makes it the right width: one action can only be applied or not. Both actions vary
+/// independently, because pinning one to a fixed outcome makes whole classifications
+/// unreachable and quietly turns an exhaustive sweep into a sample.
+fn settlement_classification_vectors() -> Value {
+    use vinct_types::settlement::{
+        classify, permits_recovery, status_for, ActionDeliveryState, ActionObservationV1,
+        ObservationV1, SettlementObservationV1,
+    };
+
+    const OBSERVATIONS: [ObservationV1; 3] = [
+        ObservationV1::Present,
+        ObservationV1::Absent,
+        ObservationV1::NotObserved,
+    ];
+
+    fn observation_label(value: ObservationV1) -> &'static str {
+        match value {
+            ObservationV1::Present => "present",
+            ObservationV1::Absent => "absent",
+            ObservationV1::NotObserved => "not_observed",
+        }
+    }
+
+    let operation_id = sha256(b"vinct-settlement-classification-vectors");
+    let mut cases = Vec::new();
+
+    for checkpoint in OBSERVATIONS {
+        for settlement in OBSERVATIONS {
+            for first_receipt in OBSERVATIONS {
+                for first_effect in OBSERVATIONS {
+                    for second_receipt in OBSERVATIONS {
+                        for second_effect in OBSERVATIONS {
+                            let pairs = [
+                                (first_receipt, first_effect),
+                                (second_receipt, second_effect),
+                            ];
+                            let actions = pairs
+                                .iter()
+                                .enumerate()
+                                .map(|(index, (receipt, target_effect))| ActionObservationV1 {
+                                    action_index: index as u16,
+                                    receipt: *receipt,
+                                    target_effect: *target_effect,
+                                    delivery_state: ActionDeliveryState::Scheduled,
+                                })
+                                .collect();
+                            let observation = SettlementObservationV1 {
+                                operation_id,
+                                certificate_checkpoint: checkpoint,
+                                settlement_receipt: settlement,
+                                actions,
+                            };
+                            let classification = classify(&observation);
+                            cases.push(json!({
+                                "certificate_checkpoint": observation_label(checkpoint),
+                                "settlement_receipt": observation_label(settlement),
+                                "actions": pairs.iter().enumerate().map(|(index, (receipt, effect))| json!({
+                                    "action_index": index,
+                                    "receipt": observation_label(*receipt),
+                                    "target_effect": observation_label(*effect),
+                                })).collect::<Vec<_>>(),
+                                "classification": format!("{:?}", classification),
+                                "status": format!("{:?}", status_for(classification)),
+                                "permits_recovery": permits_recovery(classification),
+                            }));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // An empty cohort is its own case: there is nothing to have applied, and reporting
+    // success would be the worst possible answer.
+    let empty = SettlementObservationV1 {
+        operation_id,
+        certificate_checkpoint: ObservationV1::Present,
+        settlement_receipt: ObservationV1::Present,
+        actions: Vec::new(),
+    };
+    let empty_classification = classify(&empty);
+
+    json!({
+        "operation_id": hex32(&operation_id),
+        "note": "Every observation of a two-action cohort, exhaustive over Present/Absent/NotObserved.",
+        "why": "A classifier checked only on cases someone chose is checked only on the mistakes someone anticipated.",
+        "case_count": cases.len(),
+        "cases": cases,
+        "empty_cohort": {
+            "certificate_checkpoint": "present",
+            "settlement_receipt": "present",
+            "actions": [],
+            "classification": format!("{:?}", empty_classification),
+            "status": format!("{:?}", status_for(empty_classification)),
+            "permits_recovery": permits_recovery(empty_classification),
+        },
+    })
 }
 
 fn domains_vector() -> Value {

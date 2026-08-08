@@ -896,24 +896,221 @@
   },
   {
     "id": "a-capability-is-a-reusable-bounded-policy",
-    "wording": "A protocol authority arms a versioned action template before any incident exists, and that one arming executes two distinct operations. Neither operation can consume the other’s receipt, and a capability suspended after a certificate is issued still refuses to execute.",
+    "wording": "A protocol authority arms a versioned action template before any incident exists, and that one arming settles two separately certified incidents under the same covenant. Both certificates are earned by an incident reaching its threshold; neither is written by the test. Neither operation can consume the other's receipt, and a capability suspended after a certificate is issued still refuses to execute.",
     "status": "verified",
     "proof_level": 4,
     "network": "litesvm",
-    "source_commit": "eaee097",
+    "source_commit": "PENDING",
     "program_ids": [
       "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4"
     ],
     "transactions": [],
     "commands": [
       "anchor build --ignore-keys",
-      "cargo test -p vinct-program-tests --test sovereignty"
+      "cargo test -p vinct-program-tests --test sovereignty",
+      "cargo test -p vinct-program-tests --test composition"
     ],
     "artifacts": [],
-    "verified_at": "2026-08-08T08:30:00Z",
+    "verified_at": "2026-08-08T00:00:00Z",
     "limitations": [
-      "Proven in LiteSVM. The same capability serving two operations through a live Magic Action cohort is the next step and needs the local stack.",
+      "Proven in LiteSVM. The same capability serving two operations through two live Magic Action cohorts is not yet run on the local stack; the single-cohort live path is covered by phase5-composition-earns-its-own-certificate.",
       "The reference model and the standalone verifier compute the template commitment from ActionTemplateV1; the adapter rebuilds it from its own fixed account list. They agree by construction and by test, not by sharing code, which is deliberate."
+    ]
+  },
+  {
+    "id": "phase5-composition-earns-its-own-certificate",
+    "wording": "The full sequence runs with nothing chosen by the runner: three protocols form and arm a covenant, an incident opens under it, collects a private claim and two sealed attestations inside a Private Ephemeral Rollup, certifies in memory, scrubs, and releases; the certificate is published permissionlessly from the released core; and the Magic Action cohort settles under the operation ID certification derived. Three markets pause, three adapter receipts are written, and the settlement receipt finalizes. Every effect is read from base-layer account state after the fact.",
+    "status": "verified",
+    "proof_level": 5,
+    "network": "local-magicblock-stack",
+    "source_commit": "PENDING",
+    "program_ids": [
+      "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4"
+    ],
+    "transactions": [],
+    "commands": [
+      "bash scripts/bootstrap-local.sh start",
+      "pnpm exec tsx scripts/phase5-composition.ts"
+    ],
+    "artifacts": [
+      "artifacts/local-stack/phase5-composition-success.json"
+    ],
+    "verified_at": "2026-08-08T00:00:00Z",
+    "limitations": [
+      "Local MagicBlock stack, not the TEE-backed Devnet PER. Confidentiality against the node operator is a separate rung and is claimed separately.",
+      "One cohort of three adapters plus a settlement receipt. Larger cohorts are bounded by the CU benchmarks, not by this run."
+    ]
+  },
+  {
+    "id": "phase5-one-failing-action-removes-the-cohort",
+    "wording": "A single BaseAction that cannot succeed removes the whole strategy: with one protocol's adapter signer unregistered, and again with one protocol's capability suspended after certification, no market paused, no adapter receipt was written, and the settlement receipt did not finalize. Both runs classify as COMMIT_WITHOUT_ACTIONS from observed base state, never from the scheduling signature.",
+    "status": "verified",
+    "proof_level": 5,
+    "network": "local-magicblock-stack",
+    "source_commit": "PENDING",
+    "program_ids": [
+      "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4"
+    ],
+    "transactions": [],
+    "commands": [
+      "pnpm exec tsx scripts/phase5-composition.ts --fail-one",
+      "pnpm exec tsx scripts/phase5-composition.ts --suspend-one"
+    ],
+    "artifacts": [
+      "artifacts/local-stack/phase5-composition-fail-one.json",
+      "artifacts/local-stack/phase5-composition-suspend-one.json"
+    ],
+    "verified_at": "2026-08-08T00:00:00Z",
+    "limitations": [
+      "Observed on the local stack with one strategy holding all four actions. A cohort split across several strategies would fail differently, and VINCT does not currently split one.",
+      "This is why recovery is a governed proposal under a new operation ID: the actions that appear to have run did not, so retrying the visible gap alone would leave the cohort half applied."
+    ]
+  },
+  {
+    "id": "phase5-earned-certificates-refuse-mutation-and-replay",
+    "wording": "Against certificates an incident earned rather than a test wrote: substituting any single account of the canonical bundle for the corresponding account of a different armed protocol is refused and the canonical bundle still executes; and a settled operation is refused a second execution by the adapter receipt, by the target protocol's own last_operation_id, and by the settlement receipt, with no state moved.",
+    "status": "verified",
+    "proof_level": 4,
+    "network": "litesvm",
+    "source_commit": "PENDING",
+    "program_ids": [
+      "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4"
+    ],
+    "transactions": [],
+    "commands": [
+      "anchor build --ignore-keys",
+      "cargo test -p vinct-program-tests --test composition"
+    ],
+    "artifacts": [],
+    "verified_at": "2026-08-08T00:00:00Z",
+    "limitations": [
+      "Account-level substitution from the set of armed protocols in the fixture. Arbitrary attacker-controlled accounts are covered separately in adversarial.rs against manufactured certificates, where forging is the point."
+    ]
+  },
+  {
+    "id": "phase5-settlement-monitor-agrees-with-the-reference",
+    "wording": "The TypeScript settlement monitor reaches the same classification, status, and recovery eligibility as crates/vinct-types on all 729 observations of a two-action cohort, and all four classifications are reachable in that sweep. An RPC that hangs yields NotObserved and classifies as Unknown, never as CommitWithoutActions, proven by running the real observer against a server that accepts connections and never answers.",
+    "status": "verified",
+    "proof_level": 3,
+    "network": "none",
+    "source_commit": "PENDING",
+    "program_ids": [],
+    "transactions": [],
+    "commands": [
+      "pnpm gen-vectors",
+      "pnpm exec tsx --test tests/program/settlement-monitor.test.ts"
+    ],
+    "artifacts": [
+      "packages/test-vectors/canonical-vectors.json"
+    ],
+    "verified_at": "2026-08-08T00:00:00Z",
+    "limitations": [
+      "Two actions. Larger cohorts are covered by the same branches, and the sweep is exhaustive only at that width.",
+      "The delivery states Reverted and RemovedBeforeRetry are never assigned, because neither is visible in account state. Both need the base transaction's own log."
+    ]
+  },
+  {
+    "id": "phase5-recovery-is-governed-and-never-a-retry",
+    "wording": "A recovery proposal is only produced for CommitWithoutActions. PartialObservation and Unknown are refused outright, the missing action list is derived from the observations rather than supplied by the caller, the recovery draws a new operation ID that matches the Rust derivation, reusing the original certificate nonce is refused, and one original operation gets at most one recovery.",
+    "status": "verified",
+    "proof_level": 3,
+    "network": "none",
+    "source_commit": "PENDING",
+    "program_ids": [],
+    "transactions": [],
+    "commands": [
+      "pnpm exec tsx --test tests/program/settlement-monitor.test.ts"
+    ],
+    "artifacts": [],
+    "verified_at": "2026-08-08T00:00:00Z",
+    "limitations": [
+      "The registry is a client-side governance artifact. Nothing on chain enforces that a recovery was proposed before a new cohort is scheduled; what the chain enforces is that the new operation ID is different, which is what makes a duplicate effect impossible."
+    ]
+  },
+  {
+    "id": "phase5-router-mismatch-resolves-nothing",
+    "wording": "When the router is reachable, publishes a routing table, and that table does not list the validator named in the account's delegation record, endpoint resolution returns no endpoint and the source router-mismatch. A configured endpoint is supplied in the test and is deliberately not substituted. A router that is unreachable, or one with an empty table, remains an absence of evidence and still falls back.",
+    "status": "verified",
+    "proof_level": 3,
+    "network": "none",
+    "source_commit": "PENDING",
+    "program_ids": [],
+    "transactions": [],
+    "commands": [
+      "pnpm exec tsx --test tests/program/routing.test.ts"
+    ],
+    "artifacts": [],
+    "verified_at": "2026-08-08T00:00:00Z",
+    "limitations": [
+      "Against a stub router. The live devnet router's getDelegationStatus shape for a delegated account is still unconfirmed; see docs/decision-log.md D-0009."
+    ]
+  },
+  {
+    "id": "phase5-operation-independently-verified-from-chain",
+    "wording": "A standalone verifier re-derives the operation ID from the covenant's terms with an implementation sharing no code with the program, and confirms it equals the one the program recorded, the one the certificate carries, and the one every adapter and settlement receipt is bound to. It also confirms the incident's frozen snapshot is the covenant's terms, that the threshold that certified is the covenant's threshold, that the certificate was issued by the incident rather than by any authority, and that the private fields were zeroized before release. 17 checks, VERIFIED on all three local runs.",
+    "status": "verified",
+    "proof_level": 5,
+    "network": "local-magicblock-stack",
+    "source_commit": "PENDING",
+    "program_ids": [
+      "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4"
+    ],
+    "transactions": [],
+    "commands": [
+      "pnpm verify-operation artifacts/local-stack/phase5-composition-success.json"
+    ],
+    "artifacts": [
+      "artifacts/local-stack/phase5-composition-success.json",
+      "artifacts/local-stack/phase5-composition-fail-one.json",
+      "artifacts/local-stack/phase5-composition-suspend-one.json"
+    ],
+    "verified_at": "2026-08-08T00:00:00Z",
+    "limitations": [
+      "Verification is of operation identity, not of delivery. Delivery is reported alongside and explicitly not asserted, because a cohort that was scheduled and stripped has correctly bound receipts and no effects. See docs/decision-log.md D-0058.",
+      "The verifier uses the client's account decoders, which are themselves pinned to generated vectors. The operation-ID derivation shares no code with the program."
+    ]
+  },
+  {
+    "id": "phase5-committed-vectors-are-current",
+    "wording": "Regenerating both vector files produces no diff against what is committed, so every cross-language parity test is checking the TypeScript against the layout the Rust defines today. This is a gate because it was once false: ActionTemplateV1 gained six fields and the vectors were never regenerated, so the vectors and the TypeScript agreed with each other and neither agreed with the program.",
+    "status": "verified",
+    "proof_level": 3,
+    "network": "none",
+    "source_commit": "PENDING",
+    "program_ids": [],
+    "transactions": [],
+    "commands": [
+      "pnpm check-vectors"
+    ],
+    "artifacts": [
+      "packages/test-vectors/canonical-vectors.json",
+      "packages/test-vectors/account-layouts.json"
+    ],
+    "verified_at": "2026-08-08T00:00:00Z",
+    "limitations": [
+      "Catches drift between the Rust definitions and the committed vectors. It cannot catch a Rust definition that is itself wrong."
+    ]
+  },
+  {
+    "id": "phase5-gate-tests-cover-the-required-failures",
+    "wording": "The Phase 5 gate's named failure cases each have a test: a covenant past its epoch window cannot host a new incident and one that never armed cannot either; a member cannot be added or substituted after ratification freezes the set; an unarmed capability refuses a valid certificate; a quarantined member cannot attest; an expired certificate is refused; a mutated bundle is refused against an earned certificate; a router that contradicts the delegation record resolves nothing; and a service that hangs classifies as Unknown.",
+    "status": "verified",
+    "proof_level": 4,
+    "network": "litesvm",
+    "source_commit": "PENDING",
+    "program_ids": [
+      "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4"
+    ],
+    "transactions": [],
+    "commands": [
+      "anchor build --ignore-keys",
+      "cargo test --workspace",
+      "pnpm exec tsx --test \"tests/**/*.test.ts\""
+    ],
+    "artifacts": [],
+    "verified_at": "2026-08-08T00:00:00Z",
+    "limitations": [
+      "Router mismatch and service timeout are proven against stubs rather than a degraded live service, which is the honest rung for a failure you cannot ask a provider to produce on demand."
     ]
   }
 ]

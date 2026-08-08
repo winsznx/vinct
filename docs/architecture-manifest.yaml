@@ -141,6 +141,15 @@ settlement:
   fee_vault: null
   delegated_fee_payer: null
   recovery_path: "observe every expected effect, classify, create governed recovery with a new operation ID"
+  # Observed on the local stack in Phase 5. See docs/decision-log.md D-0053.
+  observed_failure_granularity: "strategy"
+  observed_failure_note: >-
+    One BaseAction that cannot succeed removes the whole strategy. Two separate causes were
+    run, an unregistered adapter signer and a capability suspended after certification, and
+    both produced COMMIT_WITHOUT_ACTIONS with no market paused and no adapter receipt written.
+    Nothing partial was observed. Recovery therefore replaces the cohort under a new operation
+    ID rather than retrying the actions that appear to be missing.
+  classification_source: "base-layer account state, read after the fact; a scheduling signature means INTENT_ACCEPTED and nothing more"
 
 external_dependencies:
   - "MagicBlock base RPC"

@@ -159,7 +159,20 @@ export interface TemplateAccountMeta {
 
 export interface ActionTemplate {
   domain: Uint8Array;
+  /**
+   * The template layout version.
+   *
+   * Separate from the domain separator: the domain says which kind of thing this is, the
+   * version says which shape of that kind. A template written under a later layout is refused
+   * rather than reinterpreted.
+   */
+  templateVersion: number;
   actionIndex: number;
+  clusterGenesisHash: Uint8Array;
+  covenant: Uint8Array;
+  circleEpoch: bigint;
+  policyId: Uint8Array;
+  actionCategory: ActionCategory;
   adapterProgramId: Uint8Array;
   adapterVersion: number;
   adapterCapability: Uint8Array;
@@ -366,7 +379,13 @@ export function encodeActionTemplate(template: ActionTemplate): Uint8Array {
 function writeActionTemplateInto(writer: BorshWriter, template: ActionTemplate): void {
   writer
     .fixedBytes(template.domain, 32)
+    .u16(template.templateVersion)
     .u16(template.actionIndex)
+    .fixedBytes(template.clusterGenesisHash, 32)
+    .fixedBytes(template.covenant, 32)
+    .u64(template.circleEpoch)
+    .fixedBytes(template.policyId, 32)
+    .u8(variantIndex(ACTION_CATEGORIES, template.actionCategory))
     .fixedBytes(template.adapterProgramId, 32)
     .u16(template.adapterVersion)
     .fixedBytes(template.adapterCapability, 32)
@@ -380,7 +399,13 @@ function writeActionTemplateInto(writer: BorshWriter, template: ActionTemplate):
 function readActionTemplate(reader: BorshReader): ActionTemplate {
   return {
     domain: reader.fixedBytes(32),
+    templateVersion: reader.u16(),
     actionIndex: reader.u16(),
+    clusterGenesisHash: reader.fixedBytes(32),
+    covenant: reader.fixedBytes(32),
+    circleEpoch: reader.u64(),
+    policyId: reader.fixedBytes(32),
+    actionCategory: variantAt(ACTION_CATEGORIES, reader.u8()),
     adapterProgramId: reader.fixedBytes(32),
     adapterVersion: reader.u16(),
     adapterCapability: reader.fixedBytes(32),

@@ -625,6 +625,58 @@ impl World {
 
     // ------------------------------------------------------------------ adapter
 
+    /// Re-points the fixture's capabilities at a covenant that actually exists.
+    ///
+    /// `new` seeds capabilities against an opaque covenant address, which is all the adapter
+    /// tests need: they check the adapter's own boundary and never certify anything. A test
+    /// that wants a capability to honour a certificate an incident earned needs the capability
+    /// seeded by the real covenant, because both the PDA and the armed commitment carry it.
+    ///
+    /// Must be called before any capability is installed. The addresses change, so anything
+    /// already written to the old ones is orphaned.
+    pub fn refocus_on_covenant(&mut self, covenant: Address) {
+        self.covenant = covenant;
+        self.member_set_hash = self.read_covenant_member_set_hash();
+        for protocol in &mut self.protocols {
+            let (capability, _) = Address::find_program_address(
+                &[
+                    CAPABILITY_SEED,
+                    protocol.authority.pubkey().as_ref(),
+                    covenant.as_ref(),
+                    self.policy_id.as_ref(),
+                ],
+                &adapter_program(),
+            );
+            let (adapter_signer, _) = Address::find_program_address(
+                &[ADAPTER_SIGNER_SEED, capability.as_ref()],
+                &adapter_program(),
+            );
+            protocol.capability = capability;
+            protocol.adapter_signer = adapter_signer;
+        }
+    }
+
+    /// The member set the covenant froze at ratification.
+    ///
+    /// Read from the account rather than recomputed, because what a capability has to be armed
+    /// against is the value the certificate will carry, not a second opinion about it. The
+    /// recomputation is checked on its own in `covenant.rs`.
+    fn read_covenant_member_set_hash(&self) -> [u8; 32] {
+        const MEMBER_SET_HASH_OFFSET: usize =
+            8 + 2 + 32 + 8 + 8 + 32 + 1 + 32 + 32 + 1 + 1 + 8 + 8 + 1 + 1 + 1 + 1;
+        let account = self
+            .svm
+            .get_account(&self.covenant)
+            .expect("the covenant exists");
+        let mut hash = [0u8; 32];
+        hash.copy_from_slice(&account.data[MEMBER_SET_HASH_OFFSET..MEMBER_SET_HASH_OFFSET + 32]);
+        assert_ne!(
+            hash, [0u8; 32],
+            "the covenant has not ratified, so it has no frozen member set to arm against"
+        );
+        hash
+    }
+
     /// The template commitment a protocol authority signs when it arms this adapter.
     ///
     /// Order and flags mirror the adapter's `ExecuteBoundedAction` context exactly:

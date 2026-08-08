@@ -201,7 +201,13 @@ function rebuildActionBundle(entry: VectorEntry): ActionBundle {
 function rebuildActionTemplate(entry: VectorEntry): ActionTemplate {
   return {
     domain: bytesField(entry, "domain"),
+    templateVersion: numberField(entry, "template_version"),
     actionIndex: numberField(entry, "action_index"),
+    clusterGenesisHash: bytesField(entry, "cluster_genesis_hash"),
+    covenant: bytesField(entry, "covenant"),
+    circleEpoch: bigintField(entry, "circle_epoch"),
+    policyId: bytesField(entry, "policy_id"),
+    actionCategory: field(entry, "action_category") as ActionTemplate["actionCategory"],
     adapterProgramId: bytesField(entry, "adapter_program_id"),
     adapterVersion: numberField(entry, "adapter_version"),
     adapterCapability: bytesField(entry, "adapter_capability"),
