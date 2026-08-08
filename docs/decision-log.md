@@ -902,3 +902,72 @@ whether the incident has certified, is the public status anyway.
 The reference model in `crates/vinct-reference` needed no change. It models transitions, not
 storage, and the transitions are the same ones. That the split left it untouched is a small
 piece of evidence that the model was drawn at the right level.
+
+### D-0044 Certification reconstructs the ballot set instead of trusting it
+
+The split-account model made certification depend on receiving the complete frozen ballot
+set. The first version checked count, owner, incident binding, and PDA derivation, and
+deduplicated by address. That is a list of plausible checks rather than a proof, and it left
+a real hole: nothing tied the ballots to the *set* the incident froze.
+
+Concretely, `initialize_attestation` will create a ballot for any key. An opener could create
+four, open with three, and hand certification a different three of the four. Every account
+would be a genuine, correctly derived ballot of that incident, and every individual check
+would pass.
+
+Two changes close it.
+
+`open_incident` now takes the member list rather than a digest of it. It requires the list to
+be strictly ascending, computes the commitment itself, and requires a ballot account to
+already exist at the canonical address for every member before freezing anything. A caller
+cannot hand in a digest of their own, and a set naming a member with no ballot is refused,
+because freezing one would make certification impossible for the incident's whole life:
+certification demands the complete set and nothing afterwards could create the missing one.
+
+`certify_incident` then reconstructs. Every ballot is validated on its own, the members must
+arrive strictly ascending, and the commitment recomputed over them has to equal the frozen
+one. That single equality carries most of the invariants at once. A missing member, an extra
+one, a duplicate, a ballot from another incident, and a ballot relabelled to another member
+each either change the digest or fail an earlier check.
+
+Ascending order is the canonical rule, and an out-of-order list is refused rather than sorted.
+Sorting inside the program would mean committing to a set the caller did not send. It is also
+the same rule `MemberSetV1` already follows, so there is one ordering convention rather than
+two.
+
+Strict ascent subsumes duplicate detection, so the separate `DuplicateAttestation` error is
+gone rather than left unreachable.
+
+Two further hardenings came out of writing the tests. `certify_incident` and `open_incident`
+now constrain the core by its own seeds, so a caller cannot settle one incident's ballots
+against another's threshold. And every account in the family carries a schema version that is
+checked wherever it is read by hand, so a ballot written under a different layout is refused
+rather than reinterpreted.
+
+Eighteen adversarial tests, one per mutation, in
+`crates/vinct-program-tests/tests/privacy.rs`.
+
+### D-0045 A rejected incident is named at its deadline, not the moment it is blocked
+
+The reference model returns `RejectedByThreshold` as soon as rejections pass the ceiling. The
+program deliberately does not act on that, because settling the moment a blocking rejection
+lands announces exactly when it landed.
+
+The first version folded the rejected case into `Expired`, which removed the timing leak and
+also removed information the covenant needs: a blocked incident and an unanswered one are
+different situations for the people who have to respond to them.
+
+`IncidentStatus::RejectedByThreshold` now exists and is written at or after the deadline. By
+then the aggregate is published anyway, so naming the outcome precisely costs nothing, and
+before the deadline both cases still refuse identically with `IncidentNotTerminal`.
+
+That also makes the parity with the reference model exact rather than approximate, which is
+what `crates/vinct-program-tests/tests/reference_parity.rs` now asserts over all 512 cases:
+four choices per member, every quarantine subset, both sides of the deadline. The two
+implementations share no code. The program counts by reconstructing a set of accounts from a
+commitment; the model counts by walking a vector.
+
+The one place they are allowed to differ is stated in the test rather than hidden: before the
+deadline the model may already say `RejectedByThreshold` or `Impossible` while the program
+still refuses to settle. The model is a view of the state, the program is a transition on it,
+and they agree about the state.

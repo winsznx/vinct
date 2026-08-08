@@ -96,12 +96,11 @@ struct OpenIncidentArgs {
     covenant: [u8; 32],
     circle_epoch: u64,
     policy_id: [u8; 32],
-    member_set_hash: [u8; 32],
     cluster_genesis_hash: [u8; 32],
     required_approvals: u8,
     maximum_rejections: u8,
     response_window_slots: u64,
-    member_count: u8,
+    members: Vec<[u8; 32]>,
     claim_digest: [u8; 32],
 }
 
@@ -148,6 +147,32 @@ struct Incident {
     members: Vec<Keypair>,
 }
 
+/// A second incident living in the same world, for substitution tests.
+struct Sibling {
+    core: Address,
+    members: Vec<Keypair>,
+}
+
+impl Sibling {
+    fn ballots(&self) -> Vec<Address> {
+        (0..self.members.len())
+            .map(|index| self.attestation_of(index))
+            .collect()
+    }
+
+    fn attestation_of(&self, index: usize) -> Address {
+        Address::find_program_address(
+            &[
+                ATTESTATION_SEED,
+                self.core.as_ref(),
+                self.members[index].pubkey().as_ref(),
+            ],
+            &core_program(),
+        )
+        .0
+    }
+}
+
 impl Incident {
     fn new() -> Self {
         Self::with_members(3)
@@ -167,7 +192,10 @@ impl Incident {
         let (claim, _) =
             Address::find_program_address(&[CLAIM_SEED, core.as_ref()], &core_program());
 
-        let members: Vec<Keypair> = (0..count)
+        // Canonical ascending order, because the program commits to the member set in that
+        // order and refuses any other. Generating and then sorting means the tests exercise
+        // the same ordering rule a client has to follow.
+        let mut members: Vec<Keypair> = (0..count)
             .map(|_| {
                 let member = Keypair::new();
                 world
@@ -177,6 +205,7 @@ impl Incident {
                 member
             })
             .collect();
+        members.sort_by_key(|a| a.pubkey().to_bytes());
 
         let mut incident = Self {
             world,
@@ -187,6 +216,161 @@ impl Incident {
         };
         incident.initialize();
         incident
+    }
+
+    /// Creates a second, fully independent incident in the same SVM.
+    ///
+    /// Loading three programs into a fresh SVM dominates the cost of a case, so a
+    /// substitution test builds its decoy here rather than in a second world.
+    fn add_sibling(&mut self, incident_id: u64, count: usize) -> Sibling {
+        let (core, _) = Address::find_program_address(
+            &[
+                INCIDENT_SEED,
+                self.world.covenant.as_ref(),
+                &incident_id.to_le_bytes(),
+            ],
+            &core_program(),
+        );
+        let opener = self.opener();
+        let system = Address::default();
+
+        self.world
+            .send(
+                Instruction {
+                    program_id: core_program(),
+                    accounts: vec![
+                        AccountMeta::new(core, false),
+                        AccountMeta::new(opener.pubkey(), true),
+                        AccountMeta::new_readonly(system, false),
+                    ],
+                    data: instruction_data(
+                        "initialize_incident",
+                        &InitializeIncidentArgs {
+                            incident_id,
+                            covenant: self.world.covenant.to_bytes(),
+                        },
+                    ),
+                },
+                &[&opener],
+            )
+            .expect("sibling core initializes");
+
+        let mut members: Vec<Keypair> = (0..count).map(|_| Keypair::new()).collect();
+        members.sort_by_key(|a| a.pubkey().to_bytes());
+        for member in &members {
+            let (attestation, _) = Address::find_program_address(
+                &[ATTESTATION_SEED, core.as_ref(), member.pubkey().as_ref()],
+                &core_program(),
+            );
+            self.world
+                .send(
+                    Instruction {
+                        program_id: core_program(),
+                        accounts: vec![
+                            AccountMeta::new_readonly(core, false),
+                            AccountMeta::new(attestation, false),
+                            AccountMeta::new(opener.pubkey(), true),
+                            AccountMeta::new_readonly(system, false),
+                        ],
+                        data: instruction_data(
+                            "initialize_attestation",
+                            &MemberArg {
+                                member: member.pubkey().to_bytes(),
+                            },
+                        ),
+                    },
+                    &[&opener],
+                )
+                .expect("sibling ballot initializes");
+        }
+
+        let sibling = Sibling { core, members };
+
+        // Opened, so a test that substitutes this core reaches the ballot checks rather than
+        // stopping at "that incident is not collecting".
+        let args = OpenIncidentArgs {
+            incident_id,
+            covenant: self.world.covenant.to_bytes(),
+            circle_epoch: 1,
+            policy_id: self.world.policy_id,
+            cluster_genesis_hash: CLUSTER,
+            required_approvals: 2,
+            maximum_rejections: 1,
+            response_window_slots: 5_000,
+            members: sibling
+                .members
+                .iter()
+                .map(|m| m.pubkey().to_bytes())
+                .collect(),
+            claim_digest: vinct_program_tests::sha256(CANARY_CLAIM),
+        };
+        let mut accounts = vec![
+            AccountMeta::new(core, false),
+            AccountMeta::new_readonly(opener.pubkey(), true),
+        ];
+        for ballot in sibling.ballots() {
+            accounts.push(AccountMeta::new_readonly(ballot, false));
+        }
+        self.world
+            .send(
+                Instruction {
+                    program_id: core_program(),
+                    accounts,
+                    data: instruction_data("open_incident", &OpenIncidentIx { args }),
+                },
+                &[&opener],
+            )
+            .expect("sibling opens");
+
+        sibling
+    }
+
+    /// Ballots ordered by the member each belongs to, which is the order certification wants.
+    ///
+    /// Not the same as ordering by ballot address: the address is a hash of the member, so
+    /// the two orders are unrelated. Sorting by address is the mistake this helper exists to
+    /// stop a test from making by accident.
+    fn ballots_for(&self, members: &[Address]) -> Vec<Address> {
+        let mut pairs: Vec<(Address, Address)> = members
+            .iter()
+            .map(|member| (*member, self.attestation(member)))
+            .collect();
+        pairs.sort_by_key(|(member, _)| member.to_bytes());
+        pairs.into_iter().map(|(_, ballot)| ballot).collect()
+    }
+
+    /// Creates a ballot for a key that is not in the frozen set.
+    fn add_ballot_for(&mut self, member: &Address) -> Address {
+        let opener = self.opener();
+        let attestation = self.attestation(member);
+        self.world
+            .send(
+                Instruction {
+                    program_id: core_program(),
+                    accounts: vec![
+                        AccountMeta::new_readonly(self.core, false),
+                        AccountMeta::new(attestation, false),
+                        AccountMeta::new(opener.pubkey(), true),
+                        AccountMeta::new_readonly(Address::default(), false),
+                    ],
+                    data: instruction_data(
+                        "initialize_attestation",
+                        &MemberArg {
+                            member: member.to_bytes(),
+                        },
+                    ),
+                },
+                &[&opener],
+            )
+            .expect("spare ballot initializes");
+        attestation
+    }
+
+    /// Every ballot in the frozen set, in canonical order.
+    fn ballots(&self) -> Vec<Address> {
+        (0..self.members.len())
+            .map(|index| self.attestation_of(index))
+            .collect()
     }
 
     fn opener(&self) -> Keypair {
@@ -279,26 +463,49 @@ impl Incident {
         maximum_rejections: u8,
         response_window_slots: u64,
     ) -> Result<TransactionMetadata, FailedTransactionMetadata> {
+        let members: Vec<[u8; 32]> = self.members.iter().map(|m| m.pubkey().to_bytes()).collect();
+        self.open_with_members(
+            required_approvals,
+            maximum_rejections,
+            response_window_slots,
+            members,
+            (0..self.members.len())
+                .map(|index| self.attestation_of(index))
+                .collect(),
+        )
+    }
+
+    fn open_with_members(
+        &mut self,
+        required_approvals: u8,
+        maximum_rejections: u8,
+        response_window_slots: u64,
+        members: Vec<[u8; 32]>,
+        ballots: Vec<Address>,
+    ) -> Result<TransactionMetadata, FailedTransactionMetadata> {
         let opener = self.opener();
         let args = OpenIncidentArgs {
             incident_id: self.incident_id,
             covenant: self.world.covenant.to_bytes(),
             circle_epoch: 1,
             policy_id: self.world.policy_id,
-            member_set_hash: self.world.member_set_hash,
             cluster_genesis_hash: CLUSTER,
             required_approvals,
             maximum_rejections,
             response_window_slots,
-            member_count: self.members.len() as u8,
+            members,
             claim_digest: vinct_program_tests::sha256(CANARY_CLAIM),
         };
+        let mut accounts = vec![
+            AccountMeta::new(self.core, false),
+            AccountMeta::new_readonly(opener.pubkey(), true),
+        ];
+        for ballot in ballots {
+            accounts.push(AccountMeta::new_readonly(ballot, false));
+        }
         let instruction = Instruction {
             program_id: core_program(),
-            accounts: vec![
-                AccountMeta::new(self.core, false),
-                AccountMeta::new_readonly(opener.pubkey(), true),
-            ],
+            accounts,
             data: instruction_data("open_incident", &OpenIncidentIx { args }),
         };
         self.world.send(instruction, &[&opener])
@@ -554,16 +761,16 @@ impl Incident {
     fn terminal_counts(&self) -> (u8, u8) {
         let data = self.raw(&self.core);
         let body = &data[8..];
-        // covenant(32) epoch(8) incident_id(8) opener(32) status(1) policy(32) member_set(32)
-        // cluster(32) required(1) max_rejections(1) opened(8) expires(8) claim_digest(32)
-        // operation_id(32) member_count(1) approvals(1) rejections(1)
-        let offset = 32 + 8 + 8 + 32 + 1 + 32 + 32 + 32 + 1 + 1 + 8 + 8 + 32 + 32 + 1;
+        // version(2) covenant(32) epoch(8) incident_id(8) opener(32) status(1) policy(32)
+        // member_set(32) cluster(32) required(1) max_rejections(1) opened(8) expires(8)
+        // claim_digest(32) operation_id(32) member_count(1) approvals(1) rejections(1)
+        let offset = 2 + 32 + 8 + 8 + 32 + 1 + 32 + 32 + 32 + 1 + 1 + 8 + 8 + 32 + 32 + 1;
         (body[offset], body[offset + 1])
     }
 
     /// The public status byte.
     fn status(&self) -> u8 {
-        self.raw(&self.core)[8 + 32 + 8 + 8 + 32]
+        self.raw(&self.core)[8 + 2 + 32 + 8 + 8 + 32]
     }
 
     /// Drives the incident to a certified state with every canary written.
@@ -584,6 +791,7 @@ fn contains(haystack: &[u8], needle: &[u8]) -> bool {
 const STATUS_COLLECTING: u8 = 1;
 const STATUS_CERTIFIED: u8 = 2;
 const STATUS_EXPIRED: u8 = 3;
+const STATUS_REJECTED: u8 = 4;
 
 // ------------------------------------------------------------- sealed quorum
 
@@ -681,44 +889,337 @@ fn certification_does_not_wait_for_a_silent_member() {
     assert_eq!(incident.terminal_counts(), (2, 0));
 }
 
-/// Certification refuses anything but the exact set of ballots.
-///
-/// A short list would settle a partial tally. A duplicate would count one approval twice. A
-/// ballot from another incident would import a decision that was never cast here.
+// ------------------------------------------- the certification ballot set
+//
+// Certification reconstructs the frozen set rather than trusting what it is handed. Every
+// test below is one mutation of the supplied account list, and each has to be refused for a
+// named reason. A list that merely deserializes is not a list that may be counted.
+
+/// A short list settles a partial tally, so the count is checked first.
 #[test]
-fn certification_refuses_a_malformed_ballot_set() {
+fn certification_refuses_a_missing_ballot() {
     let mut incident = Incident::new();
     incident.open(2).expect("incident opens");
     incident.attest(0, APPROVE).expect("member 0 attests");
     incident.attest(1, APPROVE).expect("member 1 attests");
 
-    let ballots: Vec<Address> = (0..3).map(|index| incident.attestation_of(index)).collect();
-
+    let ballots = incident.ballots();
     assert_failed_with(
         incident.certify_with(&ballots[..2]),
         "AttestationCountMismatch",
     );
+}
+
+/// An extra ballot is refused on count, even when every account in the list is valid.
+#[test]
+fn certification_refuses_an_extra_ballot() {
+    let mut incident = Incident::with_members(3);
+    let extra = Keypair::new().pubkey();
+    let spare = incident.add_ballot_for(&extra);
+    incident.open(2).expect("incident opens");
+
+    let mut everyone: Vec<Address> = incident.members.iter().map(|m| m.pubkey()).collect();
+    everyone.push(extra);
+    let ballots = incident.ballots_for(&everyone);
+    let _ = spare;
+    assert_failed_with(incident.certify_with(&ballots), "AttestationCountMismatch");
+}
+
+/// A duplicate cannot be strictly ascending, so it is refused as an ordering violation.
+///
+/// Strict ascent is a stronger rule than "no duplicates" and subsumes it, which is why there
+/// is no separate duplicate error to reach.
+#[test]
+fn certification_refuses_a_duplicated_ballot() {
+    let mut incident = Incident::new();
+    incident.open(2).expect("incident opens");
+    incident.attest(0, APPROVE).expect("member 0 attests");
+
+    let ballots = incident.ballots();
     assert_failed_with(
         incident.certify_with(&[ballots[0], ballots[0], ballots[1]]),
-        "DuplicateAttestation",
+        "MemberSetNotAscending",
     );
+}
 
-    // A well-formed attestation belonging to a different incident.
-    let stranger = Incident::new();
-    let foreign = stranger.attestation_of(0);
-    let foreign_account = stranger
+/// A reordered list is refused rather than counted.
+///
+/// The alternative would be to sort inside the program, which would mean committing to a set
+/// the caller did not send. Refusing keeps the digest a function of exactly what arrived.
+#[test]
+fn certification_refuses_a_reordered_ballot_set() {
+    let mut incident = Incident::new();
+    incident.open(2).expect("incident opens");
+    incident.attest(0, APPROVE).expect("member 0 attests");
+    incident.attest(1, APPROVE).expect("member 1 attests");
+
+    let mut reversed = incident.ballots();
+    reversed.reverse();
+    assert_failed_with(incident.certify_with(&reversed), "MemberSetNotAscending");
+
+    // The canonical order still certifies, so the refusal is about the order and not about
+    // something else that happens to be wrong with the set.
+    incident.certify().expect("the canonical order certifies");
+}
+
+/// A ballot belonging to another incident cannot be substituted.
+///
+/// Covers a different epoch too: an incident's epoch is frozen on its own core, and a ballot
+/// is bound to that core, so a ballot from another epoch is a ballot from another incident.
+#[test]
+fn certification_refuses_a_ballot_from_another_incident() {
+    let mut incident = Incident::new();
+    let sibling = incident.add_sibling(78, 3);
+
+    incident.open(2).expect("incident opens");
+    incident.attest(0, APPROVE).expect("member 0 attests");
+    incident.attest(1, APPROVE).expect("member 1 attests");
+
+    let mut ballots = incident.ballots();
+    ballots[2] = sibling.attestation_of(2);
+    assert_failed_with(incident.certify_with(&ballots), "OperationMismatch");
+}
+
+/// A ballot from a member outside the frozen set cannot stand in for one inside it.
+///
+/// Every account here is a real, correctly derived ballot of this incident. Only the set is
+/// wrong, and only the commitment catches it.
+#[test]
+fn certification_refuses_a_ballot_outside_the_frozen_set() {
+    let mut incident = Incident::with_members(3);
+    let outsider = Keypair::new();
+    let spare = incident.add_ballot_for(&outsider.pubkey());
+    incident.open(2).expect("incident opens");
+    incident.attest(0, APPROVE).expect("member 0 attests");
+    incident.attest(1, APPROVE).expect("member 1 attests");
+
+    // Drop the silent member and put the outsider in its place. Same count, same canonical
+    // ordering rule, every account a real ballot of this incident.
+    let mut swapped: Vec<Address> = incident.members[..2].iter().map(|m| m.pubkey()).collect();
+    swapped.push(outsider.pubkey());
+    let ballots = incident.ballots_for(&swapped);
+    let _ = spare;
+    assert_failed_with(
+        incident.certify_with(&ballots),
+        "BallotSetDoesNotMatchSnapshot",
+    );
+}
+
+/// A ballot cannot be relabelled to another member.
+///
+/// The member field decides the address the account must live at, so rewriting it moves the
+/// account somewhere it is not.
+#[test]
+fn certification_refuses_a_relabelled_ballot() {
+    let mut incident = Incident::new();
+    incident.open(2).expect("incident opens");
+
+    let ballot = incident.attestation_of(0);
+    let other_member = incident.members[1].pubkey();
+    let mut account = incident
         .world
         .svm
-        .get_account(&foreign)
-        .expect("foreign attestation exists");
+        .get_account(&ballot)
+        .expect("ballot exists");
+    // version(2) incident(32) then member(32).
+    account.data[8 + 2 + 32..8 + 2 + 32 + 32].copy_from_slice(other_member.as_ref());
     incident
         .world
         .svm
-        .set_account(foreign, foreign_account)
-        .expect("foreign attestation copied in");
+        .set_account(ballot, account)
+        .expect("relabelled ballot written");
+
+    let ballots = incident.ballots();
+    assert_failed_with(incident.certify_with(&ballots), "OperationMismatch");
+}
+
+/// A ballot owned by anything but this program is refused before its bytes are read.
+#[test]
+fn certification_refuses_a_ballot_this_program_does_not_own() {
+    let mut incident = Incident::new();
+    incident.open(2).expect("incident opens");
+
+    let ballot = incident.attestation_of(0);
+    let mut account = incident
+        .world
+        .svm
+        .get_account(&ballot)
+        .expect("ballot exists");
+    account.owner = mock_protocol_program();
+    incident
+        .world
+        .svm
+        .set_account(ballot, account)
+        .expect("reowned ballot written");
+
+    let ballots = incident.ballots();
+    assert_failed_with(incident.certify_with(&ballots), "IncidentWrongOwner");
+}
+
+/// A ballot written under a different schema version is refused, not reinterpreted.
+#[test]
+fn certification_refuses_a_ballot_from_another_schema_version() {
+    let mut incident = Incident::new();
+    incident.open(2).expect("incident opens");
+
+    let ballot = incident.attestation_of(0);
+    let mut account = incident
+        .world
+        .svm
+        .get_account(&ballot)
+        .expect("ballot exists");
+    account.data[8..10].copy_from_slice(&99u16.to_le_bytes());
+    incident
+        .world
+        .svm
+        .set_account(ballot, account)
+        .expect("versioned ballot written");
+
+    let ballots = incident.ballots();
+    assert_failed_with(incident.certify_with(&ballots), "UnsupportedSchemaVersion");
+}
+
+/// A scrubbed ballot cannot be counted.
+///
+/// Its decision has been erased, so counting it would silently drop a member's vote rather
+/// than reporting that the set is not countable.
+#[test]
+fn certification_refuses_a_scrubbed_ballot() {
+    let mut incident = Incident::new();
+    incident.run_to_certified();
+
+    // Reopen the outcome by hand so the scrubbed ballot can be offered to certification.
+    incident.scrub_attestation(0).expect("ballot 0 scrubs");
+    let mut core = incident
+        .world
+        .svm
+        .get_account(&incident.core)
+        .expect("core exists");
+    core.data[8 + 2 + 32 + 8 + 8 + 32] = STATUS_COLLECTING;
+    incident
+        .world
+        .svm
+        .set_account(incident.core, core)
+        .expect("core rewound");
+
+    let ballots = incident.ballots();
+    assert_failed_with(incident.certify_with(&ballots), "BallotNotCountable");
+}
+
+/// Certification cannot be pointed at a different incident's core.
+#[test]
+fn certification_refuses_a_substituted_core() {
+    let mut incident = Incident::new();
+    let sibling = incident.add_sibling(78, 3);
+    incident.open(2).expect("incident opens");
+    incident.attest(0, APPROVE).expect("member 0 attests");
+    incident.attest(1, APPROVE).expect("member 1 attests");
+
+    let payer = incident.world.payer.insecure_clone();
+    let mut accounts = vec![AccountMeta::new(sibling.core, false)];
+    for ballot in incident.ballots() {
+        accounts.push(AccountMeta::new_readonly(ballot, false));
+    }
+    let instruction = Instruction {
+        program_id: core_program(),
+        accounts,
+        data: instruction_data_empty("certify_incident"),
+    };
+    // A substituted core still derives its own seeds, because it carries its own covenant
+    // and id. What it cannot do is match the ballots, which are bound to this incident.
     assert_failed_with(
-        incident.certify_with(&[ballots[0], ballots[1], foreign]),
+        incident.world.send(instruction, &[&payer]),
         "OperationMismatch",
+    );
+}
+
+// ------------------------------------------------------- freezing the set
+
+/// Opening refuses a member set that is not strictly ascending.
+#[test]
+fn opening_refuses_an_unsorted_member_set() {
+    let mut incident = Incident::new();
+    let mut members: Vec<[u8; 32]> = incident
+        .members
+        .iter()
+        .map(|m| m.pubkey().to_bytes())
+        .collect();
+    members.reverse();
+    let mut ballots = incident.ballots();
+    ballots.reverse();
+
+    assert_failed_with(
+        incident.open_with_members(2, 1, 5_000, members, ballots),
+        "MemberSetNotAscending",
+    );
+}
+
+/// Opening refuses a repeated member.
+#[test]
+fn opening_refuses_a_repeated_member() {
+    let mut incident = Incident::new();
+    let first = incident.members[0].pubkey().to_bytes();
+    let ballot = incident.attestation_of(0);
+
+    assert_failed_with(
+        incident.open_with_members(1, 1, 5_000, vec![first, first], vec![ballot, ballot]),
+        "MemberSetNotAscending",
+    );
+}
+
+/// Opening refuses a member with no ballot account.
+///
+/// Freezing a set that named a member without a ballot would make certification impossible
+/// for the incident's whole life: it demands the complete set, and nothing afterwards can
+/// create the missing one.
+#[test]
+fn opening_refuses_a_member_without_a_ballot() {
+    let mut incident = Incident::with_members(3);
+    let stranger = Keypair::new();
+    let mut members: Vec<[u8; 32]> = incident
+        .members
+        .iter()
+        .map(|m| m.pubkey().to_bytes())
+        .collect();
+    members.push(stranger.pubkey().to_bytes());
+    members.sort();
+
+    let mut everyone: Vec<Address> = incident.members.iter().map(|m| m.pubkey()).collect();
+    everyone.push(stranger.pubkey());
+    let ballots = incident.ballots_for(&everyone);
+
+    // An account that was never created is owned by the system program, so the owner check
+    // is what refuses it. The name is about ownership rather than existence, which is the
+    // same fact stated from the side the program can actually observe.
+    assert_failed_with(
+        incident.open_with_members(2, 1, 5_000, members, ballots),
+        "IncidentWrongOwner",
+    );
+}
+
+/// The frozen commitment is what certification checks against, and it is computed on chain.
+///
+/// A caller cannot hand in a digest of their own, because `open_incident` takes the member
+/// list and derives the commitment itself.
+#[test]
+fn the_frozen_commitment_is_derived_from_the_supplied_members() {
+    let mut incident = Incident::new();
+    incident.open(2).expect("incident opens");
+
+    let core = incident.raw(&incident.core);
+    let body = &core[8..];
+    let offset = 2 + 32 + 8 + 8 + 32 + 1 + 32;
+    let frozen = &body[offset..offset + 32];
+
+    let mut preimage = b"vinct:incident-member-set:v1".to_vec();
+    preimage.extend_from_slice(&(incident.members.len() as u32).to_le_bytes());
+    for member in &incident.members {
+        preimage.extend_from_slice(member.pubkey().as_ref());
+    }
+    assert_eq!(
+        frozen,
+        vinct_program_tests::sha256(&preimage),
+        "the frozen member-set commitment is not the digest of the members that were supplied"
     );
 }
 
@@ -771,12 +1272,38 @@ fn a_live_incident_cannot_be_scrubbed() {
     assert_failed_with(incident.scrub_attestation(0), "IncidentNotTerminal");
 }
 
-/// An incident that cannot reach its threshold waits for its deadline.
+/// An incident nobody answers expires.
 ///
-/// Terminating early on the blocking rejection would tell a watcher the exact moment it
-/// landed. Expiry tells them only that the window closed.
+/// The k-of-n liveness argument runs both ways. Certification does not wait for a silent
+/// member, and an incident where everyone is silent still reaches a terminal state on its own
+/// deadline rather than staying open forever.
 #[test]
-fn a_blocked_incident_expires_rather_than_failing_early() {
+fn an_unanswered_incident_expires() {
+    let mut incident = Incident::new();
+    incident.open_with(2, 1, 20).expect("incident opens");
+    incident.submit_claim().expect("claim stored");
+
+    assert_failed_with(incident.certify(), "IncidentNotTerminal");
+
+    let target = incident.world.current_slot() + 40;
+    incident.world.svm.warp_to_slot(target);
+
+    incident.certify().expect("the unanswered incident expires");
+    assert_eq!(incident.status(), STATUS_EXPIRED);
+    assert_eq!(incident.terminal_counts(), (0, 0));
+
+    incident.scrub_everything();
+    assert!(incident.surviving_canaries().is_empty());
+}
+
+/// An incident that cannot reach its threshold waits for its deadline, then says why.
+///
+/// Terminating the moment the blocking rejection lands would tell a watcher exactly when
+/// that happened. Waiting costs nothing, because the incident could not have certified
+/// either way, and at the deadline the outcome is named precisely: rejected, not merely
+/// expired. That distinction matches the reference model and reveals no timing.
+#[test]
+fn a_blocked_incident_is_recorded_as_rejected_at_its_deadline() {
     let mut incident = Incident::new();
     incident.open_with(2, 0, 20).expect("incident opens");
     incident.submit_claim().expect("claim stored");
@@ -788,8 +1315,10 @@ fn a_blocked_incident_expires_rather_than_failing_early() {
     let target = incident.world.current_slot() + 40;
     incident.world.svm.warp_to_slot(target);
 
-    incident.certify().expect("the expired incident settles");
-    assert_eq!(incident.status(), STATUS_EXPIRED);
+    incident
+        .certify()
+        .expect("the blocked incident settles at its deadline");
+    assert_eq!(incident.status(), STATUS_REJECTED);
     assert_eq!(incident.terminal_counts(), (1, 1));
 
     incident.scrub_everything();
@@ -1276,4 +1805,257 @@ fn the_public_core_reveals_only_status_and_deadline() {
             "the {name} canary is readable on the public core"
         );
     }
+}
+
+// --------------------------------------------------- certification side channels
+//
+// The uniform refusal is only worth having if nothing else varies with the tally. These
+// tests take two incidents that differ only in how close they are to their threshold and
+// require every externally observable thing about them to be identical.
+//
+// What is deliberately not claimed: constant time, or resistance to an observer correlating
+// traffic. The claim is narrower and checkable. VINCT itself does not expose live quorum
+// progress through its own public state, its own errors, its own logs, or its own events.
+
+/// Builds an incident with a given number of approvals already in.
+fn incident_with_approvals(approvals: usize) -> Incident {
+    let mut incident = Incident::new();
+    incident.open(2).expect("incident opens");
+    incident.submit_claim().expect("claim stored");
+    for index in 0..approvals {
+        incident.attest(index, APPROVE).expect("member attests");
+    }
+    incident
+}
+
+/// Certification refuses with the same error whatever the reason.
+///
+/// Zero approvals, one approval, and a blocking rejection are three very different positions,
+/// and a caller polling certification learns nothing that separates them.
+#[test]
+fn a_premature_certification_refuses_identically_whatever_the_tally() {
+    let mut names: Vec<String> = Vec::new();
+
+    for approvals in [0usize, 1] {
+        let mut incident = incident_with_approvals(approvals);
+        match incident.certify() {
+            Ok(_) => panic!("an incident with {approvals} approvals certified early"),
+            Err(failure) => names.push(anchor_error_name(&failure).unwrap_or_default()),
+        }
+    }
+
+    // Enough rejections to make certification impossible, which the model already calls
+    // decided. The program still says only that it is not terminal.
+    let mut blocked = Incident::new();
+    blocked.open_with(2, 0, 5_000).expect("incident opens");
+    blocked.attest(0, REJECT).expect("member 0 rejects");
+    blocked.attest(1, APPROVE).expect("member 1 approves");
+    blocked.attest(2, APPROVE).expect("member 2 approves");
+    match blocked.certify() {
+        Ok(_) => panic!("a blocked incident settled before its deadline"),
+        Err(failure) => names.push(anchor_error_name(&failure).unwrap_or_default()),
+    }
+
+    assert_eq!(
+        names,
+        vec![
+            "IncidentNotTerminal".to_string(),
+            "IncidentNotTerminal".to_string(),
+            "IncidentNotTerminal".to_string()
+        ],
+        "a premature certification named a reason that varies with the tally"
+    );
+}
+
+/// The public core is byte-identical whatever the private tally is.
+///
+/// Account data, length, and lamports all included. This is the surface an observer reads
+/// without any credential, so it is the one that matters most.
+#[test]
+fn the_public_core_is_identical_whatever_the_tally() {
+    let mut none = incident_with_approvals(0);
+    let mut one = incident_with_approvals(1);
+    let mut two = incident_with_approvals(2);
+
+    let snapshot = |incident: &Incident| {
+        let account = incident
+            .world
+            .svm
+            .get_account(&incident.core)
+            .expect("core exists");
+        // Everything except the incident's own identity, which differs between fixtures by
+        // construction and says nothing about the tally.
+        (account.data.len(), account.lamports, account.owner)
+    };
+
+    assert_eq!(snapshot(&none), snapshot(&one));
+    assert_eq!(snapshot(&one), snapshot(&two));
+
+    // And the counts stay zero until the outcome is settled.
+    for incident in [&none, &one, &two] {
+        assert_eq!(incident.terminal_counts(), (0, 0));
+        assert_eq!(incident.status(), STATUS_COLLECTING);
+    }
+
+    let _ = (&mut none, &mut one, &mut two);
+}
+
+/// A member's own submission is acknowledged identically however the quorum stands.
+///
+/// Logs, return data, and account sizes all compared. A member who submits the deciding
+/// approval sees exactly what the first member saw.
+#[test]
+fn a_submission_is_acknowledged_identically_however_the_quorum_stands() {
+    let mut incident = Incident::new();
+    incident.open(3).expect("incident opens");
+
+    let mut acknowledgements = Vec::new();
+    for index in 0..3 {
+        let metadata = incident.attest(index, APPROVE).expect("member attests");
+        acknowledgements.push((
+            metadata.return_data.data.len(),
+            metadata
+                .logs
+                .iter()
+                .filter(|line| line.contains("Program log:"))
+                .count(),
+        ));
+    }
+
+    let first = acknowledgements[0];
+    for (index, ack) in acknowledgements.iter().enumerate() {
+        assert_eq!(
+            *ack, first,
+            "the acknowledgement for member {index} differed from the first member's"
+        );
+    }
+}
+
+/// No account is created, closed, or resized as the tally moves.
+///
+/// Account lifecycle is visible without any permission, so a ballot that appeared when its
+/// member voted, or a permission closed as the threshold was met, would announce progress
+/// that the account contents are hiding.
+#[test]
+fn no_account_is_created_or_resized_as_the_tally_moves() {
+    let mut incident = Incident::new();
+    incident.open(3).expect("incident opens");
+
+    let census = |incident: &Incident| -> Vec<(Address, usize, u64)> {
+        let mut all = vec![incident.core, incident.claim];
+        all.extend((0..incident.members.len()).map(|index| incident.attestation_of(index)));
+        all.into_iter()
+            .map(|address| {
+                let account = incident.world.svm.get_account(&address).expect("exists");
+                (address, account.data.len(), account.lamports)
+            })
+            .collect()
+    };
+
+    let before = census(&incident);
+    for index in 0..3 {
+        incident.attest(index, APPROVE).expect("member attests");
+        assert_eq!(
+            census(&incident),
+            before,
+            "an account changed size or balance when member {index} submitted"
+        );
+    }
+}
+
+/// Nothing is emitted until the outcome is settled.
+///
+/// The one event this program emits is the certification result, and it carries the
+/// aggregate that is public by then. No event fires while an incident is collecting, so an
+/// observer subscribed to the program's own events learns nothing about progress.
+#[test]
+fn no_event_is_emitted_while_the_incident_is_collecting() {
+    let mut incident = Incident::new();
+    incident.open(2).expect("incident opens");
+
+    // Anchor emits events as base64 `Program data:` log lines.
+    let emitted = |metadata: &TransactionMetadata| -> usize {
+        metadata
+            .logs
+            .iter()
+            .filter(|line| line.starts_with("Program data:"))
+            .count()
+    };
+
+    assert_eq!(emitted(&incident.submit_claim().expect("claim stored")), 0);
+    assert_eq!(emitted(&incident.attest(0, APPROVE).expect("attests")), 0);
+    assert_eq!(emitted(&incident.attest(1, APPROVE).expect("attests")), 0);
+
+    let certified = incident.certify().expect("incident certifies");
+    assert_eq!(
+        emitted(&certified),
+        1,
+        "certification should emit exactly one event, carrying the aggregate that is public by then"
+    );
+}
+
+/// Compute units do not separate one tally from another by a usable margin.
+///
+/// Two things make this a weak signal rather than a strong one, and both are on purpose.
+/// Certification walks every ballot whatever they say, so the branch that differs is a
+/// comparison rather than a loop. And a caller who can measure certification's cost has
+/// already learned the outcome from whether it succeeded.
+///
+/// What is asserted: submissions, which a member makes while the incident is live and which
+/// do reveal something if their cost tracks the tally, stay within a narrow band.
+#[test]
+fn a_submission_costs_the_same_whatever_the_tally() {
+    let mut incident = Incident::new();
+    incident.open(3).expect("incident opens");
+
+    let mut costs = Vec::new();
+    for index in 0..3 {
+        let metadata = incident.attest(index, APPROVE).expect("member attests");
+        costs.push(metadata.compute_units_consumed);
+    }
+
+    let low = *costs.iter().min().expect("three costs");
+    let high = *costs.iter().max().expect("three costs");
+    assert_eq!(
+        low, high,
+        "submitting cost different amounts as the tally moved: {costs:?}"
+    );
+}
+
+/// Quarantining costs and reveals the same whether or not the member had submitted.
+///
+/// The opener cannot read the ballot, so the one thing left that could tell them whether it
+/// held a decision is what the instruction did. It does the same work either way.
+#[test]
+fn quarantine_reveals_nothing_about_whether_the_member_had_voted() {
+    let mut voted = Incident::new();
+    voted.open(2).expect("incident opens");
+    voted.attest(0, APPROVE).expect("member 0 attests");
+    let with_vote = voted.quarantine(0).expect("quarantined");
+
+    let mut silent = Incident::new();
+    silent.open(2).expect("incident opens");
+    let without_vote = silent.quarantine(0).expect("quarantined");
+
+    assert_eq!(
+        with_vote.compute_units_consumed, without_vote.compute_units_consumed,
+        "quarantine cost differed depending on whether the member had already voted"
+    );
+    assert_eq!(
+        with_vote.return_data.data, without_vote.return_data.data,
+        "quarantine returned different data depending on whether the member had voted"
+    );
+    assert_eq!(
+        with_vote
+            .logs
+            .iter()
+            .filter(|line| line.contains("Program log:"))
+            .count(),
+        without_vote
+            .logs
+            .iter()
+            .filter(|line| line.contains("Program log:"))
+            .count(),
+        "quarantine logged differently depending on whether the member had voted"
+    );
 }

@@ -33,6 +33,7 @@ import {
   CORE_PROGRAM_ID,
   Decision,
   attestationAddress,
+  canonicalMemberOrder,
   certifyIncident,
   claimAddress,
   closeAttestationPermission,
@@ -184,12 +185,11 @@ test("the lifecycle instructions match the IDL", () => {
       incidentId,
       circleEpoch: 1n,
       policyId: zero32,
-      memberSetHash: zero32,
       clusterGenesisHash: zero32,
       requiredApprovals: 2,
       maximumRejections: 1,
       responseWindowSlots: 100n,
-      memberCount: 3,
+      members: [member],
       claimDigest: zero32,
     }),
   );
@@ -235,12 +235,13 @@ test("both exit paths append magic_program before magic_context", () => {
  * Both count `member_count` accounts and refuse anything else, so a client that dropped one
  * would fail on chain rather than settle a partial tally.
  */
-test("certification and release carry one account per member", () => {
+test("certification and release carry one account per member, in canonical order", () => {
   const members = [member, Keypair.generate().publicKey, Keypair.generate().publicKey];
+  const canonical = canonicalMemberOrder(members);
 
   const certify = certifyIncident(core, members);
   assert.equal(certify.keys.length, 1 + members.length);
-  members.forEach((each, index) => {
+  canonical.forEach((each, index) => {
     assert.equal(
       certify.keys[1 + index]?.pubkey.toBase58(),
       attestationAddress(core, each).toBase58(),
@@ -249,10 +250,55 @@ test("certification and release carry one account per member", () => {
 
   const release = releaseIncident(opener, covenant, incidentId, members);
   assert.equal(release.keys.length, 5 + members.length);
-  members.forEach((each, index) => {
+  canonical.forEach((each, index) => {
     const key = release.keys[5 + index] as AccountMeta;
     assert.equal(key.pubkey.toBase58(), attestationAddress(core, each).toBase58());
     assert.equal(key.isWritable, true, "an attestation has to be writable to be undelegated");
+  });
+});
+
+/**
+ * The client sorts, and the program refuses to.
+ *
+ * The frozen commitment is a hash over the member list in ascending order, so an unsorted
+ * list would produce a different digest. The program rejects rather than sorting, because a
+ * program that sorted would be computing a digest over something the caller did not send.
+ * The client sorting means a caller never has to know that.
+ */
+test("the client puts members in canonical ascending order", () => {
+  const members = Array.from({ length: 5 }, () => Keypair.generate().publicKey);
+  const sorted = canonicalMemberOrder(members);
+  for (let index = 1; index < sorted.length; index += 1) {
+    assert.ok(
+      Buffer.compare(sorted[index - 1]!.toBuffer(), sorted[index]!.toBuffer()) < 0,
+      "canonicalMemberOrder did not produce a strictly ascending list",
+    );
+  }
+  assert.deepEqual(
+    canonicalMemberOrder(sorted).map((k) => k.toBase58()),
+    sorted.map((k) => k.toBase58()),
+    "sorting is not idempotent",
+  );
+
+  // Opening freezes the set, so its account list has to be canonical too.
+  const opened = openIncident(opener, {
+    covenant,
+    incidentId,
+    circleEpoch: 1n,
+    policyId: zero32,
+    clusterGenesisHash: zero32,
+    requiredApprovals: 2,
+    maximumRejections: 1,
+    responseWindowSlots: 100n,
+    members,
+    claimDigest: zero32,
+  });
+  sorted.forEach((each, index) => {
+    assert.equal(
+      opened.keys[2 + index]?.pubkey.toBase58(),
+      attestationAddress(core, each).toBase58(),
+      "open_incident's ballot accounts are not in canonical order",
+    );
   });
 });
 

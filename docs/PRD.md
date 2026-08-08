@@ -367,18 +367,72 @@ Expires at slot N
 
 ## 7.3 Sealed attestation
 
-1. A member submits `APPROVE`, `REJECT`, or `ABSTAIN` privately.
+> **Corrected in Phase 4. See `docs/decision-log.md` D-0042, D-0043, D-0044, and D-0045.**
+>
+> This section said what had to be true. Implementation established how, and the how changed
+> the storage layout the rest of the PRD assumed. The behaviour below is unchanged; where it
+> lives is not.
+
+1. A member submits `APPROVE`, `REJECT`, or `ABSTAIN` privately, into their own account.
 2. The program authenticates the member and nonce.
-3. One current attestation per member is stored.
-4. Other members cannot query the decision or exact current count.
+3. One current attestation per member is stored, in a `MemberAttestation` account private to
+   that member alone.
+4. Other members cannot query the decision or exact current count. Neither can the incident
+   opener, unless the ballot is their own. There is no exact current count anywhere to query:
+   no account holds a running tally, and certification counts every ballot at once in memory.
 5. The member receives a uniform acknowledgement.
 6. When the frozen threshold is met:
-   - private fields are zeroized
-   - the public certificate fields are finalized
+   - the aggregate is recorded on the public core
    - incident state becomes `CERTIFIED_PENDING_SETTLEMENT`
+   - every private account is scrubbed, its permission closed, and the family released
    - the Magic Intent bundle is built
 
-No all-member reveal phase is used because it would turn a k-of-n threshold into an n-of-n liveness dependency.
+No all-member reveal phase is used because it would turn a k-of-n threshold into an n-of-n
+liveness dependency. Certification requires every ballot *account* to be supplied, not every
+member to have *acted*: a silent member's account exists, holds no decision, and contributes
+nothing.
+
+### 7.3.1 The account split
+
+One permissioned account holding the claim, every decision, and the counts would force every
+member into one permission, and a permission gates an account rather than a field. The state
+is therefore split three ways:
+
+| Account | Permission | Holds |
+| --- | --- | --- |
+| `IncidentCore` | none, public | covenant, policy, threshold, deadline, status, member count, and the aggregate once settled |
+| `IncidentClaim` | the member set | the responder's claim, notes, and observation window |
+| `MemberAttestation` | that one member | that member's decision, nonce, and submission slot |
+
+This works because a PER permission gates reading an account, not touching it: a member's
+transaction writes their own ballot while the program reads every ballot, and that member
+still cannot read any but their own. Established by experiment, not assumed; see D-0042 and
+`artifacts/devnet/per-visibility-experiment-latest.json`.
+
+Ballot accounts are created for every member when the incident opens, before anyone votes, so
+their existence says nothing about who has responded.
+
+### 7.3.2 The frozen ballot set
+
+`open_incident` takes the member list, requires it strictly ascending, computes the
+commitment on chain, and requires a ballot account to already exist at the canonical address
+for every member before freezing.
+
+`certify_incident` reconstructs that set rather than trusting what it is handed: every ballot
+checked for owner, schema version, incident binding, and canonical address, members required
+strictly ascending, and the recomputed commitment required to equal the frozen one. A missing
+member, an extra one, a duplicate, a ballot from another incident, and a relabelled ballot are
+each refused.
+
+### 7.3.3 Terminal outcomes
+
+`CERTIFIED_PENDING_SETTLEMENT`, `REJECTED_BY_THRESHOLD`, and `EXPIRED`, matching section 22's
+evaluation outcomes.
+
+A rejected incident is named at its deadline, never the moment the blocking rejection lands.
+Settling early would announce exactly when that happened. Before the deadline every
+non-terminal certification refuses identically with `IncidentNotTerminal`, whatever the
+reason.
 
 ## 7.4 Settlement
 
@@ -1484,8 +1538,8 @@ Authorized member view:
 - submit decision
 - uniform accepted response
 - deadline
-- no other member's decision
-- no exact live count
+- no other member's decision, and no other member's ballot is readable at all
+- no exact live count, because none is stored
 
 Observer view:
 

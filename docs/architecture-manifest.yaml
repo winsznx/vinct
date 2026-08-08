@@ -229,6 +229,57 @@ privacy_boundary:
     live_tally: "there is none. Certification is handed every attestation at once and counts in memory."
   why_it_works: "A PER permission gates reading an account, not touching it. A member's transaction writes their own ballot while the program reads every ballot, and that member still cannot read any but their own. Proven in artifacts/devnet/per-visibility-experiment-latest.json."
   no_commit_reveal: "An all-member reveal round would turn k-of-n into n-of-n liveness. Certification needs every attestation account passed, not every member to have acted, so a silent member never stalls it."
+  locked_claims:
+    # The strong version of the product claim. Each line is asserted by a named test.
+    - "individual attestations are hidden from other voting members"
+    - "individual attestations are hidden from the incident opener unless the opener is that ballot's member"
+    - "the exact live approval count is not stored anywhere"
+    - "the exact live rejection count is not stored anywhere"
+    - "certification evaluates the private ballots in memory"
+    - "ballot existence reveals nothing, because every eligible ballot account is created at incident open"
+    - "k-of-n certification does not require all members to act"
+    - "no reveal round exists"
+  platform_insight: "On the current MagicBlock runtime, for the VINCT account flow that was tested, query authorization and program execution authorization are separate: a transaction can mutate an account its sender cannot read. Established by experiment against one attested Devnet rollup and the local reference stack. It is observed runtime behaviour, not a documented protocol guarantee, and should be re-checked after a validator upgrade."
+
+certification:
+  # The ballot set is reconstructed, not trusted. See docs/decision-log.md D-0044.
+  frozen_at_open:
+    member_list: "passed to open_incident, not a digest of it; the program computes the commitment itself"
+    ordering: "strictly ascending by member address; an out-of-order or repeating list is rejected, never sorted"
+    ballot_existence: "a ballot account must already exist at the canonical address for every member before the set is frozen"
+  checked_at_certification:
+    - "exact account count equals the frozen member count"
+    - "every ballot is owned by vinct_core"
+    - "every ballot carries the current schema version"
+    - "every ballot is bound to this incident's core, which fixes covenant, epoch, policy, and snapshot"
+    - "every ballot lives at its canonical address derived from the incident and the member it names"
+    - "members arrive strictly ascending, which also forbids duplicates"
+    - "the commitment recomputed over the supplied members equals the one frozen at open"
+    - "every ballot is in a state that may be counted; a scrubbed ballot is refused"
+    - "the core is seed-constrained, so one incident's ballots cannot be settled against another's threshold"
+  counting:
+    unsubmitted: "counts as no decision, never as a rejection"
+    superseded: "impossible to present; a resubmission overwrites in place under a strictly increasing nonce"
+    quarantined: "approval discarded, rejection retained, threshold never lowered"
+    order_independence: "the tally is a sum, so order cannot change the result; a non-canonical order is refused before it is counted"
+  terminal_outcomes: ["CertifiedPendingSettlement", "RejectedByThreshold", "Expired"]
+  rejected_is_named_at_the_deadline: "never the moment the blocking rejection lands, so the timing is not observable. See D-0045."
+  reference_parity: "all 512 three-member cases agree with crates/vinct-reference: four choices per member, every quarantine subset, both sides of the deadline."
+
+certification_side_channels:
+  # Narrow by design. VINCT does not claim constant time or traffic-analysis resistance.
+  claim: "VINCT does not expose exact live quorum progress through its own public state, errors, logs, events, or account lifecycle."
+  checked:
+    error_code: "every premature certification refuses with IncidentNotTerminal, whatever the tally"
+    public_state: "the public core's data, length, and lamports are identical at zero, one, and two approvals"
+    acknowledgement: "a member's submission returns no data and logs identically however the quorum stands"
+    account_lifecycle: "no account is created, closed, or resized as the tally moves"
+    events: "nothing is emitted while collecting; certification emits one event carrying the aggregate that is public by then"
+    compute_units: "submitting costs the same whatever the tally; quarantining costs the same whether or not the member had voted"
+  not_claimed:
+    - "constant-time execution"
+    - "resistance to an observer correlating transaction traffic"
+    - "concealment of an incident's existence, its deadline, or its member count"
   permission_member_flags: 0
   permission_member_flags_note: "No visibility flags are granted. Membership alone allows interaction. A consequence is that the rollup withholds transaction logs even from the sender, so refusal reasons are resolved from error codes against the IDL. See docs/decision-log.md D-0034."
   delegation_authority: "the opening responder signs delegate_incident, delegate_claim, and delegate_attestation, checked by hand because #[delegate] needs the account untyped. The caller chooses the validator, so this decides which rollup the private material lands on. See D-0041."

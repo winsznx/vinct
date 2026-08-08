@@ -780,5 +780,70 @@
       "No enclave and no attestation. This establishes that the reference query-filtering service enforces the permission model as documented, not that a confidential runtime is holding the line. The TEE claim needs the Devnet run.",
       "The local stack has no router, so endpoint resolution is configured rather than discovered."
     ]
+  },
+  {
+    "id": "certification-reconstructs-the-frozen-ballot-set",
+    "wording": "Certification proves it received the exact frozen ballot set rather than trusting the caller: eighteen adversarial mutations — missing, extra, duplicated, reordered, relabelled, foreign-incident, foreign-owner, wrong-version, scrubbed, and substituted-core — are each refused by a named error.",
+    "status": "verified",
+    "proof_level": 4,
+    "network": "litesvm",
+    "source_commit": "PENDING",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
+    ],
+    "transactions": [],
+    "commands": [
+      "anchor build --ignore-keys",
+      "cargo test -p vinct-program-tests --test privacy"
+    ],
+    "artifacts": [],
+    "verified_at": "2026-08-08T02:15:00Z",
+    "limitations": [
+      "Where the frozen member list itself comes from is the covenant registry, which is Phase 5. Until then the opener supplies it, and certification proves only that the ballots match what was frozen at open."
+    ]
+  },
+  {
+    "id": "certification-matches-the-reference-model-exhaustively",
+    "wording": "All 512 three-member cases agree with crates/vinct-reference: four choices per member, every quarantine subset, both sides of the deadline. The two implementations share no code.",
+    "status": "verified",
+    "proof_level": 4,
+    "network": "litesvm",
+    "source_commit": "PENDING",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
+    ],
+    "transactions": [],
+    "commands": [
+      "anchor build --ignore-keys",
+      "cargo test -p vinct-program-tests --test reference_parity"
+    ],
+    "artifacts": [],
+    "verified_at": "2026-08-08T02:15:00Z",
+    "limitations": [
+      "Before the deadline the model may already call an incident rejected or impossible while the program still refuses to settle it. That difference is deliberate and is encoded in the test: the model is a view of the state, the program is a transition on it."
+    ]
+  },
+  {
+    "id": "vinct-does-not-expose-live-quorum-progress",
+    "wording": "Error code, public account state, submission acknowledgement, account lifecycle, emitted events, and compute units are each identical across incidents that differ only in how close they are to their threshold.",
+    "status": "verified",
+    "proof_level": 4,
+    "network": "litesvm",
+    "source_commit": "PENDING",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
+    ],
+    "transactions": [],
+    "commands": [
+      "anchor build --ignore-keys",
+      "cargo test -p vinct-program-tests --test privacy"
+    ],
+    "artifacts": [],
+    "verified_at": "2026-08-08T02:15:00Z",
+    "limitations": [
+      "Constant-time execution is not claimed and not tested.",
+      "Resistance to an observer correlating transaction traffic is not claimed.",
+      "An incident’s existence, deadline, and member count are public by design."
+    ]
   }
 ]

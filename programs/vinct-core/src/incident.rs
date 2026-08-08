@@ -41,6 +41,17 @@ pub const CLAIM_SEED: &[u8] = b"incident-claim";
 /// Seed for one member's private attestation.
 pub const ATTESTATION_SEED: &[u8] = b"incident-attestation";
 
+/// Schema version for the private incident account family.
+///
+/// One number for all three account classes, because they are created together, delegated
+/// together, and read together. A ballot that predates a layout change must not be counted
+/// under the new one, so certification refuses anything that is not current rather than
+/// trying to interpret it.
+pub const INCIDENT_SCHEMA_VERSION: u16 = 1;
+
+/// Domain separator for the frozen member-set commitment.
+pub const MEMBER_SET_DOMAIN: &[u8] = b"vinct:incident-member-set:v1";
+
 /// Maximum members one incident can hold.
 ///
 /// Bounds the account list `certify_incident` has to accept in one transaction, which is the
@@ -79,6 +90,12 @@ pub enum IncidentStatus {
     CertifiedPendingSettlement,
     /// Deadline passed without reaching the threshold.
     Expired,
+    /// The rejection ceiling was breached.
+    ///
+    /// Only ever recorded at or after the deadline, never the moment the blocking rejection
+    /// lands. Terminating early would tell a watcher exactly when that happened. Waiting
+    /// costs nothing, because the incident could not have certified either way.
+    RejectedByThreshold,
     /// Terminated before certification.
     Aborted,
 }
@@ -90,6 +107,7 @@ impl IncidentStatus {
             self,
             IncidentStatus::CertifiedPendingSettlement
                 | IncidentStatus::Expired
+                | IncidentStatus::RejectedByThreshold
                 | IncidentStatus::Aborted
         )
     }
@@ -101,6 +119,8 @@ impl IncidentStatus {
 /// could look up anyway, or an aggregate that only exists after the outcome is settled.
 #[account]
 pub struct IncidentCore {
+    /// Schema version. Checked wherever this account is read by hand.
+    pub version: u16,
     /// The covenant.
     pub covenant: Pubkey,
     /// The epoch frozen at open.
@@ -146,7 +166,7 @@ pub struct IncidentCore {
 impl IncidentCore {
     /// Serialized size, excluding the 8-byte discriminator.
     pub const SIZE: usize =
-        32 + 8 + 8 + 32 + 1 + 32 + 32 + 32 + 1 + 1 + 8 + 8 + 32 + 32 + 1 + 1 + 1 + 1;
+        2 + 32 + 8 + 8 + 32 + 1 + 32 + 32 + 32 + 1 + 1 + 8 + 8 + 32 + 32 + 1 + 1 + 1 + 1;
 
     /// True when `now_slot` is at or past the deadline.
     pub fn is_expired(&self, now_slot: u64) -> bool {
@@ -157,6 +177,8 @@ impl IncidentCore {
 /// The responder's evidence, private to the incident's members.
 #[account]
 pub struct IncidentClaim {
+    /// Schema version.
+    pub version: u16,
     /// The incident this belongs to.
     pub incident: Pubkey,
     /// The responder that may write it.
@@ -184,7 +206,8 @@ pub struct IncidentClaim {
 
 impl IncidentClaim {
     /// Serialized size, excluding the 8-byte discriminator.
-    pub const SIZE: usize = 32 + 32 + MAX_PRIVATE_CLAIM + 2 + MAX_PRIVATE_NOTES + 2 + 8 + 8 + 1 + 1;
+    pub const SIZE: usize =
+        2 + 32 + 32 + MAX_PRIVATE_CLAIM + 2 + MAX_PRIVATE_NOTES + 2 + 8 + 8 + 1 + 1;
 
     /// True when every protected field is provably all-zero.
     ///
@@ -231,6 +254,8 @@ impl IncidentClaim {
 /// and nobody but that member can read it.
 #[account]
 pub struct MemberAttestation {
+    /// Schema version.
+    pub version: u16,
     /// The incident this belongs to.
     pub incident: Pubkey,
     /// The member this slot belongs to.
@@ -241,11 +266,11 @@ pub struct MemberAttestation {
     /// time this account is delegated the core already is, which means the core is owned by
     /// the delegation program and can no longer be deserialized as ours.
     pub opener: Pubkey,
-    /// Whether this member has been quarantined for this incident.
+    /// Where this ballot sits. Certification refuses any state it does not recognise.
     ///
-    /// Written by the opener, who cannot read this account. A permission gates reading, not
-    /// touching. See docs/decision-log.md D-0042.
-    pub quarantined: bool,
+    /// Quarantine is written by the opener, who cannot read this account. A permission gates
+    /// reading, not touching. See docs/decision-log.md D-0042.
+    pub state: BallotState,
 
     // ---- protected while active, zeroized before any commit ----
     /// The member's current decision.
@@ -265,7 +290,7 @@ pub struct MemberAttestation {
 
 impl MemberAttestation {
     /// Serialized size, excluding the 8-byte discriminator.
-    pub const SIZE: usize = 32 + 32 + 32 + 1 + 1 + 8 + 8 + 1 + 1 + 1;
+    pub const SIZE: usize = 2 + 32 + 32 + 32 + 1 + 1 + 8 + 8 + 1 + 1 + 1;
 
     /// True when every protected field is provably all-zero.
     pub fn protected_fields_are_zero(&self) -> bool {
@@ -290,13 +315,14 @@ impl MemberAttestation {
 
     /// Overwrites every protected field.
     ///
-    /// `quarantined` survives, because it is not the member's secret and the covenant needs
-    /// the record of it. The decision it invalidated does not survive.
+    /// The state survives as `Scrubbed`, which is not the member's secret. The decision it
+    /// held does not survive.
     pub fn scrub(&mut self) {
         self.decision = Decision::None;
         self.submission_nonce = 0;
         self.submitted_at_slot = 0;
         self.has_decision = false;
+        self.state = BallotState::Scrubbed;
         self.private_fields_zeroized = true;
     }
 
@@ -310,10 +336,75 @@ impl MemberAttestation {
         if !self.has_decision {
             return Decision::None;
         }
-        match (self.decision, self.quarantined) {
-            (Decision::Approve, true) => Decision::None,
+        match (self.decision, self.state) {
+            (Decision::Approve, BallotState::Quarantined) => Decision::None,
             (decision, _) => decision,
         }
+    }
+
+    /// True when this member is quarantined for this incident.
+    pub fn is_quarantined(&self) -> bool {
+        self.state == BallotState::Quarantined
+    }
+}
+
+/// Commits to the exact set of members eligible to attest on an incident.
+///
+/// Ascending, strictly, with no repeats. The ordering is not cosmetic: it is what makes the
+/// commitment a function of the *set* rather than of one presentation of it, so a caller
+/// cannot reorder a supplied ballot list into a different digest. An out-of-order list is
+/// rejected rather than sorted, which is the same rule the covenant member set follows.
+pub fn member_set_commitment(members: &[Pubkey]) -> Result<[u8; 32]> {
+    require!(
+        members.len() <= MAX_INCIDENT_MEMBERS,
+        CoreError::TooManyPermissionMembers
+    );
+    require!(!members.is_empty(), CoreError::PermissionNeedsAMember);
+    for window in members.windows(2) {
+        require!(
+            window[0].to_bytes() < window[1].to_bytes(),
+            CoreError::MemberSetNotAscending
+        );
+    }
+
+    let mut preimage = Vec::with_capacity(MEMBER_SET_DOMAIN.len() + 4 + members.len() * 32);
+    preimage.extend_from_slice(MEMBER_SET_DOMAIN);
+    preimage.extend_from_slice(&(members.len() as u32).to_le_bytes());
+    for member in members {
+        preimage.extend_from_slice(member.as_ref());
+    }
+    use sha2::Digest;
+    let mut hasher = sha2::Sha256::new();
+    hasher.update(&preimage);
+    Ok(hasher.finalize().into())
+}
+
+/// Where one ballot sits. Every supported state is named here.
+///
+/// Certification refuses a ballot in any state it does not recognise, rather than guessing.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum BallotState {
+    /// Created and never written to. Counts as no decision.
+    #[default]
+    Empty,
+    /// Holds this member's current decision.
+    Submitted,
+    /// The member was quarantined. An approval here is discarded, a rejection still counts.
+    Quarantined,
+    /// Scrubbed after the incident became terminal. Carries no decision.
+    Scrubbed,
+}
+
+impl BallotState {
+    /// True for the states a live incident can be certified from.
+    ///
+    /// `Scrubbed` is deliberately absent: a scrubbed ballot has had its decision erased, and
+    /// counting one would silently drop a member's vote.
+    pub fn may_be_counted(&self) -> bool {
+        matches!(
+            self,
+            BallotState::Empty | BallotState::Submitted | BallotState::Quarantined
+        )
     }
 }
 
@@ -364,8 +455,6 @@ pub struct OpenIncidentArgs {
     pub circle_epoch: u64,
     /// The policy to freeze.
     pub policy_id: [u8; 32],
-    /// The member set to freeze.
-    pub member_set_hash: [u8; 32],
     /// The cluster to bind to.
     pub cluster_genesis_hash: [u8; 32],
     /// Approvals required.
@@ -374,8 +463,12 @@ pub struct OpenIncidentArgs {
     pub maximum_rejections: u8,
     /// Slots the incident stays open.
     pub response_window_slots: u64,
-    /// How many member attestation accounts this incident has.
-    pub member_count: u8,
+    /// Every member eligible to attest, strictly ascending.
+    ///
+    /// Passed rather than trusted as a digest: the program commits to this list itself and
+    /// checks that a ballot account exists for each entry before freezing it, so the set it
+    /// later demands at certification is one it knows to be complete.
+    pub members: Vec<Pubkey>,
     /// Digest of the private claim.
     pub claim_digest: [u8; 32],
 }
@@ -450,7 +543,11 @@ pub fn apply_attestation(
     require!(!core.is_expired(now_slot), CoreError::IncidentExpired);
     require!(decision != Decision::None, CoreError::DecisionRequired);
     require_keys_eq!(attestation.member, member, CoreError::NotAnEligibleMember);
-    require!(!attestation.quarantined, CoreError::MemberQuarantined);
+    require!(!attestation.is_quarantined(), CoreError::MemberQuarantined);
+    require!(
+        attestation.state != BallotState::Scrubbed,
+        CoreError::IncidentNotCollecting
+    );
     require!(
         submission_nonce > attestation.submission_nonce,
         CoreError::NonceNotIncreasing
@@ -460,6 +557,7 @@ pub fn apply_attestation(
     attestation.submission_nonce = submission_nonce;
     attestation.submitted_at_slot = now_slot;
     attestation.has_decision = true;
+    attestation.state = BallotState::Submitted;
     attestation.private_fields_zeroized = false;
     Ok(())
 }

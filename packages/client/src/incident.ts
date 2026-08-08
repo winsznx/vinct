@@ -45,7 +45,8 @@ export enum IncidentStatus {
   Collecting = 1,
   CertifiedPendingSettlement = 2,
   Expired = 3,
-  Aborted = 4,
+  RejectedByThreshold = 4,
+  Aborted = 5,
 }
 
 export function incidentAddress(covenant: PublicKey, incidentId: bigint): PublicKey {
@@ -352,41 +353,63 @@ export interface OpenIncidentArgs {
   incidentId: bigint;
   circleEpoch: bigint;
   policyId: Uint8Array;
-  memberSetHash: Uint8Array;
   clusterGenesisHash: Uint8Array;
   requiredApprovals: number;
   maximumRejections: number;
   responseWindowSlots: bigint;
-  memberCount: number;
+  /** Every member eligible to attest. Sorted here; the program refuses an unsorted list. */
+  members: PublicKey[];
   claimDigest: Uint8Array;
 }
 
+/**
+ * Sorts members into the canonical order the program requires.
+ *
+ * Ascending by raw key bytes, strictly. The program rejects an out-of-order list rather than
+ * sorting it, so that the commitment it computes is a function of the set and not of the
+ * caller's arrangement. Sorting here means a caller never has to think about it, and the
+ * program still catches anyone who skips this.
+ */
+export function canonicalMemberOrder(members: PublicKey[]): PublicKey[] {
+  return [...members].sort((a, b) => Buffer.compare(a.toBuffer(), b.toBuffer()));
+}
+
+/**
+ * Opens the incident and freezes its member set.
+ *
+ * Every member's ballot account is passed after the declared accounts. The program checks
+ * each one exists at its canonical address before committing to the set, because freezing a
+ * set with a missing ballot would make certification impossible for the incident's whole life.
+ */
 export function openIncident(opener: PublicKey, args: OpenIncidentArgs): TransactionInstruction {
-  const data = new ArgWriter()
+  const members = canonicalMemberOrder(args.members);
+  const core = incidentAddress(args.covenant, args.incidentId);
+
+  const writer = new ArgWriter()
     .u64(args.incidentId)
     .pubkey(args.covenant)
     .u64(args.circleEpoch)
     .bytes32(args.policyId)
-    .bytes32(args.memberSetHash)
     .bytes32(args.clusterGenesisHash)
     .u8(args.requiredApprovals)
     .u8(args.maximumRejections)
     .u64(args.responseWindowSlots)
-    .u8(args.memberCount)
-    .bytes32(args.claimDigest)
-    .finish();
+    .u32(members.length);
+  for (const member of members) writer.pubkey(member);
+  writer.bytes32(args.claimDigest);
 
   return new TransactionInstruction({
     programId: CORE_PROGRAM_ID,
     keys: [
-      {
-        pubkey: incidentAddress(args.covenant, args.incidentId),
-        isSigner: false,
-        isWritable: true,
-      },
+      { pubkey: core, isSigner: false, isWritable: true },
       { pubkey: opener, isSigner: true, isWritable: false },
+      ...members.map((member) => ({
+        pubkey: attestationAddress(core, member),
+        isSigner: false,
+        isWritable: false,
+      })),
     ],
-    data: withDiscriminator(discriminator(CORE_IDL, "open_incident"), data),
+    data: withDiscriminator(discriminator(CORE_IDL, "open_incident"), writer.finish()),
   });
 }
 
@@ -476,7 +499,7 @@ export function certifyIncident(core: PublicKey, members: PublicKey[]): Transact
     programId: CORE_PROGRAM_ID,
     keys: [
       { pubkey: core, isSigner: false, isWritable: true },
-      ...members.map((member) => ({
+      ...canonicalMemberOrder(members).map((member) => ({
         pubkey: attestationAddress(core, member),
         isSigner: false,
         isWritable: false,
@@ -516,7 +539,7 @@ function exitKeys(payer: PublicKey, core: PublicKey, members: PublicKey[]): Acco
     // `#[commit]` appends magic_program first, then magic_context.
     { pubkey: MAGIC_PROGRAM_ID, isSigner: false, isWritable: false },
     { pubkey: MAGIC_CONTEXT_ID, isSigner: false, isWritable: true },
-    ...members.map((member) => ({
+    ...canonicalMemberOrder(members).map((member) => ({
       pubkey: attestationAddress(core, member),
       isSigner: false,
       isWritable: true,
@@ -564,6 +587,7 @@ export function releaseIncident(
  * needed one would be a client reading someone's private state.
  */
 export interface IncidentCoreView {
+  version: number;
   covenant: PublicKey;
   circleEpoch: bigint;
   incidentId: bigint;
@@ -602,8 +626,14 @@ export function decodeIncidentCore(data: Buffer): IncidentCoreView {
     return value;
   };
   const u8 = (): number => body[offset++] ?? 0;
+  const u16 = (): number => {
+    const value = body.readUInt16LE(offset);
+    offset += 2;
+    return value;
+  };
 
   return {
+    version: u16(),
     covenant: pubkey(),
     circleEpoch: u64(),
     incidentId: u64(),
@@ -624,14 +654,17 @@ export function decodeIncidentCore(data: Buffer): IncidentCoreView {
   };
 }
 
+/** The schema version this client speaks. Mirrors `vinct_core::incident`. */
+export const INCIDENT_SCHEMA_VERSION = 1;
+
 /** Where the protected region sits in a claim account, for the leak scan. */
 export const CLAIM_PROTECTED_REGION = {
-  offset: 8 + 32 + 32,
+  offset: 8 + 2 + 32 + 32,
   length: 256 + 2 + 128 + 2 + 8 + 8,
 } as const;
 
 /** Where the protected region sits in an attestation account, for the leak scan. */
 export const ATTESTATION_PROTECTED_REGION = {
-  offset: 8 + 32 + 32 + 1,
+  offset: 8 + 2 + 32 + 32 + 32 + 1,
   length: 1 + 8 + 8 + 1,
 } as const;

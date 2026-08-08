@@ -32,6 +32,52 @@ handed every attestation at once and counts them in memory. A running total woul
 live somewhere, and anywhere it lived would be readable by whoever could read that account.
 What is never stored cannot leak.
 
+### The claim, in full
+
+Each line is asserted by a named test, not by argument.
+
+- individual attestations are hidden from other voting members
+- individual attestations are hidden from the incident opener, unless the opener is that
+  ballot's own member
+- the exact live approval count is not stored anywhere
+- the exact live rejection count is not stored anywhere
+- certification evaluates the private ballots in memory
+- ballot existence reveals nothing, because every eligible ballot account is created when the
+  incident opens, before anyone votes
+- k-of-n certification does not require all members to act
+- no reveal round exists
+
+### The ballot set is reconstructed, not trusted
+
+Certification depends on receiving the complete frozen set, so it proves it has one rather
+than accepting a list that happens to deserialize.
+
+`open_incident` takes the member list itself, not a digest of it. It requires strictly
+ascending order, computes the commitment on chain, and requires a ballot account to already
+exist at the canonical address for every member before freezing anything. A caller cannot
+supply a digest of their own, and a set naming a member with no ballot is refused, because
+freezing one would make certification impossible for the incident's whole life.
+
+`certify_incident` then reconstructs. Every ballot is checked for owner, schema version,
+incident binding, and canonical address; the members must arrive strictly ascending; and the
+commitment recomputed over them must equal the frozen one. That single equality catches a
+missing member, an extra one, a duplicate, a ballot from another incident, and a ballot
+relabelled to another member. A non-canonical order is refused rather than sorted, because
+sorting inside the program would mean committing to a set the caller did not send.
+
+Eighteen adversarial tests, one per mutation. See `docs/decision-log.md` D-0044.
+
+### It agrees with the reference model, exhaustively
+
+`crates/vinct-reference` is the executable specification and shares no code with the program.
+All 512 three-member cases agree: four choices per member, every quarantine subset, both
+sides of the deadline.
+
+The one permitted difference is stated rather than hidden. Before the deadline the model may
+already call an incident rejected or impossible while the program still refuses to settle it.
+The model is a view of the state and the program is a transition on it; they agree about the
+state. See D-0045.
+
 ## Why this works: permissions gate reading, not touching
 
 The first implementation put everything in one permissioned account and concluded that
@@ -54,8 +100,14 @@ aggregate. Nor could the wallet that had created and paid for all three. Nor cou
 anonymous caller. Afterwards, opening the aggregate showed 1 approval and 1 rejection: the
 program had been reading and writing an account no participant could see, and got it right.
 
-So execution authorization and query authorization are separate concerns on a PER, and the
+So execution authorization and query authorization are separate concerns, and the
 sealed-quorum property is reachable. See `docs/decision-log.md` D-0042 and D-0043.
+
+Stated no wider than it was tested: on the current MagicBlock runtime, for the VINCT account
+flow above, a transaction can mutate an account its sender cannot read. That is observed
+behaviour of one attested Devnet rollup and of the local reference stack, not a documented
+protocol guarantee, and it should be re-checked after a validator upgrade. Nothing here says
+anything about other runtimes, other account shapes, or other permission configurations.
 
 One detail worth keeping. A refused read comes back as *no account*, not as an error. An
 observer cannot distinguish "you may not see this" from "this does not exist".
@@ -134,11 +186,27 @@ visible. VINCT makes no traffic-analysis resistance claim.
 `certify_incident` is permissionless and succeeds only when the incident is terminal, so a
 caller learns whether it has certified. That bit is the public `status` field anyway.
 
-Everything else about certification is uniform. Every non-terminal refusal is
-`IncidentNotTerminal` whatever the reason, so a caller cannot distinguish "not enough
-approvals yet" from "already too many rejections". An incident that cannot reach its
-threshold waits for its deadline rather than terminating early, so the moment a blocking
-rejection lands is not observable either.
+Everything else about certification is uniform, and the uniformity is tested rather than
+asserted:
+
+| Surface | What was checked |
+| --- | --- |
+| Error code | Every premature certification refuses with `IncidentNotTerminal`, at zero approvals, at one, and with a blocking rejection already in |
+| Public state | The core's data, length, and lamports are identical at zero, one, and two approvals, and the counts stay zero until the outcome settles |
+| Acknowledgement | A member's submission returns no data and logs identically however the quorum stands |
+| Account lifecycle | No account is created, closed, or resized as the tally moves |
+| Events | Nothing is emitted while collecting; certification emits one event carrying the aggregate that is public by then |
+| Compute units | Submitting costs the same whatever the tally; quarantining costs the same whether or not the member had already voted |
+
+An incident that cannot reach its threshold waits for its deadline rather than terminating
+early, so the moment a blocking rejection lands is not observable. At the deadline the outcome
+is named precisely as rejected rather than folded into expiry, which costs no timing
+information and keeps the covenant able to tell a blocked incident from an unanswered one.
+
+What is deliberately not claimed: constant-time execution, resistance to an observer
+correlating transaction traffic, or concealment of an incident's existence, deadline, or
+member count. The claim is narrower and checkable. VINCT itself does not expose exact live
+quorum progress through its own public state, errors, logs, events, or account lifecycle.
 
 ### What the TEE attestation establishes
 
@@ -237,7 +305,9 @@ incident is to its threshold. A successful submission returns no data at all, wh
 | Rung | State |
 | --- | --- |
 | Architecture experiment on the attested rollup | proven, `artifacts/devnet/per-visibility-experiment-latest.json` |
-| Program-level sealed quorum and zeroization | proven, 27 tests in `crates/vinct-program-tests/tests/privacy.rs` |
+| Program-level sealed quorum and zeroization | proven, 49 tests in `crates/vinct-program-tests/tests/privacy.rs` |
+| Ballot-set invariants under 18 adversarial mutations | proven, same file |
+| Exhaustive agreement with the reference model | proven, 512 cases in `crates/vinct-program-tests/tests/reference_parity.rs` |
 | Client and IDL account-order parity | proven, `tests/program/incident-client-parity.test.ts` |
 | Full lifecycle and read matrix on the local stack | proven, `artifacts/local-stack/phase4-local-lifecycle.json` |
 | Full lifecycle on the TEE-backed rollup | blocked: the attested endpoint is serving a cached clone of an older build, and the freshness gate refuses to collect from it |

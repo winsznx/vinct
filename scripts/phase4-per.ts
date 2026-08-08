@@ -534,7 +534,6 @@ async function main(): Promise<void> {
 
   const covenant = derivedKeypair(`${RUN_LABEL}:covenant`).publicKey;
   const policyId = sha256(`${RUN_LABEL}:policy`);
-  const memberSetHash = sha256(`${RUN_LABEL}:members`);
   const incidentId = BigInt(Number.parseInt(process.env.VINCT_INCIDENT_ID ?? "1", 10));
   const core = incidentAddress(covenant, incidentId);
   const claim = claimAddress(core);
@@ -769,12 +768,11 @@ async function main(): Promise<void> {
         incidentId,
         circleEpoch: 1n,
         policyId,
-        memberSetHash,
         clusterGenesisHash,
         requiredApprovals: 2,
         maximumRejections: 1,
         responseWindowSlots: 200_000n,
-        memberCount: members.length,
+        members: memberKeys,
         claimDigest: sha256(CANARY.claim),
       }),
     ],

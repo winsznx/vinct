@@ -141,6 +141,7 @@ pub mod vinct_core {
         covenant: Pubkey,
     ) -> Result<()> {
         let core = &mut ctx.accounts.core;
+        core.version = incident::INCIDENT_SCHEMA_VERSION;
         core.covenant = covenant;
         core.incident_id = incident_id;
         core.opener = ctx.accounts.opener.key();
@@ -161,6 +162,7 @@ pub mod vinct_core {
             incident::MAX_INCIDENT_MEMBERS,
         )?;
         let claim = &mut ctx.accounts.claim;
+        claim.version = incident::INCIDENT_SCHEMA_VERSION;
         claim.incident = ctx.accounts.core.key();
         claim.opener = ctx.accounts.core.opener;
         claim.private_fields_zeroized = true;
@@ -184,6 +186,7 @@ pub mod vinct_core {
             1,
         )?;
         let attestation = &mut ctx.accounts.attestation;
+        attestation.version = incident::INCIDENT_SCHEMA_VERSION;
         attestation.incident = ctx.accounts.core.key();
         attestation.member = member;
         attestation.opener = ctx.accounts.core.opener;
@@ -387,24 +390,39 @@ pub mod vinct_core {
     }
 
     /// Ephemeral rollup. Opens the incident and freezes its snapshot.
-    pub fn open_incident(
-        ctx: Context<OpenIncident>,
+    pub fn open_incident<'info>(
+        ctx: Context<'info, OpenIncident<'info>>,
         args: incident::OpenIncidentArgs,
     ) -> Result<()> {
         require!(args.required_approvals > 0, CoreError::ZeroThreshold);
         require!(
-            usize::from(args.member_count) <= incident::MAX_INCIDENT_MEMBERS,
-            CoreError::TooManyPermissionMembers
-        );
-        require!(args.member_count > 0, CoreError::PermissionNeedsAMember);
-        require!(
-            args.required_approvals <= args.member_count,
-            CoreError::ThresholdExceedsMembers
-        );
-        require!(
             args.response_window_slots > 0,
             CoreError::ZeroResponseWindow
         );
+
+        // Commits to the member set and checks the order in one place. An out-of-order or
+        // repeating list is rejected here rather than sorted, so the digest is a function of
+        // the set and not of one presentation of it.
+        let member_set_hash = incident::member_set_commitment(&args.members)?;
+        let member_count = args.members.len() as u8;
+        require!(
+            args.required_approvals <= member_count,
+            CoreError::ThresholdExceedsMembers
+        );
+
+        // Every member must already have a ballot account, checked against its canonical
+        // address. Freezing a set that included a member with no ballot would make
+        // certification impossible for the life of the incident, because certification
+        // demands the whole set and nothing later could create the missing one.
+        let core_key = ctx.accounts.core.key();
+        require!(
+            ctx.remaining_accounts.len() == args.members.len(),
+            CoreError::AttestationCountMismatch
+        );
+        for (member, info) in args.members.iter().zip(ctx.remaining_accounts.iter()) {
+            let attestation = read_ballot(info, core_key)?;
+            require_keys_eq!(attestation.member, *member, CoreError::OperationMismatch);
+        }
 
         let clock = Clock::get()?;
         let core = &mut ctx.accounts.core;
@@ -415,7 +433,7 @@ pub mod vinct_core {
 
         core.circle_epoch = args.circle_epoch;
         core.policy_id = args.policy_id;
-        core.member_set_hash = args.member_set_hash;
+        core.member_set_hash = member_set_hash;
         core.cluster_genesis_hash = args.cluster_genesis_hash;
         core.required_approvals = args.required_approvals;
         core.maximum_rejections = args.maximum_rejections;
@@ -425,7 +443,7 @@ pub mod vinct_core {
             .checked_add(args.response_window_slots)
             .ok_or(CoreError::ArithmeticOverflow)?;
         core.claim_digest = args.claim_digest;
-        core.member_count = args.member_count;
+        core.member_count = member_count;
         core.status = incident::IncidentStatus::Collecting;
         Ok(())
     }
@@ -504,7 +522,7 @@ pub mod vinct_core {
             CoreError::IncidentNotCollecting
         );
         let threshold_before = ctx.accounts.core.required_approvals;
-        ctx.accounts.attestation.quarantined = true;
+        ctx.accounts.attestation.state = incident::BallotState::Quarantined;
         require!(
             ctx.accounts.core.required_approvals == threshold_before,
             CoreError::QuarantineChangedThreshold
@@ -535,10 +553,10 @@ pub mod vinct_core {
             CoreError::IncidentNotCollecting
         );
 
-        let attestations = read_supplied_attestations(
+        let attestations = reconstruct_frozen_ballots(
+            &ctx.accounts.core,
             ctx.accounts.core.key(),
             ctx.remaining_accounts,
-            usize::from(ctx.accounts.core.member_count),
         )?;
         let tally = incident::tally(&attestations);
         let certified = tally.meets(&ctx.accounts.core);
@@ -548,8 +566,14 @@ pub mod vinct_core {
         let core = &mut ctx.accounts.core;
         core.approval_count_after_terminal = tally.approvals;
         core.rejection_count_after_terminal = tally.rejections;
+        // Three terminal outcomes, matching the reference model's. The rejected case is
+        // recorded distinctly rather than folded into expiry, so the covenant can tell a
+        // blocked incident from one nobody answered. It is only ever reached at or after the
+        // deadline, so naming it costs no timing information.
         core.status = if certified {
             incident::IncidentStatus::CertifiedPendingSettlement
+        } else if tally.rejections > core.maximum_rejections {
+            incident::IncidentStatus::RejectedByThreshold
         } else {
             incident::IncidentStatus::Expired
         };
@@ -986,48 +1010,84 @@ fn fund_for_permission<'info>(
 fn read_core(account: &UncheckedAccount) -> Result<incident::IncidentCore> {
     require_keys_eq!(*account.owner, crate::ID, CoreError::IncidentWrongOwner);
     let data = account.try_borrow_data()?;
-    incident::IncidentCore::try_deserialize(&mut &data[..])
-        .map_err(|_| error!(CoreError::IncidentAccountMalformed))
+    let core = incident::IncidentCore::try_deserialize(&mut &data[..])
+        .map_err(|_| error!(CoreError::IncidentAccountMalformed))?;
+    require!(
+        core.version == incident::INCIDENT_SCHEMA_VERSION,
+        CoreError::UnsupportedSchemaVersion
+    );
+    Ok(core)
 }
 
-/// Reads every attestation supplied in `remaining_accounts`, checked against the incident.
+/// Reads one ballot account, checked before it is believed.
 ///
-/// Owner before bytes, then the incident it claims to belong to, then its own PDA derivation
-/// from that incident and the member it names. A duplicate would let one approval be counted
-/// twice, so the list is checked for repeats as it is read.
-fn read_supplied_attestations(
+/// Owner before bytes, then schema version, then the incident it claims to belong to, then
+/// its own canonical address derived from that incident and the member it names. The address
+/// check is what makes the `member` field trustworthy: a ballot cannot be relabelled, because
+/// relabelling it changes the address it would have to live at.
+fn read_ballot(info: &AccountInfo, core_key: Pubkey) -> Result<incident::MemberAttestation> {
+    require_keys_eq!(*info.owner, crate::ID, CoreError::IncidentWrongOwner);
+    let attestation =
+        incident::MemberAttestation::try_deserialize(&mut &info.try_borrow_data()?[..])
+            .map_err(|_| error!(CoreError::IncidentAccountMalformed))?;
+    require!(
+        attestation.version == incident::INCIDENT_SCHEMA_VERSION,
+        CoreError::UnsupportedSchemaVersion
+    );
+    require_keys_eq!(attestation.incident, core_key, CoreError::OperationMismatch);
+
+    let (expected_address, _) = Pubkey::find_program_address(
+        &[
+            incident::ATTESTATION_SEED,
+            core_key.as_ref(),
+            attestation.member.as_ref(),
+        ],
+        &crate::ID,
+    );
+    require_keys_eq!(info.key(), expected_address, CoreError::OperationMismatch);
+    Ok(attestation)
+}
+
+/// Reconstructs the frozen ballot set from `remaining_accounts` and proves it is the set.
+///
+/// The supplied list is not trusted for deserializing, and it is not trusted positionally
+/// either. Every ballot is validated on its own, the members must arrive strictly ascending,
+/// and the commitment recomputed over them has to equal the one frozen at open.
+///
+/// That single equality carries most of the invariants at once. A missing member, an extra
+/// one, a duplicate, a ballot belonging to another incident, and a ballot relabelled to
+/// another member each either change the digest or fail an earlier check. Ascending order
+/// makes the digest a function of the set rather than of the caller's arrangement, so a
+/// reordered list is refused rather than quietly producing a different answer.
+fn reconstruct_frozen_ballots(
+    core: &incident::IncidentCore,
     core_key: Pubkey,
     supplied: &[AccountInfo],
-    expected: usize,
 ) -> Result<Vec<incident::MemberAttestation>> {
     require!(
-        supplied.len() == expected,
+        supplied.len() == usize::from(core.member_count),
         CoreError::AttestationCountMismatch
     );
-    let mut attestations = Vec::with_capacity(expected);
-    for (index, info) in supplied.iter().enumerate() {
-        require_keys_eq!(*info.owner, crate::ID, CoreError::IncidentWrongOwner);
-        let attestation =
-            incident::MemberAttestation::try_deserialize(&mut &info.try_borrow_data()?[..])
-                .map_err(|_| error!(CoreError::IncidentAccountMalformed))?;
-        require_keys_eq!(attestation.incident, core_key, CoreError::OperationMismatch);
 
-        let (expected_address, _) = Pubkey::find_program_address(
-            &[
-                incident::ATTESTATION_SEED,
-                core_key.as_ref(),
-                attestation.member.as_ref(),
-            ],
-            &crate::ID,
-        );
-        require_keys_eq!(info.key(), expected_address, CoreError::OperationMismatch);
-
-        for earlier in supplied.iter().take(index) {
-            require_keys_neq!(info.key(), earlier.key(), CoreError::DuplicateAttestation);
+    let mut ballots: Vec<incident::MemberAttestation> = Vec::with_capacity(supplied.len());
+    for info in supplied.iter() {
+        let ballot = read_ballot(info, core_key)?;
+        require!(ballot.state.may_be_counted(), CoreError::BallotNotCountable);
+        if let Some(previous) = ballots.last() {
+            require!(
+                previous.member.to_bytes() < ballot.member.to_bytes(),
+                CoreError::MemberSetNotAscending
+            );
         }
-        attestations.push(attestation);
+        ballots.push(ballot);
     }
-    Ok(attestations)
+
+    let members: Vec<Pubkey> = ballots.iter().map(|b| b.member).collect();
+    require!(
+        incident::member_set_commitment(&members)? == core.member_set_hash,
+        CoreError::BallotSetDoesNotMatchSnapshot
+    );
+    Ok(ballots)
 }
 
 /// The account list for an exit, with every private account gated on its own bytes.
@@ -1061,13 +1121,14 @@ fn gated_exit_accounts<'info>(
     require_keys_eq!(claim.incident, core_key, CoreError::OperationMismatch);
     claim.may_leave_the_private_runtime()?;
 
-    let attestations = read_supplied_attestations(
-        core_key,
-        ctx.remaining_accounts,
-        usize::from(core.member_count),
-    )?;
-    for attestation in &attestations {
-        attestation.may_leave_the_private_runtime()?;
+    // The exit checks the whole family. A release that took only some of the ballots would
+    // leave the rest delegated with nothing left to release them.
+    require!(
+        ctx.remaining_accounts.len() == usize::from(core.member_count),
+        CoreError::AttestationCountMismatch
+    );
+    for info in ctx.remaining_accounts.iter() {
+        read_ballot(info, core_key)?.may_leave_the_private_runtime()?;
     }
 
     let mut accounts = vec![
@@ -1276,9 +1337,23 @@ pub struct AttestationPermission<'info> {
     pub permission_program: UncheckedAccount<'info>,
 }
 
+/// Opening.
+///
+/// Every ballot account arrives in `remaining_accounts`, in the same ascending order as the
+/// member list in the arguments, so the frozen commitment is checked against accounts that
+/// demonstrably exist.
 #[derive(Accounts)]
 pub struct OpenIncident<'info> {
-    #[account(mut, has_one = opener @ CoreError::NotTheOpener)]
+    #[account(
+        mut,
+        has_one = opener @ CoreError::NotTheOpener,
+        seeds = [
+            incident::INCIDENT_SEED,
+            core.covenant.as_ref(),
+            &core.incident_id.to_le_bytes()
+        ],
+        bump = core.bump
+    )]
     pub core: Account<'info, incident::IncidentCore>,
     pub opener: Signer<'info>,
 }
@@ -1326,7 +1401,17 @@ pub struct QuarantineMember<'info> {
 /// hanging. Every attestation account arrives in `remaining_accounts`.
 #[derive(Accounts)]
 pub struct CertifyIncident<'info> {
-    #[account(mut)]
+    /// Seed-constrained so a caller cannot substitute a different incident's core and settle
+    /// this one's ballots against someone else's threshold.
+    #[account(
+        mut,
+        seeds = [
+            incident::INCIDENT_SEED,
+            core.covenant.as_ref(),
+            &core.incident_id.to_le_bytes()
+        ],
+        bump = core.bump
+    )]
     pub core: Account<'info, incident::IncidentCore>,
 }
 
@@ -1749,6 +1834,12 @@ pub enum CoreError {
     IncidentAccountMalformed,
     #[msg("The attestation accounts supplied do not match the incident's member count")]
     AttestationCountMismatch,
-    #[msg("The same attestation account was supplied twice")]
-    DuplicateAttestation,
+    #[msg("Member set must be strictly ascending with no repeats")]
+    MemberSetNotAscending,
+    #[msg("The ballots supplied are not the set frozen at open")]
+    BallotSetDoesNotMatchSnapshot,
+    #[msg("This ballot is in a state that cannot be counted")]
+    BallotNotCountable,
+    #[msg("Account schema version is not the one this program supports")]
+    UnsupportedSchemaVersion,
 }
