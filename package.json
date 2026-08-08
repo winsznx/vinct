@@ -9,9 +9,9 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit -p tsconfig.json",
-    "lint": "prettier --check \"{scripts,packages,tests}/**/*.{ts,tsx,json}\"",
-    "lint:fix": "prettier --write \"{scripts,packages,tests}/**/*.{ts,tsx,json}\"",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.web.json",
+    "lint": "prettier --check \"{apps,scripts,packages,tests}/**/*.{ts,tsx,json}\"",
+    "lint:fix": "prettier --write \"{apps,scripts,packages,tests}/**/*.{ts,tsx,json}\"",
     "source-lock": "tsx scripts/source-lock.ts",
     "check-magicblock-status": "tsx scripts/check-magicblock-status.ts",
     "stack:start": "bash scripts/bootstrap-local.sh start",
@@ -22,21 +22,35 @@
     "gen-account-vectors": "cargo run -q -p vinct-layouts --bin gen-account-vectors",
     "test:ts": "tsx --test \"tests/**/*.test.ts\"",
     "verify-operation": "tsx packages/verifier/src/verify-operation.ts",
-    "check-vectors": "bash scripts/check-vectors.sh"
+    "check-vectors": "bash scripts/check-vectors.sh",
+    "web": "pnpm --filter @vinct/web dev",
+    "web:build": "pnpm --filter @vinct/web build",
+    "test:web": "playwright test",
+    "test:web:desktop": "playwright test --project=desktop",
+    "proof:web": "bash scripts/phase7-web-proof.sh"
   },
   "dependencies": {
     "@coral-xyz/anchor": "0.32.1",
     "@magicblock-labs/ephemeral-rollups-sdk": "0.14.3",
+    "@noble/hashes": "1.8.0",
     "@solana/web3.js": "1.98.4",
     "magic-router-sdk": "1.0.10",
     "tweetnacl": "1.0.3"
   },
   "devDependencies": {
     "@magicblock-labs/ephemeral-validator": "0.13.19",
+    "@playwright/test": "1.52.0",
     "@types/node": "24.13.3",
+    "@types/react": "19.1.2",
+    "@types/react-dom": "19.1.2",
+    "@vitejs/plugin-react": "4.4.1",
     "prettier": "3.9.6",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-router-dom": "7.5.3",
     "tsx": "4.23.11",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vite": "6.3.5"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

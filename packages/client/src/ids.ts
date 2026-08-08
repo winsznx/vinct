@@ -5,14 +5,14 @@
  * that changes them cannot leave this file quietly disagreeing with the deployed programs.
  */
 
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { PublicKey } from "@solana/web3.js";
 
-const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
-const IDL_DIR = join(REPO_ROOT, "target", "idl");
+// Imported rather than read from disk, so the same module works in a browser bundle and under
+// tsx. The files are the ones `anchor build` writes, and importing them means a bundle carries
+// the IDL of the build it was made from rather than whatever happens to be on a filesystem.
+import adapterIdl from "../../../target/idl/vinct_adapter.json" with { type: "json" };
+import coreIdl from "../../../target/idl/vinct_core.json" with { type: "json" };
+import mockProtocolIdl from "../../../target/idl/vinct_mock_protocol.json" with { type: "json" };
 
 interface AnchorIdl {
   address: string;
@@ -20,13 +20,9 @@ interface AnchorIdl {
   errors?: { code: number; name: string; msg: string }[];
 }
 
-function loadIdl(name: string): AnchorIdl {
-  return JSON.parse(readFileSync(join(IDL_DIR, `${name}.json`), "utf8")) as AnchorIdl;
-}
-
-export const CORE_IDL = loadIdl("vinct_core");
-export const ADAPTER_IDL = loadIdl("vinct_adapter");
-export const MOCK_PROTOCOL_IDL = loadIdl("vinct_mock_protocol");
+export const CORE_IDL = coreIdl as AnchorIdl;
+export const ADAPTER_IDL = adapterIdl as AnchorIdl;
+export const MOCK_PROTOCOL_IDL = mockProtocolIdl as AnchorIdl;
 
 export const CORE_PROGRAM_ID = new PublicKey(CORE_IDL.address);
 export const ADAPTER_PROGRAM_ID = new PublicKey(ADAPTER_IDL.address);

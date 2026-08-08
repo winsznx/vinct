@@ -1,10 +1,14 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2023"],
+    "lib": [
+      "ES2023"
+    ],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": ["node"],
+    "types": [
+      "node"
+    ],
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
@@ -19,6 +23,17 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["scripts/**/*.ts", "packages/**/*.ts", "tests/**/*.ts"],
-  "exclude": ["node_modules", "target", "**/dist", ".toolchain"]
+  "include": [
+    "scripts/**/*.ts",
+    "packages/**/*.ts",
+    "tests/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "target",
+    "**/dist",
+    ".toolchain",
+    "tests/web",
+    "apps"
+  ]
 }

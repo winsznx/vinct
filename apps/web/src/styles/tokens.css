@@ -1,0 +1,179 @@
+/**
+ * The design system from design.md, as tokens.
+ *
+ * Near-black canvas, one violet, everything else achromatic. Elevation comes from hairline
+ * strokes, never shadows. The rules in design.md's Do and Don't sections are the ones that keep
+ * this from drifting into a generic dark theme, and the two that matter most here are that the
+ * violet is rationed to one glow and one fill per page, and that nothing gets a box-shadow.
+ *
+ * Fonts are substituted per the reference's own substitution list, because the originals are
+ * licensed and this page loads nothing from a CDN. Whyte Inktrap becomes Inter, Whyte Inktrap
+ * Mono becomes JetBrains Mono, GrandSlang becomes a serif italic. The system's proportions,
+ * tracking, and weights survive the substitution; its exact letterforms do not.
+ */
+
+:root {
+  color-scheme: dark;
+
+  --color-near-black: #090909;
+  --color-almost-white: #f7f9fa;
+  --color-soft-white: #f0f0f0;
+  --color-steel: #828384;
+  --color-graphite: #474747;
+  --color-iron: #423738;
+  --color-ash: #6b6b6b;
+  --color-signal-violet: #af50ff;
+  --color-lavender-mist: #e1bdff;
+
+  --surface-void: var(--color-near-black);
+  --surface-panel: rgba(51, 50, 72, 0.7);
+  --surface-wash: rgba(247, 249, 250, 0.04);
+  --surface-wash-strong: rgba(247, 249, 250, 0.08);
+  --hairline: rgba(247, 249, 250, 0.2);
+  --hairline-faint: rgba(247, 249, 250, 0.1);
+
+  --font-sans:
+    Inter, "Whyte Inktrap", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono:
+    "JetBrains Mono", "Whyte Inktrap Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+    monospace;
+  --font-display: "Tiempos Headline", "GrandSlang", Georgia, "Times New Roman", serif;
+
+  --text-caption: 10px;
+  --text-body-sm: 14px;
+  --text-body: 16px;
+  --text-subheading: 20px;
+  --text-heading-sm: 32px;
+  --text-heading: 48px;
+  --text-heading-lg: 64px;
+  --text-display: 88px;
+
+  --spacing-4: 4px;
+  --spacing-8: 8px;
+  --spacing-12: 12px;
+  --spacing-16: 16px;
+  --spacing-20: 20px;
+  --spacing-24: 24px;
+  --spacing-32: 32px;
+  --spacing-40: 40px;
+  --spacing-48: 48px;
+  --spacing-64: 64px;
+  --spacing-80: 80px;
+  --spacing-96: 96px;
+  --spacing-128: 128px;
+
+  --radius-card: 19.2px;
+  --radius-pill: 1584px;
+  --radius-button: 8px;
+  --radius-control: 6px;
+
+  --page-max: 1200px;
+  --section-gap: 120px;
+  --card-padding: 40px;
+
+  /* One state colour per outcome. Achromatic by default; only the violet is chromatic, and
+     only the two states that mean "act now" are allowed to use it. */
+  --state-good: var(--color-almost-white);
+  --state-waiting: var(--color-steel);
+  --state-attention: var(--color-signal-violet);
+  --state-blocked: var(--color-lavender-mist);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--surface-void);
+  color: var(--color-almost-white);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* The stamped section voice. The tracking is the heading style, so it never gets an
+   underline, a rule, or a colour. */
+.stamp {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--color-soft-white);
+  line-height: 0.9;
+  font-size: clamp(28px, 6vw, 74px);
+  margin: 0;
+}
+
+.label {
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--color-steel);
+}
+
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-steel);
+}
+
+.display {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  line-height: 0.9;
+  font-size: clamp(40px, 9vw, 88px);
+  margin: 0;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-body-sm);
+}
+
+/* Hairlines instead of shadows, everywhere. */
+.rule {
+  border: 0;
+  border-top: 1px solid var(--hairline-faint);
+  margin: 0;
+}
+
+.page {
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: 0 var(--spacing-24);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

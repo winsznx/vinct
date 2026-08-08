@@ -6,8 +6,6 @@
  * or normalises an account list.
  */
 
-import { createHash } from "node:crypto";
-
 import {
   PublicKey,
   SystemProgram,
@@ -32,6 +30,7 @@ import {
   operationAddress,
   settlementReceiptAddress,
 } from "./pdas.js";
+import { sha256 as sha256Bytes } from "./sha256.js";
 
 // ------------------------------------------------------------- mock protocol
 
@@ -336,18 +335,19 @@ const TEMPLATE_ROLE = { fixed: 0, adapterReceipt: 1, certificate: 3 } as const;
  * operation under the same covenant, policy, and epoch.
  */
 export function actionTemplateHash(slots: TemplateSlot[]): Uint8Array {
-  const hasher = createHash("sha256");
   const count = Buffer.alloc(4);
   count.writeUInt32LE(slots.length);
-  hasher.update(count);
+  const parts: Buffer[] = [count];
   for (const slot of slots) {
     const role = TEMPLATE_ROLE[slot.kind === "fixed" ? "fixed" : slot.kind];
-    hasher.update(Buffer.from([role]));
-    hasher.update(slot.kind === "fixed" ? slot.pubkey.toBuffer() : Buffer.alloc(32));
-    hasher.update(Buffer.from([slot.isSigner ? 1 : 0]));
-    hasher.update(Buffer.from([slot.isWritable ? 1 : 0]));
+    parts.push(
+      Buffer.from([role]),
+      slot.kind === "fixed" ? slot.pubkey.toBuffer() : Buffer.alloc(32),
+      Buffer.from([slot.isSigner ? 1 : 0]),
+      Buffer.from([slot.isWritable ? 1 : 0]),
+    );
   }
-  return new Uint8Array(hasher.digest());
+  return new Uint8Array(sha256Bytes(Buffer.concat(parts)));
 }
 
 /**

@@ -22,9 +22,8 @@
  * vectors generated from the programs' own Rust structs.
  */
 
-import { createHash } from "node:crypto";
-
 import { PublicKey } from "@solana/web3.js";
+import { sha256 as sha256Bytes } from "./sha256.js";
 
 /** The schema version this client speaks for the versioned account family. */
 const SUPPORTED_SCHEMA_VERSION = 1;
@@ -36,7 +35,7 @@ const SUPPORTED_SCHEMA_VERSION = 1;
  * program by reading this file, which is the reason these decoders are hand-written at all.
  */
 function accountDiscriminator(name: string): Buffer {
-  return createHash("sha256").update(`account:${name}`).digest().subarray(0, 8);
+  return sha256Bytes(`account:${name}`).subarray(0, 8);
 }
 
 /**

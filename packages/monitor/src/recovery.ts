@@ -11,10 +11,9 @@
  * `tests/program/settlement-monitor.test.ts`.
  */
 
-import { createHash } from "node:crypto";
-
 import { permitsRecovery, SettlementClassification } from "./classify.js";
 import type { SettlementRecord } from "./record.js";
+import { sha256 as sha256Bytes } from "../../client/src/sha256.js";
 
 /** Where a recovery proposal sits. */
 export enum RecoveryStatus {
@@ -79,7 +78,7 @@ export interface RecoveryOperation {
 const RECOVERY_DOMAIN = "VINCT_RECOVERY_V1";
 
 function sha256(input: Buffer): Buffer {
-  return createHash("sha256").update(input).digest();
+  return sha256Bytes(input);
 }
 
 function u64(value: bigint): Buffer {

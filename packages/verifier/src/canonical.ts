@@ -9,16 +9,15 @@
  * semantic, and normalising it would change which account a program writes to.
  */
 
-import { createHash } from "node:crypto";
-
 import { BorshReader, BorshWriter, fromHex } from "./borsh.js";
+import { sha256 as sha256Bytes } from "../../client/src/sha256.js";
 
 export type Digest32 = Uint8Array;
 
 // ---------------------------------------------------------------- primitives
 
 export function sha256(bytes: Uint8Array): Digest32 {
-  return new Uint8Array(createHash("sha256").update(bytes).digest());
+  return new Uint8Array(sha256Bytes(bytes));
 }
 
 /** A domain separator is `sha256(label)`. */

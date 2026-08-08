@@ -1,0 +1,41 @@
+/**
+ * Browser tests against the built app, not the dev server.
+ *
+ * `vite preview` serves exactly what a deployment would, so a test cannot pass because of a
+ * dev-only transform. Video is on for every test, because the phase's required evidence is a
+ * recording of the path a judge takes.
+ *
+ * Two projects: desktop and mobile. The core path has to work on both, and a layout that only
+ * survives at 1280px is a layout nobody can check on a phone during a demo.
+ */
+
+import { defineConfig, devices } from "@playwright/test";
+
+const PORT = 4173;
+
+export default defineConfig({
+  testDir: "tests/web",
+  outputDir: "artifacts/web/test-results",
+  fullyParallel: false,
+  workers: 1,
+  reporter: [["list"], ["html", { outputFolder: "artifacts/web/report", open: "never" }]],
+  timeout: 60_000,
+  use: {
+    baseURL: `http://127.0.0.1:${PORT}`,
+    video: "on",
+    trace: "retain-on-failure",
+    screenshot: "only-on-failure",
+  },
+  projects: [
+    { name: "desktop", use: { ...devices["Desktop Chrome"] } },
+    { name: "mobile", use: { ...devices["Pixel 7"] } },
+  ],
+  webServer: {
+    // --host is load-bearing. Without it vite preview binds to ::1, and a baseURL of
+    // 127.0.0.1 then fails to connect with no error anyone would recognise.
+    command: `pnpm --filter @vinct/web exec vite preview --port ${PORT} --strictPort --host 127.0.0.1`,
+    url: `http://127.0.0.1:${PORT}`,
+    reuseExistingServer: true,
+    timeout: 120_000,
+  },
+});

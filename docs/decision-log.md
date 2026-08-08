@@ -1527,3 +1527,59 @@ reporting an iteration that a person performed by hand.
 `safeToUndelegate` is the one question the module exists to answer, and it is deliberately
 conservative: either removal was observed, or the incident is terminal and the handler will
 no-op for whatever iterations remain.
+
+### D-0064 The web product reads a chain and holds nothing
+
+`apps/web` is a static Vite bundle. There is no server, no session, and no database, and that is
+a protocol decision rather than a hosting preference. A service that could answer "did this
+settle" would become a second source of truth about a settlement, and the entire settlement
+model exists because that answer has to come from base-layer accounts.
+
+Consequences worth naming.
+
+Every endpoint is a query parameter, and none is a secret. A proof link carries the cluster it
+was taken against, which is what makes the no-wallet path shareable: open the link, read the
+checks, verify nothing about this page.
+
+The one value the browser persists is a covenant address, under a single storage key.
+Addresses are public on chain. `tests/web/privacy.spec.ts` walks every route and fails if any
+other key appears, or if anything resembling a claim, a decision, a nonce, or a signature
+reaches storage.
+
+The app contacts its own origin and the RPC endpoints the user named, and nothing else. No font
+CDN, no analytics, no error reporter. A third party learning when somebody opens an incident
+page is a privacy leak that no amount of on-chain correctness prevents, so the test asserts the
+absence of off-origin requests directly rather than trusting a policy.
+
+The incident room shows the shape of the private state and not its contents, and says so. It
+holds no member key and opens no authenticated rollup connection, so it cannot read a ballot.
+The alternative, a browser holding member keys and caching decrypted ballots, would move
+private material outside the boundary the whole design exists to hold. Stating the limit is
+better than a page that looks capable and quietly is not.
+
+### D-0065 `createHash` had to go, and the vectors proved the replacement
+
+The shared packages hashed with `node:crypto`, which does not exist in a bundle. Rather than
+polyfill it, `packages/client/src/sha256.ts` now wraps `@noble/hashes`, which is already in the
+tree beneath `@solana/web3.js`, is synchronous, and behaves identically in both runtimes.
+
+The reason this was safe to do at all is that every canonical digest in this repository is
+pinned to vectors generated from Rust. Swapping the hash implementation under five modules is
+the kind of change that silently alters a commitment, and the 70 TypeScript tests passing
+unchanged afterwards is what says it did not.
+
+Two other Node-only surfaces moved rather than being polyfilled. `packages/client/src/ids.ts`
+now imports the built IDL JSON instead of reading it from disk, so a bundle carries the IDL of
+the build it was made from. And `freshness.ts`, which walks the source tree to compute a build
+fingerprint, left the client barrel: it is a proof-script tool and has no business in a browser
+bundle. `packages/verifier/src/browser.ts` is the same split for the verifier, excluding the
+committed-vector reader. A page that could check itself against vectors it shipped would be
+proving nothing; it verifies against the chain instead.
+
+### D-0066 vite preview binds to ::1, and the failure looks like nothing
+
+Worth one paragraph because it cost time and will cost it again. `vite preview --port 4173`
+binds to `localhost`, which resolves to `::1` on macOS. A Playwright `baseURL` of
+`http://127.0.0.1:4173` then cannot connect, and the run hangs in `webServer` startup with no
+output at all, which is indistinguishable from a slow build. `--host 127.0.0.1` is the fix and
+it is now in `playwright.config.ts` with a comment saying why.

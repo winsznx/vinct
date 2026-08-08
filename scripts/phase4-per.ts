@@ -60,7 +60,6 @@ import {
   attestationAddress,
   authenticate,
   certifyIncident,
-  checkRuntimeFreshness,
   claimAddress,
   closeAttestationPermission,
   closeClaimPermission,
@@ -87,6 +86,7 @@ import {
   submitSealedAttestation,
   type AuthenticatedEndpoint,
 } from "../packages/client/src/index.js";
+import { checkRuntimeFreshness } from "../packages/client/src/freshness.js";
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ARTIFACT_DIR = join(REPO_ROOT, "artifacts", "devnet");

@@ -10,8 +10,6 @@
  * built IDL in `tests/program/incident-client-parity.test.ts`. Nothing here sorts a list.
  */
 
-import { createHash } from "node:crypto";
-
 import {
   EPHEMERAL_VAULT_ID,
   MAGIC_CONTEXT_ID,
@@ -30,6 +28,7 @@ import { covenantMemberAddress } from "./covenant.js";
 import { expectAccount, expectVersion } from "./accounts.js";
 import { ArgWriter, withDiscriminator } from "./encoding.js";
 import { CORE_IDL, CORE_PROGRAM_ID, discriminator } from "./ids.js";
+import { sha256 as sha256Bytes } from "./sha256.js";
 
 export const INCIDENT_SEED = Buffer.from("incident");
 export const CLAIM_SEED = Buffer.from("incident-claim");
@@ -525,7 +524,7 @@ export function expiryTaskId(core: IncidentCoreView): bigint {
       return out;
     })(),
   ]);
-  const digest = createHash("sha256").update(preimage).digest();
+  const digest = sha256Bytes(preimage);
   // The program clears the sign bit rather than negating: `i64::MIN` has no positive
   // counterpart, so negation would have one input with no valid output.
   return digest.readBigInt64LE(0) & 0x7fffffffffffffffn;

@@ -15,9 +15,11 @@ import { test } from "node:test";
 import { Keypair } from "@solana/web3.js";
 
 import {
+} from "../../packages/client/src/index.js";
+import {
   checkRuntimeFreshness,
   expectedBuildFingerprint,
-} from "../../packages/client/src/index.js";
+} from "../../packages/client/src/freshness.js";
 
 const feePayer = Keypair.generate().publicKey;
 
