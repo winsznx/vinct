@@ -28,7 +28,8 @@
     "test:web": "playwright test",
     "test:web:desktop": "playwright test --project=desktop",
     "proof:web": "bash scripts/phase7-web-proof.sh",
-    "audit-claims": "tsx scripts/audit-claims.ts"
+    "audit-claims": "tsx scripts/audit-claims.ts",
+    "scan-artifacts": "tsx scripts/scan-artifacts.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "0.32.1",

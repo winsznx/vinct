@@ -89,6 +89,7 @@ export function IncidentRoom() {
 
       {state.status === "unreachable" && <Problem kind="unreachable" message={state.message} />}
       {state.status === "error" && <Problem kind="error" message={state.message} />}
+      {state.status === "unsupported" && <Problem kind="unsupported" message={state.message} />}
 
       {covenant && state.status === "ready" && !incident && (
         <Empty>This covenant has no incident to show.</Empty>

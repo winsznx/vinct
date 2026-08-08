@@ -1,4 +1,5 @@
 export * from "./ids.js";
+export * from "./redact.js";
 export * from "./pdas.js";
 export * from "./encoding.js";
 export * from "./instructions.js";

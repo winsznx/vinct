@@ -1,16 +1,16 @@
 {
-  "captured_at": "2026-08-08T12:04:07.945Z",
+  "captured_at": "2026-08-08T16:39:13.492Z",
   "run": "expire",
   "verdict": "PASS",
   "expected_state": "DESIRED_STATE_REACHED",
   "endpoints": {
-    "base": "http://127.0.0.1:8899",
-    "er": "http://127.0.0.1:7799"
+    "base": "http://127.0.0.1:8899/",
+    "er": "http://127.0.0.1:7799/"
   },
   "validator_identity": "mAGicPQYBMvcYveUZA5F5UNNwyHvfYh5xkLS2Fr1mev",
-  "covenant": "Dd42siBxzx14HynA9n7ki4inGJhgvRTR3wz8FDLLeNha",
-  "incident": "9tZpy47KNMDSJ79DBfzYe3uWs99bDi5a7XvWQNQqXZNV",
-  "task_id": "5544155998909637631",
+  "covenant": "2cfq1f57PRqzhggLTeBvCDEToK49xUPnWewPns3nK6zX",
+  "incident": "4P9MzAuAsDMLBSnrM6BscT76wMHyPNuChw213fpMD7jF",
+  "task_id": "284216804311823417",
   "response_window_slots": "120",
   "requested": {
     "execution_interval_millis": "1000",
@@ -18,79 +18,64 @@
     "note": "A requested iteration count is not a delivered one. See docs/decision-log.md D-0059."
   },
   "observation": {
-    "taskId": "5544155998909637631",
+    "taskId": "284216804311823417",
     "state": "DESIRED_STATE_REACHED",
-    "requestSignature": "3D5n863bBeLYy91bwnr4uVb8DXp7XSNm7YYFkkqVEuJdycrjFDgL48Gg5HWKQ7iD7uq3nr2QE1iQPvqeBuPVLp9f",
+    "requestSignature": "3ZeabPWtKQYRPZ24fgSJdvy3BFH2kZpNbfzbfdEjwKANMDUWgtKUfuGBdpAUTsgsAwUNXeeZUghNsmvTkwUu5RDh",
     "cancelSignature": null,
     "iterationSignatures": [
-      "3fFgVtRZjkHqRci4iaWDEYkP8E7HK3owVjhwcExUAcEo9idM8CLUoh3mEvT1Cf7JwbwduA46rFErtYtK23cYyQ6N",
-      "349n6Ze1JnKvTjNHMD4VuNkT351k5ovPomAAKSiw8eAzSVgpzvFD8qYArxXzqjTNN9FD3Mdhvtm5S2VN4XxBwqHw",
-      "5KFF8xwwakNS6k9Cf3VHUUgvK7Fv5XrtmQvnhx4GK14AuQXNCdSVEVtHRQEZDVuDhw3oK5XtFmibgEfAjhekqcDP",
-      "35Qhd9Mx116UfQWwAULtLiKXrs9hMQK28UNq2hPVYi4EEHrRSf5GqDRrx37daaMGYEYUNZLjgdKZ7e3zQ8DjrpZW",
-      "3ckJTVCVWJHLn6rDHaVRNm93V5DJYswTD2n7yEHFFvWm3NYrZKAbmsV1so5awiR4TGRVmUXMZdDKgGN5bhyncYwj",
-      "5PMcykbwKmFvi4n83eL2otMAaYKkWv9e7xQfSXHGyGEHa8wsXtLiDPLBfF6g4BHe96wWoLAnAkuxaMBW4AfAaBLT",
-      "rzQ4wUiRAyvxW63GHGoVPaDprDEMgdkYHWWpkRbMJbZuwA2Xk6nMYBtcW2bRvhPfAZXKdFz8x9NHGgJcosmeSpS"
+      "3ruweSmB6P25L22GKi46sDye6UtT8YTN5zxDCYXr4sTqdDMgBngzVRkUj5CMRrqgNfA1s1axB8NuK7hPfBsa2fWY",
+      "41Dyx4bkJP8WfQkw83hti5DVkQJXp5YHiycMv6Re84t6R2UmdwRuwi3BnXfrJvDW3Di2f6teS3Au7ZsgZVEzPN9X",
+      "5AYvjEDFTiSfCWikRWjrqaLKv6mWv8RddCZMauBsyruujtPnDJHQKnqMxtBP6PJEDGRZRBVj3ebNPmUPFDDXBm9T",
+      "xBNe1aqbXtuvBmSCeoivkzWrTpXS43S6SJHgVN1QQx6DtGdwABCsmhVbAHnNMTCVvCCaGzesG8sXWDx7psSUegq",
+      "3JcAkrF69zVUheuRT3cH5PpjL3Q2qLiRRofbdyccWinP4EbxZYDRz67enNeSMeBLHEKBHS476MetPEVxFBFmNKQ7",
+      "5w6mu2qFMBzLCcBrE3awte5zT8r1LbbzmStRK25ypfkmJw4eCzvjzgtyfDuAYFTscpVaLS31wzboTeTChZpD1EPQ",
+      "43ef76J5jC3JzwGDgMUh2pEnsQHx6byzTKVZLaXHqtwnkawLaXLr5WVy35AwyXLqBj3uSk7cQE6SWihPjtyXSS9s"
     ],
     "incidentStatus": "Expired",
     "desiredStateReached": true,
     "iterationsExhausted": false,
-    "observedAt": "2026-08-08T12:04:07.945Z",
+    "observedAt": "2026-08-08T16:39:13.492Z",
     "windowElapsed": false
   },
-  "trailing_iteration_count": 33,
+  "trailing_iteration_count": 11,
   "iterations_after_release": [
     {
-      "signature": "5ehNV1vfJxjPXcK1mGq64SuhpbQ4LDYbLkaEQvp21dZ3zKZ5KTiahrgcbKKEmK2Q6i59rodgpDLmZvdeNHaod1Zk",
+      "signature": "48pQ4T5f7kHgB6Zwo3PNsUtAoFg4mtBKmVqfBj2sWdcu8WvVpfVYJBVkm3DbhZ9w734jAxugz4tattKhwheH1YVs",
       "succeeded": false,
       "error": "{\"InstructionError\":[1,{\"Custom\":3007}]}"
     },
     {
-      "signature": "Pf8mvNNhMQrwQTaJuiCrYVV5Pw4ZA2Ae2pPxDx6DvawdXyogCyhUETzY3iL5aWDtUKawHveQoPqxp382SEN8iqN",
+      "signature": "Qepk26V3aJBaXd5zAT3ytzzSWvS25fhpsQsecjDNvrNX2nL44NAN5G9ZGCeyZbBfH9geZ1RvDG1TRZhKxDKPd1f",
       "succeeded": false,
       "error": "{\"InstructionError\":[1,{\"Custom\":3007}]}"
     },
     {
-      "signature": "7iPGk1LBxGij4Eg9orJXSupG14owp62d58zPFqhkvWpxttMxfSzT5iaFU4gu18HCZvCxHPNUYJJfGtsyKLZCqdE",
+      "signature": "2n7bCQtSawtXcULsaMYToBbghh5LHeyEQNictYVHDP8tr7EzmPL9hnfM2bP1dgqBnP2hNpVDwQ7kR1hxmrsnbMjK",
       "succeeded": false,
       "error": "{\"InstructionError\":[1,{\"Custom\":3007}]}"
     },
     {
-      "signature": "4EhYurdSy8qrxb42qKJ1F4EKU36YbnnKmZZHLogc6bigwqB7CfXMHsbQdGCYUNThT8h1g98z4ZcNe7bdopaGBJu1",
+      "signature": "31CBEhwpTY68DD68sS21kuNVt8Br94PZCyCKkL1ozxR7vF5LxyZBYfiP1HdgE1NpMCUzNCgzc1sRFfiuETyjdt3k",
       "succeeded": false,
       "error": "{\"InstructionError\":[1,{\"Custom\":3007}]}"
     },
     {
-      "signature": "3GeSD9wphjqNJch4zEP8vzoL9kp2xvdT7ebz3kM6EiMP81u62hQxGMUNL9XWGcG1CSrpSVp1Y2weiy3c9TmnicT1",
+      "signature": "2Rwta9mPD5DQN1h9bS1LPY43j9VM5i5eP55iP4y17cUPeQAGsEZ2KgxeEEJZkqRERYtwodKiFki53X2PZm88Cyew",
       "succeeded": false,
       "error": "{\"InstructionError\":[1,{\"Custom\":3007}]}"
     },
     {
-      "signature": "2WPukKn16mnzpfGVvDetb9xYtoYnVM1wRoRC2Z9tebtt8EdzNtqvagt1sg1qzmJnD7UcG2ns9GJPsnyA1PKDXMmC",
+      "signature": "5m1cMiSrNyAY8N5inwAj8aMY2uujniSs1jsbpUH7GMaT8QRT2gP56MdzxbjjGdZAQnofLo2cogdxSQy3LsQBc7pH",
       "succeeded": false,
       "error": "{\"InstructionError\":[1,{\"Custom\":3007}]}"
     },
     {
-      "signature": "jrzhTg62wCmvgdE1jDYjTTp3u8A4hRP8gTgTLwxnrNizp6Mg2UJLoeWLQhH4abknkzn3WwjBSysZ9A3J1ee7KCV",
-      "succeeded": false,
-      "error": "{\"InstructionError\":[1,{\"Custom\":3007}]}"
-    },
-    {
-      "signature": "2x2sLbkUkTY5c9PRLKQ7NTWVCWoN9BtHvAS4NRGVD9noHyU6uPZxpTUhzeMSEqYmq7WAGzsbbfemxNiPoxCst5SJ",
-      "succeeded": false,
-      "error": "{\"InstructionError\":[1,{\"Custom\":3007}]}"
-    },
-    {
-      "signature": "Ae6uErkiM6s4ZLsisoER3vveQHC61BqFHMpB2nEReML2JL1jv6HQ2RvEdrfhBtkhgBinbbRv7hQs9vTQfgYq9zv",
-      "succeeded": false,
-      "error": "{\"InstructionError\":[1,{\"Custom\":3007}]}"
-    },
-    {
-      "signature": "zLPH8QhYec71o9wNkfSBCYjvntLzaXnxwxiqsM3u3Zdw4gtBJqhtaPpc2npudevCDKMJ1pQWEi8nAJcwGxKg5zx",
+      "signature": "2TS6exyNNBBA9Wri6Tjh3CWuMqpTbHrdq3HXmwR3PPWqMTKDniP5xdX9suYZ4fUN6D4JMC9mVRDA1vBQU4P2mJ4D",
       "succeeded": false,
       "error": "\"InvalidWritableAccount\""
     },
     {
-      "signature": "34bXPQUkPDb5C1Znmw1MhVf4asLKPowwVixXrYwN3mnKasuFEhKKPNUEMs9UN2N2ero5ZPxX5ZuTyC9p8cmWEXrR",
+      "signature": "25aaR7wGAhpbLFproDQVKGLGagE3Vga9SQEA9pV3sMVWWrHtkas7fJEvDhWm46QBWpxRDGvpByC2LDzjr9Z3WHtP",
       "succeeded": false,
       "error": "\"InvalidWritableAccount\""
     }
@@ -112,233 +97,233 @@
     {
       "step": "convene",
       "runtime": "base",
-      "signature": "4iVdqkLf9Hmx6BRnyiicCj6kNWmXQNTn6h6n1B7H5CqLoemzL6AwfK4yqwWvmbwGTP2VBdRz4oQFvLgSazcRLBsn"
+      "signature": "4J7j2AzBWPu9RGL2VPcVW6dh7wFsxXz5sAccyFxHckANCykCG5PK9cnAEJrFodMz4zcbht4s7QQJvWBveBxA82Dj"
     },
     {
       "step": "add 3jZYduPw",
       "runtime": "base",
-      "signature": "5SUEgspnvpRKrGkTeaBfLCK5rqJHQtHyo5Rx76EXiPdnozVShwESnrUnQPByhZ9UW8jDsqDjH1PEoX1C4dCsFzQe"
+      "signature": "2X3uAR1Mu1CfnwV6xjbzXLCjWzAUYd5cawiMNmFHVFj9UVsn4Z8z1jguVG6Xmk43KBwjLK8kXvg2HrCL6r2Mcmjz"
     },
     {
       "step": "add 53XBgYcz",
       "runtime": "base",
-      "signature": "ncfv2P68D3cNzikCvgTdtC87tAmzsJ1dRMCH9vXkd24v4SXr1VmRun9EUwyvEjfTVrTpb1xU1ucW87JNczHGLEw"
+      "signature": "2aRmbF6ZwoWkCEBrJC1v2WH8xeW2ZeRHDRzoZirFS5FzF716ecFEunsSZJ5T7Sr6834rFDPmSswk4UcXpsqj7zQx"
     },
     {
       "step": "add EBeW4yRN",
       "runtime": "base",
-      "signature": "R43V6CtLvRSsXEp8T2VsVGgXgWUib3Fg31Q8qRsMDf2G3qEFoxA8JTS2d9Q9A55SU2BUzRRQ52aKp4H4hGmkf74"
+      "signature": "UYVBJ4JC6qPQTM3cDrqPuTU1ai6L7SzSAqkNFY17SUgVo79UHUXEShUsPtvzqDqNsu2LdeqkQsqEvpXFrq8R5A1"
     },
     {
       "step": "alpha ratifies",
       "runtime": "base",
-      "signature": "22SWmCzny3TzTWh5iQy7jiz7KFxvwJLohVtwnWNUmtS6wLjaa1gJY58PMHHsNXHVbzjm8oTQ4n25QaHhcfCjT974"
+      "signature": "4gnKKzXY6BSzaBBsGUAkcPTFBnTJpioGaQinPTc11orT3Bk1S7PzSy8jAxQEVzdS2RKpANRJ9ARSXQ7hrRXzorvT"
     },
     {
       "step": "beta ratifies",
       "runtime": "base",
-      "signature": "31kvh2Vgw6f1uXaVn99A5ro2Y9vfxgAFrKxk6qBdSbqnUvemmbbcoyzznXs2prNEhWket71ZqTCKnMVk35iPmFYh"
+      "signature": "5zRfCz43YAn4F2FYjfvip3yDeH5b72Z2yEsqpb7BJKtKia3ueNAaAtSyY4Jn7n7tLXGvZZuBrKPoHc5Msi81KD9M"
     },
     {
       "step": "gamma ratifies",
       "runtime": "base",
-      "signature": "ije9tvkbuW5yUEiYw7bSjTqZx9MVMEtngdV4R2i6KNL5RX2yALFKoVRLfA1a1MrF3ydS57P273A8o1Gs3mVYsG4"
+      "signature": "98QvzgsJXUnkkrvzNbT6N7igLpuFJhaokiyunxb2UJL1PWXgip7RrjfJ7B17XBDjK3QtyYGX5zn6cjDCbkFcxA5"
     },
     {
       "step": "covenant ratifies",
       "runtime": "base",
-      "signature": "2eFV9D4aVgmKYJ5w4WjHUzpj1dn8qYnayA2kbWvCi6UrSY17RGUcDGH591oyrXg3uq7Nkrdo8YrPnjHEzx16VNAQ"
+      "signature": "43KpTAFhiuzsw9bNZZP6aK2uuqc8fM2dG8dGi5vsW3pvk3NHg7MtGvM7ApEju6c1y4GdA9LUMYeZEvJBrKsCNgFe"
     },
     {
       "step": "alpha arms",
       "runtime": "base",
-      "signature": "5sYmUrFA696wu9VizqhGy75Jhx2B9115EXwMRHLeyScf8cAENwAL6m91yKmCxGwpNRkasL49zMjgVwaWgdujNMLA"
+      "signature": "4jnGfYxZ2RaFaZmWSTet8iiQch3dAAHtEB3PZLEjehRB1D1PKJhQrZ5smu6xGt9adSPqtoip2u8gAfRvEKLSyicj"
     },
     {
       "step": "beta arms",
       "runtime": "base",
-      "signature": "3Y5PLRKxgRZhTD2HaF6CX31LsrDA2eoz1hF4PHXz5ccyPK4zBbCNcPkN5Gfmw9d1ChqgNagfq7ysxKkYvyaMeyz"
+      "signature": "R8Gv7ubrEkrh1RwfCQazqNycZVFtntWK2q19zG5CpAET2DeZdx1nqB3wseuv25nSV12LdBG7qkrCMMDHTZzN3Qy"
     },
     {
       "step": "gamma arms",
       "runtime": "base",
-      "signature": "2Ks7DybXYnVUBLHdoq36bV925NEkq9JrkBfmt8w7JYwTPG6KeZhRKVMkJ6AsLGk1HAFgku17c9ek496qzjLad7ot"
+      "signature": "3WkL4FiutTcZ8ZFnzDSQFTCNaVCLGiiK7QGHqMEKFR7tH9J91F4rb5NKjgHQwLqJd7Kbh6r9WAC8Sy2mzUn6TQXy"
     },
     {
       "step": "covenant arms",
       "runtime": "base",
-      "signature": "5NMc24UtYXzZv4r8x2GXar3kinb71UU8yZTjKUbYPCWCjo4GK49qqFbLLM8XCYHVSTQQ5xn7R5rdK6WGg2pPrpw8"
+      "signature": "564P9GWud4imApbUWh9AcrqrsU8qqaxYR78UKWjvJtjM41bMB4HZDxpYawfXqHKm3e24MqnAq3AChz36DAt5yyzZ"
     },
     {
       "step": "incident core",
       "runtime": "base",
-      "signature": "65mvs11qe4btpPYXrAnX375zfHwWvkHnTQGAZbo74DShNaqN2i56t1RwJ5SczMyEoHvizM6faYD4s1Vu1TwM2PUj"
+      "signature": "4Jj6czvPConWVKYo9M6AJ6tfu79k9WkE3FoPrmJRvyZwP2hW4v3ChPgzz483eXTokfCMtxEdyZge3jEZqkGSv1Tf"
     },
     {
       "step": "claim",
       "runtime": "base",
-      "signature": "5HVAkgsgL3RuUZKWnB2xc2cVjQoGGudzWtSSE5RZcQffXtWUeEgjzBux1V6oTG5F5jSWv2PAy4kgjLq2MbhJvGvD"
+      "signature": "5HBK92eQxGBfrUJW7b4AEpPVxxTgUMwoAKsmhPQpFGtcXTSDMRM7hbMppFg3MKcwjrcBcpTSvGLdvX86EgQKoLG8"
     },
     {
       "step": "alpha: ballot",
       "runtime": "base",
-      "signature": "2kEvwr27rkLuMHXMU2NESSWWnHz65qj2CjCD5DU6SsQzG5UpgK55SbmbuBAEJPEvuD4yS3d5Rq7TEGAqUvyzNcj8"
+      "signature": "3enbY7kCHrP49CoeXLydQZ9jE57jCXuXn14Vm2Dzj4Pkxv6Xv3wrtNcyxBZxaZhFQLWgRuY6BUU1JD9yPgGk1hMA"
     },
     {
       "step": "beta: ballot",
       "runtime": "base",
-      "signature": "a8XjzVGKQT39aYeFVWkJABUxx3MDhXKXjZ2pZCpGfw16tFKmkmCXFpJB3FQoRPfar4qqnfh6afjkJEZVLSM2Ybx"
+      "signature": "Bb6EKhsrKvaN9ZSRJNtXBdVaKLZTM8jx53JPzJpJfJc9N8LnooeWRHBgsX1RKoBySsNUR49vWiSjPJZxtVRrVKR"
     },
     {
       "step": "gamma: ballot",
       "runtime": "base",
-      "signature": "44ywfEdWpASjGmtHNiH3aLXzKqamzFr9kK7LpUCyQNsQsa5m9BfFmMryj9k5diPNX4mCqTxqgj7ABbYBiCnbLqHs"
+      "signature": "84Kew4vCWzDq6LJFmu8Y2wqrccfrgPgkyXaAMrPXgdHMazJoC747gzLKk5LS32ZTn67s2RHfkueUH8htbgnZRVc"
     },
     {
       "step": "delegate core",
       "runtime": "base",
-      "signature": "2h6CRqQRq4KuUxAHt8K66wMnyEKZaAT15AiWBCo1pLsH9VcrY1wKKfLJLwAnMbfheBtqM2k5MphmSzACTTXUCURZ"
+      "signature": "2HNYgZLJ5xTitzmsCk3EiYPY6eq67j7jC7RTyMgu9G6tBBP8qEx9s5nLmypYxprNfcNWKZVqzad1qgSFmmPt4ty"
     },
     {
       "step": "delegate claim",
       "runtime": "base",
-      "signature": "4Y6gsyyky6pARdjUQFsKbQCK5oSWNZ9oiWrNGzJ7LSrkbgvAqJWBhuaZZdCXbjUtA3psWwWrqKWCcNwiTGw1nMCu"
+      "signature": "4Po5jnuEAEAxEE6TitFdvCmvMmTyTYkW9kmWfqCd5hCJ9os2MtgZUaKjtKumysc6wDbuCFzoHbqvHojUngm37mqn"
     },
     {
       "step": "delegate alpha's ballot",
       "runtime": "base",
-      "signature": "sNQjMf7ywcSxMtTQVey8KCF34hbvDHkKLTqBu4rsx6VV9zmfg5uf7aX6JG1Gga1rhA926qjgshLKiv7QtKWJcUE"
+      "signature": "27W5grVmhrGSJggJfM32Hju894fz8VSCFTR1Tuz5KzBm8uNCZw3hUzaEestm8mgSTBfnAURHtSfspcgFmvUc6c1B"
     },
     {
       "step": "delegate beta's ballot",
       "runtime": "base",
-      "signature": "3ySzyDpooP1WCXeDg69NnDdZCvFD1LdSxxi6Ej8peFdEjbRbFpLF1hdUHG9PVnz4HfRz5pLWu9nL3Yt9zcUQNEBK"
+      "signature": "3nTmzaTSt1c9jNx4kiq4VXCiu4j1F6WbRytaZkYptkfN1mH6iXbzvuTjJGoAFm5EtUMo1Rv1nyumsZkXkahRhTSx"
     },
     {
       "step": "delegate gamma's ballot",
       "runtime": "base",
-      "signature": "4xWdvHyAy6cYgR148RxEa2Bj8f5yCSFC8N6rrigU42sHvQZU7BiA9Je7WoPfbv6xFxXaFGeQiXCF6EWVJGsfDFUn"
+      "signature": "3dQ7w31h3rL1tqwBBJzTNqMvGE69ZRf26tWqkneRBNToYECfYHHa6HERY7Fy1v6i5gBuDd5KVLY6fFinqJywMkUR"
     },
     {
       "step": "claim permission",
       "runtime": "er",
-      "signature": "3YewmcZt1UcraaubfjkxnhtG41A6cCrcyLapWZiP7pjDQsEJoEdktCeDMSBwP3XbZFXRqco9oNPpFEQFnMup17B1"
+      "signature": "5bqMAi9kJQBpYQj4HiucdG5eYP1728HfVTnoAwrQxFX4SBwyHKwr8tkSDWMLvxvdD4sQvQWnQeJRXQzKxNPYKMTJ"
     },
     {
       "step": "alpha's ballot permission",
       "runtime": "er",
-      "signature": "2KLew74dZaMWEpTBFBSgYbA5Cp9vhFYM5R4FvHGnVJ7tPWxcYU1TNjkWe4DdWsbCvfBSNnzYk113LpfBWwMXp6ML"
+      "signature": "3h2ugSQWvojTpVbZ2qMzaYFQ6PjECQewZeLpjwEtkSdSLXCH6qXD5mFRp1YiLNiBmR8cVUpzqtropBPu9tGtvkQg"
     },
     {
       "step": "beta's ballot permission",
       "runtime": "er",
-      "signature": "zzgNo6u4nYynzQJNWLg3gUu6WfhXWiebAu5p5pSVQjz2jSPMpyDNtzeoXEExxCp5PWQfVG6kJWQ82e45eASyykv"
+      "signature": "3qDetqH1f76Rh8HDumafZ31ezGYjKnyPuxLFoYYW4ajxgze73EkUR8ECnMUjBsRcbovqkDeRX1A8rBzH71Ac8Ag8"
     },
     {
       "step": "gamma's ballot permission",
       "runtime": "er",
-      "signature": "4zyry4ktVycpR8RDvdfPfLsD7kBM3VcYRwHZ2r3jJrwsTAbgmJhxgxE6Azs73m9mp16kyfTq6jqwVJkgm3iXQEaW"
+      "signature": "cPEvbyVo2d8riS8jo7MHszGjg97T5DAR1MUAVKCNqoDdpVdUCpepNeqEFfD6qMwi47kzXGLtxZVJMEPFZCBsG7z"
     },
     {
       "step": "open incident",
       "runtime": "er",
-      "signature": "2sXVjfPxjtDmLhNh9yubB86Q9jaGGSwY4qanaJ2o9Tg4Bz5cE5xHuqQC127UG4Cp4M7a8Rck31WuzYhwEzSPKKq9"
+      "signature": "3VRHM4QLdD7qKo6v17XJELtej6AJXDGdoaiSjkiJyJSPrkVc7jnpKyAG2CYh1oPeEAv6myPAt9DVFPVXQo6p18mB"
     },
     {
       "step": "private claim",
       "runtime": "er",
-      "signature": "2eCVHbKbwncBeQfJtzpTwV23qZehhkgDmjW22Jkcqgcozw2HrpTk7zyDPAuD4jWex3umMLy2Nbcbe7iMjMzsv9be"
+      "signature": "3q5F6WfMzHB3TDes7VkoqZvpJWzzT2rXyvJsnHNf6tM18M1wC21GEr2c7iDPU4am6bZ2zAuGQagxeF3jiD4S1Ncy"
     },
     {
       "step": "request expiry crank",
       "runtime": "er",
-      "signature": "3D5n863bBeLYy91bwnr4uVb8DXp7XSNm7YYFkkqVEuJdycrjFDgL48Gg5HWKQ7iD7uq3nr2QE1iQPvqeBuPVLp9f"
+      "signature": "3ZeabPWtKQYRPZ24fgSJdvy3BFH2kZpNbfzbfdEjwKANMDUWgtKUfuGBdpAUTsgsAwUNXeeZUghNsmvTkwUu5RDh"
     },
     {
       "step": "scrub claim",
       "runtime": "er",
-      "signature": "VCb2aK5N8WzjJSa6BEZBhEBZdWFZj6efJcvtC2LZ8LAGt1gotsCn2bNdHSPm54SDhnEVBbyoaJ1VA4T57xwPJ9d"
+      "signature": "5oCbWkkwKeVJH8csvnkmLFHgSzFhxFDJBitsyGsehagZbL6X6nPnzYKkGxLgXq8exU1eyTXXGAjBR8B39rBEAmPd"
     },
     {
       "step": "scrub alpha's ballot",
       "runtime": "er",
-      "signature": "2EwbFgJRLf2UkfCbVWiof9H3B243GxqwAoLktUb65xH8GAc7uxszZKseut35nLuhzvtCcJi8TZiZU4G47acdfztj"
+      "signature": "4HPkzyfDBtbw5bdEtKEmdEzqx6KrzqC3RgNCtoWYK9fFWHfu6dhf2R84x95tPLyDQZrbzUFVKbL4QawjRzzeb2E"
     },
     {
       "step": "scrub beta's ballot",
       "runtime": "er",
-      "signature": "yGUycyek77JHM5HLQFdHVCz8yPaB97erGFq4RhRAPsfLuXfe75Dr5qsVbXy6FWnbyybZYUJphcoYy7Es53kJ2dZ"
+      "signature": "4vLkTriiYaaFSHwhgDZvZpZYn4cdMXf3G2nDvc1T13AMF3s8N1ZNpZYB1kjfEmdZGcKqXCXmpBvMwhFK75Lt1Df"
     },
     {
       "step": "scrub gamma's ballot",
       "runtime": "er",
-      "signature": "2kX2PQc6KBZgz1GN8HPnabfAzNba1yz2LDeiEnfw1fccAS6caAUxu3TrWwcRcJ8Y76ED3LtEYwEmGoRQGxuiTx54"
+      "signature": "5aMvD9fC4iYUjq1R9Vc8iNJbg7W1gswG6ajGcy4bpYVKt9dXAYJkD3S61qkUMGUKChoFNvepyDPdGeyYLaqYhuSZ"
     },
     {
       "step": "close claim permission",
       "runtime": "er",
-      "signature": "srvdWbVBarw1xBN2ih4UyiavcF6x4tw9CDoNLfvgFLXryzGz6sEbXXLk9zxyMTjiit2MU8q2cDg66nPMyUHXFGa"
+      "signature": "61rY9HhSkUzW3nbrLk7qUKeCBmZ4ZATNdRJSnmwdaupd7YqHNX3GU25jLawtuS9wNyhtiNvLjEXDbm4UhYUxJ7VV"
     },
     {
       "step": "close alpha's ballot permission",
       "runtime": "er",
-      "signature": "hS7gbvVVD27znjSPY8NAJtk7K221Bh85q1gzCne9FRzcouxoCg4kLrT7ue7Lxh2eo2bDXQFFRaFsx9TcjKND4hM"
+      "signature": "22osPVUpUajnLY3DYScAskhYMSGjdNYAzQ9YjQoWh9T4tRLCS5vP9C8YCbNHdJfDPWtpe5bKv5fw7tGKk5evXvE3"
     },
     {
       "step": "close beta's ballot permission",
       "runtime": "er",
-      "signature": "4p8PoZRxqv5x5yuT7z7MRmE8A69o4JS4T7c6qmFa6WC1Avmm2VY65qmaqV2SnKmbEdHHVfCkT5gCGAHbpacTaZTw"
+      "signature": "RCAByupnbdZHK1sU44q89z7YdSVyoucUuNxaGFaQWkbmcFqHxW8EgkvXQoVsEJZf2z6o5haxggeQkL917xMzDnc"
     },
     {
       "step": "close gamma's ballot permission",
       "runtime": "er",
-      "signature": "4TeNHZCJc4pPRvGCnEkHQNCqfyR39wDXt8FVT567xiPtwBSuRCBiUCcvaEMsxzUUM9FtdJVwPQB1m7Kqqj6Z26oc"
+      "signature": "31Ko4ubnonjByb7j4rEyT4Fo5yiXNNH7YwTSSzEqYNCEDyNa7zFTfdyPExufmz5apZ83LqB319hbHAt34XqYQAAo"
     },
     {
       "step": "release the incident family",
       "runtime": "er",
-      "signature": "4HRtQffcZKprQca1iG4JhXcRcWzaHqbwqwZ8ncA73xbsZxBkLyt1Acv6MMRuCv4t98gm1axB1ndxFLQHiscbjBmK"
+      "signature": "62djEfq5Y2J8MFMUgC9C742jeVgALLnYix4a2YhWti15WssCQuUFKZN5oP5NAjXSE5U2G7wMkQZ18hA25UuXuz8h"
     }
   ],
   "transcript": [
     "VINCT Phase 6 — expiry crank on the local stack (expire)",
     "  base http://127.0.0.1:8899   er http://127.0.0.1:7799",
-    "  incident 9tZpy47KNMDSJ79DBfzYe3uWs99bDi5a7XvWQNQqXZNV",
+    "  incident 4P9MzAuAsDMLBSnrM6BscT76wMHyPNuChw213fpMD7jF",
     "  response window 120 slots",
     "",
     "Forming the covenant",
-    "  convene 4iVdqkLf9Hmx…",
-    "  add 3jZYduPw 5SUEgspnvpRK…",
-    "  add 53XBgYcz ncfv2P68D3cN…",
-    "  add EBeW4yRN R43V6CtLvRSs…",
-    "  alpha ratifies 22SWmCzny3Tz…",
-    "  beta ratifies 31kvh2Vgw6f1…",
-    "  gamma ratifies ije9tvkbuW5y…",
-    "  covenant ratifies 2eFV9D4aVgmK…",
-    "  alpha arms 5sYmUrFA696w…",
-    "  beta arms 3Y5PLRKxgRZh…",
-    "  gamma arms 2Ks7DybXYnVU…",
-    "  covenant arms 5NMc24UtYXzZ…",
+    "  convene 4J7j2AzBWPu9…",
+    "  add 3jZYduPw 2X3uAR1Mu1Cf…",
+    "  add 53XBgYcz 2aRmbF6ZwoWk…",
+    "  add EBeW4yRN UYVBJ4JC6qPQ…",
+    "  alpha ratifies 4gnKKzXY6BSz…",
+    "  beta ratifies 5zRfCz43YAn4…",
+    "  gamma ratifies 98QvzgsJXUnk…",
+    "  covenant ratifies 43KpTAFhiuzs…",
+    "  alpha arms 4jnGfYxZ2RaF…",
+    "  beta arms R8Gv7ubrEkrh…",
+    "  gamma arms 3WkL4FiutTcZ…",
+    "  covenant arms 564P9GWud4im…",
     "\nOpening the incident",
-    "  incident core 65mvs11qe4bt…",
-    "  claim 5HVAkgsgL3Ru…",
-    "  alpha: ballot 2kEvwr27rkLu…",
-    "  beta: ballot a8XjzVGKQT39…",
-    "  gamma: ballot 44ywfEdWpASj…",
-    "  delegate core 2h6CRqQRq4Ku…",
-    "  delegate claim 4Y6gsyyky6pA…",
-    "  delegate alpha's ballot sNQjMf7ywcSx…",
-    "  delegate beta's ballot 3ySzyDpooP1W…",
-    "  delegate gamma's ballot 4xWdvHyAy6cY…",
-    "  claim permission 3YewmcZt1Ucr…",
-    "  alpha's ballot permission 2KLew74dZaMW…",
-    "  beta's ballot permission zzgNo6u4nYyn…",
-    "  gamma's ballot permission 4zyry4ktVycp…",
-    "  open incident 2sXVjfPxjtDm…",
-    "  private claim 2eCVHbKbwncB…",
+    "  incident core 4Jj6czvPConW…",
+    "  claim 5HBK92eQxGBf…",
+    "  alpha: ballot 3enbY7kCHrP4…",
+    "  beta: ballot Bb6EKhsrKvaN…",
+    "  gamma: ballot 84Kew4vCWzDq…",
+    "  delegate core 2HNYgZLJ5xTi…",
+    "  delegate claim 4Po5jnuEAEAx…",
+    "  delegate alpha's ballot 27W5grVmhrGS…",
+    "  delegate beta's ballot 3nTmzaTSt1c9…",
+    "  delegate gamma's ballot 3dQ7w31h3rL1…",
+    "  claim permission 5bqMAi9kJQBp…",
+    "  alpha's ballot permission 3h2ugSQWvojT…",
+    "  beta's ballot permission 3qDetqH1f76R…",
+    "  gamma's ballot permission cPEvbyVo2d8r…",
+    "  open incident 3VRHM4QLdD7q…",
+    "  private claim 3q5F6WfMzHB3…",
     "  nobody answers, which is the whole point of this run",
-    "\nRequesting the expiry task (id 5544155998909637631)",
-    "  request expiry crank 3D5n863bBeLY…",
+    "\nRequesting the expiry task (id 284216804311823417)",
+    "  request expiry crank 3ZeabPWtKQYR…",
     "  REQUESTED — the validator logged a request. Nothing is registered, and nothing has run.",
     "\nWatching the scheduler",
     "  iterations observed: 7",
@@ -346,18 +331,18 @@
     "  DESIRED_STATE_REACHED",
     "\nSafe to take the accounts off the rollup: true",
     "\nScrubbing and releasing",
-    "  scrub claim VCb2aK5N8Wzj…",
-    "  scrub alpha's ballot 2EwbFgJRLf2U…",
-    "  scrub beta's ballot yGUycyek77JH…",
-    "  scrub gamma's ballot 2kX2PQc6KBZg…",
-    "  close claim permission srvdWbVBarw1…",
-    "  close alpha's ballot permission hS7gbvVVD27z…",
-    "  close beta's ballot permission 4p8PoZRxqv5x…",
-    "  close gamma's ballot permission 4TeNHZCJc4pP…",
-    "  release the incident family 4HRtQffcZKpr…",
+    "  scrub claim 5oCbWkkwKeVJ…",
+    "  scrub alpha's ballot 4HPkzyfDBtbw…",
+    "  scrub beta's ballot 4vLkTriiYaaF…",
+    "  scrub gamma's ballot 5aMvD9fC4iYU…",
+    "  close claim permission 61rY9HhSkUzW…",
+    "  close alpha's ballot permission 22osPVUpUajn…",
+    "  close beta's ballot permission RCAByupnbdZH…",
+    "  close gamma's ballot permission 31Ko4ubnonjB…",
+    "  release the incident family 62djEfq5Y2J8…",
     "  released as Expired",
     "  scrub verified on base: true",
-    "\nIterations after the accounts left the rollup: 11, of which 11 failed",
+    "\nIterations after the accounts left the rollup: 8, of which 8 failed",
     "  A failed iteration here is expected and harmless. The incident already settled on",
     "  base, and the handler has no account left to touch.",
     "\nPhase 6 expiry (expire): PASS — expected DESIRED_STATE_REACHED"

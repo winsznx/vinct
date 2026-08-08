@@ -1,0 +1,645 @@
+{
+  "captured_at": "2026-08-08T17:05:17.940Z",
+  "run": "fail-one",
+  "verdict": "PASS",
+  "expected_classification": "CommitWithoutActions",
+  "observed_classification": "CommitWithoutActions",
+  "note": "The certificate was earned by an incident that reached its covenant's threshold. The operation ID is the one the program derived at certification. Nothing here was manufactured.",
+  "endpoints": {
+    "base": "https://solana-devnet.g.alchemy.com/v2/<redacted>",
+    "er": "https://devnet-us.magicblock.app/",
+    "qfs": "https://devnet-us.magicblock.app/"
+  },
+  "covenant": "DEdFbNWvfF1Ge4oes6f1vMAumhksE9M5Dz1aVsNhjakz",
+  "incident": "A7KuHHgg2EjfcaKyF9gWgrYsjvFZjJevpAwE1PProVjP",
+  "operation_id": "91e8cd15e8b57279ed6ce6ab95a9614348dc8d5041ff4d7a7b79e2bfcf4bd9a1",
+  "certificate": "vYFbXCjrH7bxr4A8hc99meGiPKtWJ9CFqVwwwjwPEZ7",
+  "settlement_receipt": "7TW5L8efryHCp2rjdWA9W6Lf7Yj3dLiLHhW2FucELfD9",
+  "adapter_receipts": [
+    {
+      "label": "alpha",
+      "address": "DjHjrpdsbR3siXTbUKQmwZjcTvwWFNPqaxfyAbSBtZey"
+    },
+    {
+      "label": "beta",
+      "address": "5PqfaSddoihEj8wtmVVFvhsNRCUBUZyPGBcetqhSvSWE"
+    },
+    {
+      "label": "gamma",
+      "address": "5FDxRRjcPjYPqvgYhC9pQTSTuSBnwhTB5vmYqDZEY4Jk"
+    }
+  ],
+  "incident_outcome": {
+    "status": "CertifiedPendingSettlement",
+    "approvals": 2,
+    "rejections": 0
+  },
+  "independent_verification": {
+    "operationId": "91e8cd15e8b57279ed6ce6ab95a9614348dc8d5041ff4d7a7b79e2bfcf4bd9a1",
+    "derivedOperationId": "91e8cd15e8b57279ed6ce6ab95a9614348dc8d5041ff4d7a7b79e2bfcf4bd9a1",
+    "checks": [
+      {
+        "name": "frozen policy is the covenant's policy",
+        "passed": true,
+        "detail": "3bd48caafa78312d4a9f1f1e167c08df47ccc63a5008bba3da8daa9b6cdcd2c8"
+      },
+      {
+        "name": "frozen member set is the covenant's frozen member set",
+        "passed": true,
+        "detail": "28f9f97f7b163086a40c4ed5f2e147f8343fb517857a780f0b6671f6e8d0bd0e"
+      },
+      {
+        "name": "frozen template is the covenant's template",
+        "passed": true,
+        "detail": "8f4ebc40d06ccd3719d1eb519c1f19167d7c4497ec9c6365b3a703d66cc9c967"
+      },
+      {
+        "name": "frozen epoch is the covenant's epoch",
+        "passed": true,
+        "detail": "1"
+      },
+      {
+        "name": "frozen cluster is the covenant's cluster",
+        "passed": true,
+        "detail": "ce59db5080fc2c6d3bcf7ca90712d3c2e5e6c28f27f0dfbb9953bdb0894c03ab"
+      },
+      {
+        "name": "the threshold that certified is the covenant's threshold",
+        "passed": true,
+        "detail": "2 approvals, at most 1 rejections"
+      },
+      {
+        "name": "the certified approval count meets the covenant's threshold",
+        "passed": true,
+        "detail": "2 of 2"
+      },
+      {
+        "name": "the operation ID is the canonical derivation of the frozen terms",
+        "passed": true,
+        "detail": "derived 91e8cd15e8b57279ed6ce6ab95a9614348dc8d5041ff4d7a7b79e2bfcf4bd9a1, program recorded 91e8cd15e8b57279ed6ce6ab95a9614348dc8d5041ff4d7a7b79e2bfcf4bd9a1"
+      },
+      {
+        "name": "the incident's private fields were zeroized before release",
+        "passed": true,
+        "detail": "status 2"
+      },
+      {
+        "name": "the certificate carries the derived operation",
+        "passed": true,
+        "detail": "91e8cd15e8b57279ed6ce6ab95a9614348dc8d5041ff4d7a7b79e2bfcf4bd9a1"
+      },
+      {
+        "name": "the certificate's terms are the incident's terms",
+        "passed": true,
+        "detail": "policy, member set, cluster, epoch, incident"
+      },
+      {
+        "name": "the certificate was issued by the incident, not by an authority",
+        "passed": true,
+        "detail": "A7KuHHgg2EjfcaKyF9gWgrYsjvFZjJevpAwE1PProVjP"
+      },
+      {
+        "name": "the certificate's counts are the incident's counts",
+        "passed": true,
+        "detail": "2 approvals, 0 rejections"
+      },
+      {
+        "name": "the settlement receipt is bound to the derived operation",
+        "passed": true,
+        "detail": "91e8cd15e8b57279ed6ce6ab95a9614348dc8d5041ff4d7a7b79e2bfcf4bd9a1"
+      },
+      {
+        "name": "alpha's receipt is bound to the derived operation",
+        "passed": true,
+        "detail": "91e8cd15e8b57279ed6ce6ab95a9614348dc8d5041ff4d7a7b79e2bfcf4bd9a1"
+      },
+      {
+        "name": "beta's receipt is bound to the derived operation",
+        "passed": true,
+        "detail": "91e8cd15e8b57279ed6ce6ab95a9614348dc8d5041ff4d7a7b79e2bfcf4bd9a1"
+      },
+      {
+        "name": "gamma's receipt is bound to the derived operation",
+        "passed": true,
+        "detail": "91e8cd15e8b57279ed6ce6ab95a9614348dc8d5041ff4d7a7b79e2bfcf4bd9a1"
+      }
+    ],
+    "verified": true,
+    "delivery": {
+      "settlementFinalized": false,
+      "adapters": [
+        {
+          "label": "alpha",
+          "executed": false,
+          "targetEffectApplied": false
+        },
+        {
+          "label": "beta",
+          "executed": false,
+          "targetEffectApplied": false
+        },
+        {
+          "label": "gamma",
+          "executed": false,
+          "targetEffectApplied": false
+        }
+      ]
+    }
+  },
+  "settlement_record": {
+    "operationId": "91e8cd15e8b57279ed6ce6ab95a9614348dc8d5041ff4d7a7b79e2bfcf4bd9a1",
+    "schedulingSignature": "3GQ17tZ7qM1hPwLwf5XMHyKJDNoNbRPpBVVHqVNqPQRfsi6MhnSm6VT4QuR6gPW5SeY317J6x1cR8ajzDyQNbtuD",
+    "expectedActions": [
+      {
+        "actionIndex": 0,
+        "label": "alpha"
+      },
+      {
+        "actionIndex": 1,
+        "label": "beta"
+      },
+      {
+        "actionIndex": 2,
+        "label": "gamma"
+      }
+    ],
+    "observation": {
+      "certificateCheckpoint": "present",
+      "settlementReceipt": "absent",
+      "actions": [
+        {
+          "actionIndex": 0,
+          "label": "alpha",
+          "receipt": "absent",
+          "targetEffect": "absent",
+          "deliveryState": "Scheduled"
+        },
+        {
+          "actionIndex": 1,
+          "label": "beta",
+          "receipt": "absent",
+          "targetEffect": "absent",
+          "deliveryState": "Scheduled"
+        },
+        {
+          "actionIndex": 2,
+          "label": "gamma",
+          "receipt": "absent",
+          "targetEffect": "absent",
+          "deliveryState": "Scheduled"
+        }
+      ]
+    },
+    "classification": "CommitWithoutActions",
+    "status": "CommitWithoutActions",
+    "permitsRecovery": true,
+    "missingActionIndices": [
+      0,
+      1,
+      2
+    ],
+    "observedAt": "2026-08-08T17:05:17.940Z",
+    "windowElapsed": true
+  },
+  "scrub_verified_on_base": true,
+  "recovery_verdict": "recoverable under a new operation ID; missing actions 0, 1, 2",
+  "scheduling_means": "INTENT_ACCEPTED. A scheduling signature is not settlement, and no effect above was inferred from it. The classification comes from packages/monitor, which is checked against the Rust classifier on every observation of a two-action cohort.",
+  "steps": [
+    {
+      "step": "fund B5Gvnojx",
+      "runtime": "base",
+      "signature": "2mpgKfcNPZMkKpmhdUCgUKSvPH5GhUSF2UKkyQyXbYG3NdE7JSWApzfbpE22s1DNUgPzUDjpgZV3zUeUkyNFME3e"
+    },
+    {
+      "step": "fund EAVn7UGU",
+      "runtime": "base",
+      "signature": "4xraXgqd4GKMMJ18xNAGJeZiECuwW3NfkdxYt4QQwJYrDgGPYD4ymzX4xAYrvnanH9QxJ1QhTHGUJztH1Nzxsd4n"
+    },
+    {
+      "step": "fund FMoUVWjc",
+      "runtime": "base",
+      "signature": "4WczeYEfy4gy64rTbF99GH9BPjnRnYEzmm1V2CZqbA3ikNzzcgWKRUpSXr7gKRN1idxpzKCG6Xm6cURQYspSAT5a"
+    },
+    {
+      "step": "fund GLEaiBan",
+      "runtime": "base",
+      "signature": "4xpWvfcY5CDTvj5QoPWhp7RKvM77Dk5UkxqwcdWc4A5teuVoYPuFPNdhNjSEYEgnJ5363UQ1DnnRLHoUJ3h2E4oM"
+    },
+    {
+      "step": "fund 4PNhDuTs",
+      "runtime": "base",
+      "signature": "2RCPqt46CMFKxoLmvgFkdmHRTAT5RYF5TJepvapZ4ZXbYjrTcA9CSi5rH5PtRTf98VZUUXVwkJMhie5ori6FoD2j"
+    },
+    {
+      "step": "convene",
+      "runtime": "base",
+      "signature": "9SxoUWmMzGovjYFv9UQBtiH3CPhcABbSX8r5EujtCWNZ6btrmX3sMYoz31UV32bC8wz2qPyqDY8UtQTFMYAB272"
+    },
+    {
+      "step": "add 4PNhDuTs",
+      "runtime": "base",
+      "signature": "42Ubfq1sG1qnnrk4h42193nPgT5zAAGyJQHAq12UMX9puBxvLiQFF7APsgjp9VfdiZnnKvEt4NNxdCpMPCshbE2k"
+    },
+    {
+      "step": "add FMoUVWjc",
+      "runtime": "base",
+      "signature": "57Nk4X4D4xmt7nzUH9xdWhUYHWDEuYTU3M45gndekd3LVcTgiMUAUQm7HfU3jDrku2zpHj3fo6BCW6pZx58rvgQe"
+    },
+    {
+      "step": "add GLEaiBan",
+      "runtime": "base",
+      "signature": "3FVjrBH7StYDkW4uQTfFffAtDtikTf7TDgUhzw7L5kUWSnA2FSUdh3S2oAdMrxhHK8d8TmdKozU7HxVJQ1yTatCP"
+    },
+    {
+      "step": "alpha ratifies",
+      "runtime": "base",
+      "signature": "24gQY6BHiyZfLNsaw7xJQmguFdodwmGwP3oaPKn4dW4mDgEP4P2Sif5gPkAd5DJj89xd5W1pEYtyrT1k9dg7hdzD"
+    },
+    {
+      "step": "beta ratifies",
+      "runtime": "base",
+      "signature": "62aZrz4eqmiBHB9bVxmvgPdxWGhowQEwZJ71NSdPS2BoU1YZqhggVN8BeBcdwBaAgmwWG82FgsfqaAMSLcXNNJmP"
+    },
+    {
+      "step": "gamma ratifies",
+      "runtime": "base",
+      "signature": "4gggLhMpHgsUtBQZeaYB6ErD64DySHdwYRuJxYhjw3YmtcrqjjGDL7ikCJYAXSyPVCNkBom6i3tSBT9NYncKzhk9"
+    },
+    {
+      "step": "covenant ratifies",
+      "runtime": "base",
+      "signature": "3914NPSua3N7yju6f3CYN9NUtHqRV9Y9V8Vxk1NDf32Zc3xuDQAQv3bc9DD8gbSMLMELX4teSkWWV9VwLeZ1kfFH"
+    },
+    {
+      "step": "alpha arms its membership",
+      "runtime": "base",
+      "signature": "4aDR2tC1xaipZtfaQXpUPprdENg5T2Ewp6K2Krug2XWeuYB9hgATe1aWCcDDCrBedmqWxwVmLywLJStz9TKx4BgU"
+    },
+    {
+      "step": "beta arms its membership",
+      "runtime": "base",
+      "signature": "2wFx4SYzVtTxy45R6rWoo2YobiY7EZKi8b7k82U64nbLhkUDoVGf4EEi3gzarT9Xnani1NKSAqbyTGasgFAjFjpH"
+    },
+    {
+      "step": "gamma arms its membership",
+      "runtime": "base",
+      "signature": "58ori9TG7emNnP81EPQiwKJVMkowkiRv11kiUsi8TRSmXuz9utUHrzhetdZMtw9XBThxJpy73Pr72JhhMUMdnE3y"
+    },
+    {
+      "step": "covenant arms",
+      "runtime": "base",
+      "signature": "3PjMrntVcZZGDS8Ey2fsfP2MaX317Ev7ohyXsX6Xzmjqe76hKwHk81pUN3YtogqizxydHtpSWygjmj3mh1eRmcxZ"
+    },
+    {
+      "step": "alpha: market",
+      "runtime": "base",
+      "signature": "aygcSmXmenc7sNNg8iuN9MR8k8HtLHLAR9wHNFGCPXzEz3rLdjCDLLMFzoZyHHzx8xrRpUCgkHuWzFP27eT85W8"
+    },
+    {
+      "step": "alpha: install capability",
+      "runtime": "base",
+      "signature": "2sLmBPcP7UAnmpLnMVkKispvUbojVKuJhqH8GgNNzHJSgd1sXA1gZ5hb7U7ikPoZ3FmP3AVTge8KFJDGbLAtEzBe"
+    },
+    {
+      "step": "alpha: arm capability",
+      "runtime": "base",
+      "signature": "3mUSochYSXQPzV7cr3GLhXR2AJdj7voxuR3tLHg7w4HFWUBSzrWTsbout2upTxx3RDqLxvWgPkCGs3E6JU5oiqrk"
+    },
+    {
+      "step": "alpha: register adapter signer",
+      "runtime": "base",
+      "signature": "3iJMtjb35vkcVTMUMdN1M4cPKET3ARA5PFswU4zpy6q95XFFwey3FzC9V1777YRRzRM3Eks4iaTKubyo2gzkjH3w"
+    },
+    {
+      "step": "beta: market",
+      "runtime": "base",
+      "signature": "3mWAQC5bhKPcZvSb6pLEZp1CQu2dxNiW6gWwkAgju5SsTX4ah4EjxzXG5N1BVtsw1R319kdiVs7No1MhtCDYQwYU"
+    },
+    {
+      "step": "beta: install capability",
+      "runtime": "base",
+      "signature": "4B47oZmXtNtFuPnStnihrgiQVL1Yx9fAgxSTUqwx9zwuyjxi3r1ZBGDbm6DdutrBGmmKroyUkKi4S5rFzMNSsntf"
+    },
+    {
+      "step": "beta: arm capability",
+      "runtime": "base",
+      "signature": "2EDeMLqUJXS8Q3P9A6DSdhDihVvViRYVN3KMUW3bWGe7GNmYz9iS6iUrJ8AS5tak9Xy2PmhPZxGfZmkSnUTeK593"
+    },
+    {
+      "step": "beta: register adapter signer",
+      "runtime": "base",
+      "signature": "4TrniDTbYT6QagDiFhLrfiRGXEfCPZi5rxhRw16iT9ywAQTcRUPK2XPDMpCtxsRs9PYqaGTiao8bSpoXne7MQNjt"
+    },
+    {
+      "step": "gamma: market",
+      "runtime": "base",
+      "signature": "4MSduMJUbJyzDhxpH6FCppPiUR73TkGogBPv1AdWZz8K9J2Z5uDKqT6N3aCv99YYvbmfhqVmiXL5gxeHjZ9AyUNd"
+    },
+    {
+      "step": "gamma: install capability",
+      "runtime": "base",
+      "signature": "Y6NHSz66GhrxidRfRGv7oP5iPszRvKtPMcHFcKWo8VLQk9DLeWDATa3MbzXii5uj2wbE21e9a1pUNqQP9SdvpZ8"
+    },
+    {
+      "step": "gamma: arm capability",
+      "runtime": "base",
+      "signature": "3Nr863rPTpUKbJAfhHQ8pWJvyhzR3jobGTNaHbB28bVZbXSGin9B6cuQF2q67pgNpNEjgCBittQetcHGYPCnZ6jR"
+    },
+    {
+      "step": "gamma: LEAVE UNREGISTERED (deliberate failure)",
+      "runtime": "base",
+      "signature": "5YkC7ikGcccP437ZneCt3aoWnNfEPCXA5ijoUj372fxDBv1N4PhYGbpRGMQPyempECYGCQF58YZj4Wbxsa4KCuff"
+    },
+    {
+      "step": "incident core",
+      "runtime": "base",
+      "signature": "JkwMiAnPfq22sFCr6kxm2TA7xbqkPQkguTUYAjfXMeSufsrUHZv26MkM3hRRoMLdM8KvTMZyvqKhcj3PnCsBN25"
+    },
+    {
+      "step": "claim",
+      "runtime": "base",
+      "signature": "2uXQTgSbFP2kiPvNVxnynAoMgwb55ozQcsxw9VcCuFqSZarNa8tBqvcxvgXZ2B3RwyKfcNm4f9eDRjzHemNYhPKA"
+    },
+    {
+      "step": "alpha: ballot",
+      "runtime": "base",
+      "signature": "3MpbHkN3c1wtBvvgnPcfaYx1aaQZD289CLpLRExvbpFH234ezsaabPV9Z1yChbSFKDZmkjrMwB74LLv5GGQWBoGg"
+    },
+    {
+      "step": "beta: ballot",
+      "runtime": "base",
+      "signature": "4R1Dy96xr7DVJRyTKvFGjYsU1SXinYgAa5yMnEBkh7N7fFh3AjdcsDpZVTnoSmsGHiXFSzbSPjYo6RJzKDfqHpYh"
+    },
+    {
+      "step": "gamma: ballot",
+      "runtime": "base",
+      "signature": "4qXTywjnmZbE4B5pvcudjb93MzT79zAkBuxge73fBCPhXVF7SkPLmiXecxZu4oMXwENUwtd48utQTpd9dXCCHV3N"
+    },
+    {
+      "step": "delegate core",
+      "runtime": "base",
+      "signature": "3a6fbmKpXhUgn859gEdrHE6T1QTkGDTAY64ZaeXoiA7ortHra8ybmjsaCDd7LTG5ov3DH4FH8vDD1MSWDbfLRgBQ"
+    },
+    {
+      "step": "delegate claim",
+      "runtime": "base",
+      "signature": "3iP1gTUQFz58Uxjfke1Uvdrq5HYYUXsSuCpPU6fmKdRhZ9V9yD2pEd8FtWf9CqWmM6avggs5kEad9H67cgPJMnRN"
+    },
+    {
+      "step": "delegate alpha's ballot",
+      "runtime": "base",
+      "signature": "2eszgzsj4CEuEqU2tt4yHvKmFVYJamDNLNcw1LT9DTzcb9e9og8sk3td7GmZ34fapRVjcfkbFBHvkAnrcedktVn3"
+    },
+    {
+      "step": "delegate beta's ballot",
+      "runtime": "base",
+      "signature": "5o57ZCQSfUQVw8CCuFqAEnh7AsvnjgvCiJspK9PPsmsmJxbFKk82pw9PBF1BQvxfUHKrCaVN3vbvqS9QVWmXRNMf"
+    },
+    {
+      "step": "delegate gamma's ballot",
+      "runtime": "base",
+      "signature": "4D7sBK5cepsHFcZRAYpd6EsRXemdCm9hGJXjEYLAfmSmjSeKWXELCjKxdUhjocFgDf9ETgD2XL5uFG1qXz4BDuYC"
+    },
+    {
+      "step": "claim permission",
+      "runtime": "er",
+      "signature": "44qA6QKwMLT6EkWqHAnQBRkDzSyEL8zi3hhDqjCPidvxoVZitnbLU98QS1tbKZ7DSiJSGpr4BtcbtyaPSH5NshZF"
+    },
+    {
+      "step": "alpha's ballot permission",
+      "runtime": "er",
+      "signature": "2F1WSJQvLL7FpQhvPjGsBmBt6hzDXFHvsGf3qrnHjKzxDujY2zxAg2xiQdiFpEVb8hbtUesNhNmgdqvEqYpTNGuV"
+    },
+    {
+      "step": "beta's ballot permission",
+      "runtime": "er",
+      "signature": "4AagcvSP3yB64X9RANS37sdnBcqzjGN3uAmhZYYEt2QA5YKGe1VAM22DbtVGpqPuzC9kmsw7G5EZLyFCpY7fL46e"
+    },
+    {
+      "step": "gamma's ballot permission",
+      "runtime": "er",
+      "signature": "2xgb7hjodG2LDyBuz1qwmdcfCQJmCyZd7mK5wG7Yy1E8S66whiGYdxnr7SjGMPT8xRS7T62DBitB4qRvGaRjTN3h"
+    },
+    {
+      "step": "open incident",
+      "runtime": "er",
+      "signature": "5jYTSTDFfKCTEddZh7Rwz6xYk6nT4Torofo6pZ3tzTYnhMJnYJxqAxWv7Ht48v72bB2sdfqNjVeph5ZgWX3z7cQj"
+    },
+    {
+      "step": "private claim",
+      "runtime": "er",
+      "signature": "5DXX9vBnMdMHxMiEW5HjG3D8PwT7zfjJKjLwrqL3N3gxMVyRiHaQTGSgtV9SQTdh26nqjsV5ie4FBKXNewW8PaQs"
+    },
+    {
+      "step": "alpha: sealed attestation",
+      "runtime": "er",
+      "signature": "56rr8jfWng8wAN4QnzPwV13XGf2cbjBnushdaU8rfZDsk7sNw4tUSKMyVRAT39py1mNgScmqbbCL4S11RdoYwpZE"
+    },
+    {
+      "step": "beta: sealed attestation",
+      "runtime": "er",
+      "signature": "4NZJCcmjudMGyTCT2scm5BBP3kxcHB6rM9YrNPqajT3r2CVtu6JwD1VRDreukWnvmA8agPzHQLvCwSdKnYLwbYg5"
+    },
+    {
+      "step": "certify",
+      "runtime": "er",
+      "signature": "4uUVx2VU5Gym2BZpviPjiGeiEpJzGQ3kfnw5NRrZxxxsTS8wxQHHo63AT5exZKPj91X1FhE6vjQhFEnryBgBRMzD"
+    },
+    {
+      "step": "scrub claim",
+      "runtime": "er",
+      "signature": "5BJCK9d6rVASJnwynjgo7GdKDs54ApQ7kgVwHoPBuDqLQVtRQxDsVERx9yS4R1rZB8vsFds7tLjGFpBxGxP9TRvQ"
+    },
+    {
+      "step": "scrub alpha's ballot",
+      "runtime": "er",
+      "signature": "3CewVzgHBCXjPZd5xiAxF4q1JBvqMAjMDLZoCuUALRiPrvwS8f4Ewtpz2ZWYCk9imMdpgVcbnx3qw6pd7PB9u8p5"
+    },
+    {
+      "step": "scrub beta's ballot",
+      "runtime": "er",
+      "signature": "4mBN3UUKSWyfjLZRRD6QdMpaFDrXk7QdRBuJkaytFq1cgCwvA2eSzDPhc9c5Snpv51hqN87Z7q8WKJtnprNanR8Z"
+    },
+    {
+      "step": "scrub gamma's ballot",
+      "runtime": "er",
+      "signature": "2PbDdHGiQboPjf38teR7ErjsHBowxftqctQwJ8fg5nwZNZVYpcmQg24z1ULyCyvEB8m3FhjfmGrq33Co9vruGuB2"
+    },
+    {
+      "step": "close claim permission",
+      "runtime": "er",
+      "signature": "24SJQvY9nDh9AGrCDKS8pw3JSvNg14AE9WXMNPPYB9rRSYyhKs1adU3YuMLe6cAVq3ChHMon6dnUM9sajHYnrgtY"
+    },
+    {
+      "step": "close alpha's ballot permission",
+      "runtime": "er",
+      "signature": "4Nt4sU2cLUCwR3xWFyYquXf8CkGE2p68AuswwQ3h67FpATwzaybcRxARN3ddjtxBkwiCCUXmgdD21CzeZ5UGn44Q"
+    },
+    {
+      "step": "close beta's ballot permission",
+      "runtime": "er",
+      "signature": "4JjFLcm1c7Aa7SpsV8Rtf15jyWVi8ZoMQjbEZZgf7Z2v8CYhdemdPwcxhxXi1WgXg7xcWx1hrMT4gPZxcy2bFZKB"
+    },
+    {
+      "step": "close gamma's ballot permission",
+      "runtime": "er",
+      "signature": "3ngg9i4Tv7Dycdq1uDTDGgzpL73YFWAEvbt5QCo3LGzcSk4Xc9mGxe1KeWxwt74hG3hFqujmaLN2T58xSZG6vNW6"
+    },
+    {
+      "step": "release the incident family",
+      "runtime": "er",
+      "signature": "4aWbSSYSUwTKwwhYFQdKoYA7fUyVK2n9hFWzX4Cdiyn8J4aUPC6aj9r2fNsuYY9y1pBaYfTzj3u4foTYAFSQjuci"
+    },
+    {
+      "step": "incident released: CertifiedPendingSettlement, 2 approvals, operation 91e8cd15e8b57279…",
+      "runtime": "none"
+    },
+    {
+      "step": "publish certificate",
+      "runtime": "base",
+      "signature": "2GxiLJj2tLfPxX5CNJjYfkg6jHCMz7rnTwVaw6sTN3CdLZWLTTox4fBXH4oMCnA1zhhMhzxLu92EJWFiaPt7VXEx"
+    },
+    {
+      "step": "settlement receipt",
+      "runtime": "base",
+      "signature": "z2XdqgNo8juG1RGv74Evs7hDL7BsNSQzseLxbWQ9XAameGWrcnq8z4SZWUHQhJkHouk48DxRNpGw9Y9fSUijb9p"
+    },
+    {
+      "step": "alpha: adapter receipt",
+      "runtime": "base",
+      "signature": "4oNWdMehsh8UsBdQ5kzPWGkfhDZA5YP3wyTFXwSAKWfjn7s4AhCWPenVM8nxVporEZxZLg1V1tFgNtwWxCd9wr7M"
+    },
+    {
+      "step": "beta: adapter receipt",
+      "runtime": "base",
+      "signature": "pJY1bcMgy2Yj88YJJGD7oTBBtA96LnXgHBo8W5HF9kUxRADRAEaKR9RychSehmiMwX3N3Ay87bsKXKvesoqjvrq"
+    },
+    {
+      "step": "gamma: adapter receipt",
+      "runtime": "base",
+      "signature": "3v4KFAtoB1CCzKWUdiyduVRGFfnDib4zu39Cw6rvrvJ6zdJaHw8hodLe4KfkZYBdLnbZGpSskZVdid2xqHN7e9CY"
+    },
+    {
+      "step": "top up the action escrow",
+      "runtime": "base",
+      "signature": "2xX5aU5FeyYu3u9fdcvATXJTMqJJsKq51iFDSVmPyN7p3Ex56UCPXvAaEDhxbWSjiXCKM8XSDGoGSCfX4sZWF4os"
+    },
+    {
+      "step": "settlement operation",
+      "runtime": "base",
+      "signature": "41FunLSFtoZTUm5JjtMqVjWx8KX9FMr7SwwTrMoNtAxeWYymGAMQUd9PBLssDjcfSesRq67xzPdhe2SWhVwS9Wwf"
+    },
+    {
+      "step": "delegate the operation",
+      "runtime": "base",
+      "signature": "4F52KKkeew194hEtcSUFRdt61z1vHHTJajoShv8Tkws2DyN8jYi8xkAXNP9VdT1xbezCcr7FD4kV28CeV6Yv9HWC"
+    },
+    {
+      "step": "schedule the cohort",
+      "runtime": "er",
+      "signature": "3GQ17tZ7qM1hPwLwf5XMHyKJDNoNbRPpBVVHqVNqPQRfsi6MhnSm6VT4QuR6gPW5SeY317J6x1cR8ajzDyQNbtuD"
+    },
+    {
+      "step": "INTENT_ACCEPTED — a scheduling signature, and nothing more. Every effect below is read from base.",
+      "runtime": "none",
+      "detail": "3GQ17tZ7qM1hPwLwf5XMHyKJDNoNbRPpBVVHqVNqPQRfsi6MhnSm6VT4QuR6gPW5SeY317J6x1cR8ajzDyQNbtuD"
+    }
+  ],
+  "transcript": [
+    "  fund B5Gvnojx 2mpgKfcNPZMk…",
+    "  fund EAVn7UGU 4xraXgqd4GKM…",
+    "  fund FMoUVWjc 4WczeYEfy4gy…",
+    "  fund GLEaiBan 4xpWvfcY5CDT…",
+    "  fund 4PNhDuTs 2RCPqt46CMFK…",
+    "VINCT Phase 5 — full composition on the local stack (fail-one)",
+    "  base https://solana-devnet.g.alchemy.com/v2/<redacted>   er https://devnet-us.magicblock.app/   qfs https://devnet-us.magicblock.app/",
+    "  covenant DEdFbNWvfF1Ge4oes6f1vMAumhksE9M5Dz1aVsNhjakz",
+    "  incident A7KuHHgg2EjfcaKyF9gWgrYsjvFZjJevpAwE1PProVjP",
+    "",
+    "Forming the covenant",
+    "  convene 9SxoUWmMzGov…",
+    "  add 4PNhDuTs 42Ubfq1sG1qn…",
+    "  add FMoUVWjc 57Nk4X4D4xmt…",
+    "  add GLEaiBan 3FVjrBH7StYD…",
+    "  alpha ratifies 24gQY6BHiyZf…",
+    "  beta ratifies 62aZrz4eqmiB…",
+    "  gamma ratifies 4gggLhMpHgsU…",
+    "  covenant ratifies 3914NPSua3N7…",
+    "  alpha arms its membership 4aDR2tC1xaip…",
+    "  beta arms its membership 2wFx4SYzVtTx…",
+    "  gamma arms its membership 58ori9TG7emN…",
+    "  covenant arms 3PjMrntVcZZG…",
+    "\nEach protocol brings up its own market and arms its own capability",
+    "  alpha: market aygcSmXmenc7…",
+    "  alpha: install capability 2sLmBPcP7UAn…",
+    "  alpha: arm capability 3mUSochYSXQP…",
+    "  alpha: register adapter signer 3iJMtjb35vkc…",
+    "  beta: market 3mWAQC5bhKPc…",
+    "  beta: install capability 4B47oZmXtNtF…",
+    "  beta: arm capability 2EDeMLqUJXS8…",
+    "  beta: register adapter signer 4TrniDTbYT6Q…",
+    "  gamma: market 4MSduMJUbJyz…",
+    "  gamma: install capability Y6NHSz66Ghrx…",
+    "  gamma: arm capability 3Nr863rPTpUK…",
+    "  gamma: LEAVE UNREGISTERED (deliberate failure) 5YkC7ikGcccP…",
+    "\nOpening the incident under the armed covenant",
+    "  incident core JkwMiAnPfq22…",
+    "  claim 2uXQTgSbFP2k…",
+    "  alpha: ballot 3MpbHkN3c1wt…",
+    "  beta: ballot 4R1Dy96xr7DV…",
+    "  gamma: ballot 4qXTywjnmZbE…",
+    "\nDelegating the incident family",
+    "  delegate core 3a6fbmKpXhUg…",
+    "  delegate claim 3iP1gTUQFz58…",
+    "  delegate alpha's ballot 2eszgzsj4CEu…",
+    "  delegate beta's ballot 5o57ZCQSfUQV…",
+    "  delegate gamma's ballot 4D7sBK5cepsH…",
+    "\nCreating permissions and running the incident",
+    "  claim permission 44qA6QKwMLT6…",
+    "  alpha's ballot permission 2F1WSJQvLL7F…",
+    "  beta's ballot permission 4AagcvSP3yB6…",
+    "  gamma's ballot permission 2xgb7hjodG2L…",
+    "  open incident 5jYTSTDFfKCT…",
+    "  private claim 5DXX9vBnMdMH…",
+    "  alpha: sealed attestation 56rr8jfWng8w…",
+    "  beta: sealed attestation 4NZJCcmjudMG…",
+    "  gamma stays silent, and certification must not wait for it",
+    "  certify 4uUVx2VU5Gym…",
+    "\nScrubbing and releasing",
+    "  scrub claim 5BJCK9d6rVAS…",
+    "  scrub alpha's ballot 3CewVzgHBCXj…",
+    "  scrub beta's ballot 4mBN3UUKSWyf…",
+    "  scrub gamma's ballot 2PbDdHGiQboP…",
+    "  close claim permission 24SJQvY9nDh9…",
+    "  close alpha's ballot permission 4Nt4sU2cLUCw…",
+    "  close beta's ballot permission 4JjFLcm1c7Aa…",
+    "  close gamma's ballot permission 3ngg9i4Tv7Dy…",
+    "  release the incident family 4aWbSSYSUwTK…",
+    "\nWaiting for the incident to land back on base",
+    "  incident released: CertifiedPendingSettlement, 2 approvals, operation 91e8cd15e8b57279…",
+    "\nPublishing the certificate the incident earned",
+    "  publish certificate 2GxiLJj2tLfP…",
+    "\nBuilding the cohort from the operation certification derived",
+    "  settlement receipt z2XdqgNo8juG…",
+    "  alpha: adapter receipt 4oNWdMehsh8U…",
+    "  beta: adapter receipt pJY1bcMgy2Yj…",
+    "  gamma: adapter receipt 3v4KFAtoB1CC…",
+    "  top up the action escrow 2xX5aU5FeyYu…",
+    "  settlement operation 41FunLSFtoZT…",
+    "  delegate the operation 4F52KKkeew19…",
+    "  schedule the cohort 3GQ17tZ7qM1h…",
+    "  INTENT_ACCEPTED — a scheduling signature, and nothing more. Every effect below is read from base.",
+    "\nObserving base-layer effects",
+    "  alpha: receipt=absent effect=absent (Scheduled)",
+    "  beta: receipt=absent effect=absent (Scheduled)",
+    "  gamma: receipt=absent effect=absent (Scheduled)",
+    "  certificate checkpoint=present",
+    "  settlement receipt=absent",
+    "\nClassification: CommitWithoutActions -> CommitWithoutActions",
+    "Recovery: recoverable under a new operation ID; missing actions 0, 1, 2",
+    "Scrub verified on base: true",
+    "\nIndependent verification",
+    "  17 checks, VERIFIED",
+    "\nPhase 5 composition (fail-one): PASS — expected CommitWithoutActions"
+  ]
+}

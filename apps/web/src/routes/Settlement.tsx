@@ -173,6 +173,7 @@ export function Settlement() {
 
       {state.status === "unreachable" && <Problem kind="unreachable" message={state.message} />}
       {state.status === "error" && <Problem kind="error" message={state.message} />}
+      {state.status === "unsupported" && <Problem kind="unsupported" message={state.message} />}
 
       {covenant && state.status === "ready" && !state.value && (
         <Empty>No incident under this covenant has certified, so there is nothing to settle.</Empty>

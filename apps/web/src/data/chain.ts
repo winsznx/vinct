@@ -106,21 +106,67 @@ export async function readCovenant(
 }
 
 /**
+ * Raised when the node refuses the scan this discovery depends on.
+ *
+ * Several hosted RPCs disable `getProgramAccounts` on their cheaper tiers. That is a property
+ * of the endpoint rather than of the chain, and a page that reported it as "no members" would
+ * be telling somebody a covenant is empty because of a billing plan.
+ */
+export class DiscoveryUnavailable extends Error {
+  constructor(readonly endpointMessage: string) {
+    super(
+      "This RPC does not allow getProgramAccounts, which is how members and capabilities are " +
+        "found. Supply them in the URL, or point the app at a node that permits the scan.",
+    );
+    this.name = "DiscoveryUnavailable";
+  }
+}
+
+function isScanRefusal(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    /getProgramAccounts/i.test(message) &&
+    /not available|disabled|not supported|tier/i.test(message)
+  );
+}
+
+/**
  * Finds the memberships of a covenant without being told who the members are.
  *
  * A membership account carries its covenant, so the whole set can be found by scanning the
  * program for accounts whose covenant field matches. The offset is the discriminator plus the
  * schema version, and the filter is a `memcmp` the RPC applies, so the browser downloads only
  * the matching accounts.
+ *
+ * `protocols` short-circuits the scan. When the caller already knows who the members are, their
+ * membership addresses are derived rather than discovered, which is both cheaper and the only
+ * path that works against a node that refuses the scan.
  */
 export async function findCovenantMembers(
   connection: Connection,
   covenant: PublicKey,
+  protocols?: PublicKey[],
 ): Promise<{ address: PublicKey; member: CovenantMemberView }[]> {
+  if (protocols && protocols.length > 0) {
+    const derived: { address: PublicKey; member: CovenantMemberView }[] = [];
+    for (const protocol of protocols) {
+      const address = covenantMemberAddress(covenant, protocol);
+      const account = await connection.getAccountInfo(address);
+      if (account) derived.push({ address, member: decodeCovenantMember(account.data) });
+    }
+    return derived;
+  }
+
   const COVENANT_FIELD_OFFSET = 8 + 2;
-  const accounts = await connection.getProgramAccounts(CORE_PROGRAM_ID, {
-    filters: [{ memcmp: { offset: COVENANT_FIELD_OFFSET, bytes: covenant.toBase58() } }],
-  });
+  let accounts;
+  try {
+    accounts = await connection.getProgramAccounts(CORE_PROGRAM_ID, {
+      filters: [{ memcmp: { offset: COVENANT_FIELD_OFFSET, bytes: covenant.toBase58() } }],
+    });
+  } catch (error) {
+    if (isScanRefusal(error)) throw new DiscoveryUnavailable(String(error));
+    throw error;
+  }
   const members: { address: PublicKey; member: CovenantMemberView }[] = [];
   for (const { pubkey, account } of accounts) {
     try {
@@ -211,9 +257,15 @@ export async function findCapabilities(
   }[]
 > {
   const COVENANT_FIELD_OFFSET = 8 + 32 + 32 + 32 + 2 + 32;
-  const accounts = await connection.getProgramAccounts(ADAPTER_PROGRAM_ID, {
-    filters: [{ memcmp: { offset: COVENANT_FIELD_OFFSET, bytes: covenant.toBase58() } }],
-  });
+  let accounts;
+  try {
+    accounts = await connection.getProgramAccounts(ADAPTER_PROGRAM_ID, {
+      filters: [{ memcmp: { offset: COVENANT_FIELD_OFFSET, bytes: covenant.toBase58() } }],
+    });
+  } catch (error) {
+    if (isScanRefusal(error)) throw new DiscoveryUnavailable(String(error));
+    throw error;
+  }
 
   const found = [];
   for (const { pubkey, account } of accounts) {

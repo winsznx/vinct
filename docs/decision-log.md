@@ -1676,3 +1676,66 @@ whose own properties are non-enumerable yields `{}` and `String()` yields that. 
 failed for reasons the artifact then destroyed. `describeCause` reads the own property names
 instead. An error serializer that can lose the error is worse than no error field: it records
 that something went wrong and removes the only evidence of what.
+
+### D-0071 Redaction belongs where text is retained
+
+A paid RPC carries its credential in the URL. The proof runners record the endpoints they used,
+which is right, so `redactEndpoint` was added and applied to the `endpoints` field.
+
+The first Devnet run then wrote the key into the artifact anyway. The runners print their own
+configuration at the top, `say()` keeps every line for the artifact's transcript, and the
+transcript was not the field anyone had thought to redact.
+
+The fix is the general shape rather than a second call site. `say()` redacts as it retains,
+because the boundary that matters is where text is kept, not where it is produced. A run still
+prints the real endpoint to the terminal, where the operator already knows it.
+
+The key never reached git. It was in untracked artifacts, and rerunning after the fix replaced
+them. Checked with `git log --all -S`, not assumed.
+
+`scripts/scan-artifacts.ts` is now a gate over everything committed under `artifacts/`,
+`packages/test-vectors/`, and `docs/`. It looks for provider keys in URLs, credentials in query
+strings, key material, bearer tokens, incident canary text, and recorded decisions. It was
+verified by planting a file containing all three classes and confirming it fails, then removing
+it and confirming it passes. A scanner nobody has watched catch something is not a gate.
+
+Two of its first findings were false positives and both were worth fixing in the rule rather
+than the data. An unanchored 32-hex-character pattern matched the System Program address, which
+is the most public value in Solana. And the private-material rules fired on
+`packages/test-vectors`, where a decision is a fixture generated from the reference model's
+deterministic stand-ins. Those rules are now scoped to run records, where a decision could only
+have come from a real member.
+
+### D-0072 The mechanism runs on Devnet, and the confidentiality claim still cannot
+
+With a dedicated RPC the three programs deployed on the first attempt, and everything the local
+stack proves now has a Devnet artifact too: the full composition, both failure paths, the expiry
+crank, and a cancellation that stopped a running task short of its iteration count.
+
+`scripts/probe-runtimes.ts` establishes why one claim still has no Devnet evidence. Attestation
+and runtime freshness are independent properties, and no rollup currently has both:
+
+| Rollup | Executes this build | Answers a TDX quote |
+| --- | --- | --- |
+| devnet-us | yes | no |
+| devnet-as | no, never cloned it | no |
+| devnet-eu | no, never cloned it | no |
+| devnet-tee | no, cached before this build existed | yes |
+
+So the composition ran on `devnet-us`, which proves the mechanism and says nothing about an
+enclave, and the confidentiality claim still rests on the local stack and on the earlier PER
+visibility experiment. Splitting the probe from the attestation check was the useful move: a
+rollup can be attested and stale, or fresh and unattested, and conflating them would let a run
+on a fresh unattested rollup be filed as evidence of confidentiality.
+
+Two changes made the runners cluster-agnostic, and both were bugs on a real network rather than
+preferences. `sendAndConfirmTransaction` opens a websocket and calls `signatureSubscribe`, which
+several hosted tiers do not serve; the failure is a thirty second timeout saying it is unknown
+whether a transaction succeeded, on one that landed. Confirmation is a `getSignatureStatuses`
+poll now. And Devnet's faucet cannot fund a run, so actors are funded by transfer from a keypair
+that already has SOL, with the script refusing to start off a local validator without one rather
+than failing halfway through.
+
+The artifact directory also follows the cluster now. It was a constant, and a Devnet run
+silently overwrote the local record: two files with the same name from different chains, each
+saying PASS, with no way to tell which was which except by reading the endpoint buried inside.

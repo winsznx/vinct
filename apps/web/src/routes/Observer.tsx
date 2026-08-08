@@ -80,6 +80,7 @@ export function Observer() {
 
       {state.status === "unreachable" && <Problem kind="unreachable" message={state.message} />}
       {state.status === "error" && <Problem kind="error" message={state.message} />}
+      {state.status === "unsupported" && <Problem kind="unsupported" message={state.message} />}
 
       {covenant && state.status === "ready" && (
         <Section title="INCIDENTS">

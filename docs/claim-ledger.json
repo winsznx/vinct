@@ -1332,5 +1332,125 @@
     "limitations": [
       "The page cannot leak what it cannot read, which is a property of the account model rather than of the page. The browser assertion is a regression guard on the wording and the absence, not the proof of the privacy claim; that is the PER experiment."
     ]
+  },
+  {
+    "id": "devnet-the-whole-mechanism-runs-on-a-real-cluster",
+    "wording": "The full sequence runs on Solana Devnet against a real MagicBlock ephemeral rollup: three protocols form and arm a covenant, an incident opens under it, collects a private claim and sealed attestations, certifies, scrubs, and releases to base; the certificate is published permissionlessly and the Magic Action cohort settles under the operation ID certification derived. Three markets paused, three adapter receipts written, settlement receipt finalized, scrub verified on base, and the standalone verifier's 17 checks all pass.",
+    "status": "verified",
+    "proof_level": 6,
+    "network": "devnet",
+    "source_commit": "0f50e4a",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
+      "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4",
+      "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
+    ],
+    "transactions": [],
+    "commands": [
+      "VINCT_BASE_RPC=<rpc> VINCT_ER_RPC=https://devnet-us.magicblock.app/ VINCT_KEYPAIR=<funded> pnpm exec tsx scripts/phase5-composition.ts"
+    ],
+    "artifacts": [
+      "artifacts/devnet/phase5-composition-success.json"
+    ],
+    "verified_at": "2026-08-08T00:00:00Z",
+    "limitations": [
+      "Ran against devnet-us, which is not TEE-backed. The confidentiality claim needs the attested rollup and is proven separately; this run proves the mechanism, not the enclave.",
+      "The recorded base endpoint is redacted, because a paid RPC carries its credential in the URL. The host and network survive."
+    ]
+  },
+  {
+    "id": "devnet-one-failing-action-removes-the-cohort",
+    "wording": "On Devnet, two separate causes each produced COMMIT_WITHOUT_ACTIONS with no market paused and no adapter receipt written: a protocol whose adapter signer was never registered, and a protocol that suspended its capability after the certificate existed. Nothing partial was observed in either. Both classifications were read from base-layer account state, never from the scheduling signature.",
+    "status": "verified",
+    "proof_level": 6,
+    "network": "devnet",
+    "source_commit": "0f50e4a",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
+      "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4",
+      "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
+    ],
+    "transactions": [],
+    "commands": [
+      "pnpm exec tsx scripts/phase5-composition.ts --fail-one",
+      "pnpm exec tsx scripts/phase5-composition.ts --suspend-one"
+    ],
+    "artifacts": [
+      "artifacts/devnet/phase5-composition-fail-one.json",
+      "artifacts/devnet/phase5-composition-suspend-one.json"
+    ],
+    "verified_at": "2026-08-08T00:00:00Z",
+    "limitations": [
+      "Observed with one transaction strategy holding all four actions. A cohort split across several strategies would fail differently, and VINCT does not currently split one."
+    ]
+  },
+  {
+    "id": "devnet-an-unanswered-incident-settles-itself",
+    "wording": "On Devnet, a task requested on the rollup was registered and executed by MagicBlock's own scheduler. Its early iterations did nothing while the response window was open, and the iteration after the deadline settled the incident to EXPIRED with no human acting. The private accounts were then scrubbed, permissions closed, and the family released to base with the scrub verified there. Ten iterations that outlived the release all failed harmlessly, leaving the incident EXPIRED. An opener-signed cancellation stopped a running task short of its requested iteration count.",
+    "status": "verified",
+    "proof_level": 6,
+    "network": "devnet",
+    "source_commit": "0f50e4a",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
+      "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4",
+      "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
+    ],
+    "transactions": [],
+    "commands": [
+      "pnpm exec tsx scripts/phase6-expiry.ts",
+      "pnpm exec tsx scripts/phase6-expiry.ts --cancel"
+    ],
+    "artifacts": [
+      "artifacts/devnet/phase6-expiry-expire.json",
+      "artifacts/devnet/phase6-expiry-cancel.json"
+    ],
+    "verified_at": "2026-08-08T00:00:00Z",
+    "limitations": [
+      "Removal is established by absence over a quiet window with iteration exhaustion excluded, because the validator exposes no task registry. See docs/decision-log.md D-0061 and D-0063."
+    ]
+  },
+  {
+    "id": "devnet-a-rollup-can-be-attested-and-stale",
+    "wording": "Probing every router-advertised rollup for both attestation and build fingerprint shows the two properties are independent. devnet-us executes the build in this checkout and answers no TDX quote. devnet-tee answers a valid quote and executes a binary it cached before this build existed. devnet-as and devnet-eu answer neither. No rollup was both fresh and attested.",
+    "status": "verified",
+    "proof_level": 6,
+    "network": "devnet",
+    "source_commit": "0f50e4a",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
+    ],
+    "transactions": [],
+    "commands": [
+      "pnpm exec tsx scripts/probe-runtimes.ts"
+    ],
+    "artifacts": [
+      "artifacts/devnet/runtime-freshness.json"
+    ],
+    "verified_at": "2026-08-08T00:00:00Z",
+    "limitations": [
+      "A snapshot. Rollup caches change without notice, which is the reason the probe exists rather than a constant in a config file.",
+      "This is why the Phase 4 confidentiality evidence has no artifact for the current build: the only attested endpoint is stale, and the freshness gate refuses to collect from it."
+    ]
+  },
+  {
+    "id": "no-artifact-carries-a-credential-or-private-material",
+    "wording": "Every committed file under artifacts/, packages/test-vectors/, and docs/ is scanned for provider API keys in URLs, credentials in query strings, key material, bearer tokens, incident canary text, and recorded decisions. None is present. The scanner was verified by planting a file containing all three classes, confirming it fails, and confirming it passes once removed.",
+    "status": "verified",
+    "proof_level": 3,
+    "network": "none",
+    "source_commit": "PENDING",
+    "program_ids": [],
+    "transactions": [],
+    "commands": [
+      "pnpm scan-artifacts",
+      "pnpm exec tsx --test tests/program/redaction.test.ts"
+    ],
+    "artifacts": [],
+    "verified_at": "2026-08-08T00:00:00Z",
+    "limitations": [
+      "Pattern-based. It catches the credential shapes providers actually use and the private-material shapes VINCT's own runs produce; a novel format would need a new rule.",
+      "Private-material rules are scoped to artifacts/, because a decision in packages/test-vectors is a generated fixture by construction. See docs/decision-log.md D-0071."
+    ]
   }
 ]

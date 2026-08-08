@@ -1,0 +1,43 @@
+{
+  "captured_at": "2026-08-08T16:59:02.769Z",
+  "question": "Which router-advertised rollups execute the build in this checkout, and which answer a TDX quote?",
+  "expected_fingerprint": "d59a2f3d97b7d61826eadecaf7b49069115d111e21e8c30d4a9596ecee9a7ba3",
+  "base": {
+    "endpoint": "https://solana-devnet.g.alchemy.com/v2/<redacted>",
+    "fingerprint": "d59a2f3d97b7d61826eadecaf7b49069115d111e21e8c30d4a9596ecee9a7ba3"
+  },
+  "rollups": [
+    {
+      "fqdn": "https://devnet-us.magicblock.app/",
+      "identity": "MUS3hc9TCw4cGC12vHNoYcCGzJG1txjgQLZWVoeNHNd",
+      "fingerprint": "d59a2f3d97b7d61826eadecaf7b49069115d111e21e8c30d4a9596ecee9a7ba3",
+      "fresh": true,
+      "attested": false
+    },
+    {
+      "fqdn": "https://devnet-as.magicblock.app/",
+      "identity": "MAS1Dt9qreoRMQ14YQuhg8UTZMMzDdKhmkZMECCzk57",
+      "fingerprint": null,
+      "fresh": false,
+      "attested": false,
+      "error": "{\"InstructionError\":[0,{\"Custom\":101}]}"
+    },
+    {
+      "fqdn": "https://devnet-eu.magicblock.app/",
+      "identity": "MEUGGrYPxKk17hCr7wpT6s8dtNokZj5U2L57vjYMS8e",
+      "fingerprint": null,
+      "fresh": false,
+      "attested": false,
+      "error": "{\"InstructionError\":[0,{\"Custom\":101}]}"
+    },
+    {
+      "fqdn": "https://devnet-tee.magicblock.app/",
+      "identity": "MTEWGuqxUpYZGFJQcp8tLN7x5v9BSeoFHYWQQ3n3xzo",
+      "fingerprint": "ebff0e680b33a7ade799d1c12e7e5fe8949766f38131e579e1dcf9257f22be2b",
+      "fresh": false,
+      "attested": true
+    }
+  ],
+  "any_fresh_and_attested": false,
+  "note": "A rollup caches a program executable the first time it runs it and a base-layer upgrade does not evict that cache. Attestation and freshness are separate properties and constrain different claims."
+}

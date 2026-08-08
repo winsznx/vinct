@@ -18,7 +18,7 @@
  */
 
 import { createHash } from "node:crypto";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -32,8 +32,8 @@ import {
   Connection,
   Keypair,
   PublicKey,
+  SystemProgram,
   Transaction,
-  sendAndConfirmTransaction,
   type TransactionInstruction,
 } from "@solana/web3.js";
 
@@ -54,6 +54,8 @@ import {
   armCovenantMember,
   attestationAddress,
   cancelExpiryCrank,
+  redactEndpoint,
+  redactEndpoints,
   canonicalMemberOrder,
   claimAddress,
   closeAttestationPermission,
@@ -85,7 +87,6 @@ import {
 } from "../packages/client/src/index.js";
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const ARTIFACT_DIR = join(REPO_ROOT, "artifacts", "local-stack");
 
 const BASE_RPC = process.env.VINCT_BASE_RPC ?? "http://127.0.0.1:8899";
 const ER_RPC = process.env.VINCT_ER_RPC ?? "http://127.0.0.1:7799";
@@ -109,10 +110,40 @@ const POST_RELEASE_WATCH_MS = 8_000;
 
 const NAMES = ["alpha", "beta", "gamma"] as const;
 
+/** A funded keypair, required off a local validator. Devnet's faucet cannot fund a run. */
+const FUNDER_PATH = process.env.VINCT_KEYPAIR ?? null;
+const CONFIRM_TIMEOUT_MS = Number.parseInt(process.env.VINCT_CONFIRM_TIMEOUT_MS ?? "90000", 10);
+const PAYER_LAMPORTS = Number.parseInt(process.env.VINCT_PAYER_LAMPORTS ?? "300000000", 10);
+const ACTOR_LAMPORTS = Number.parseInt(process.env.VINCT_ACTOR_LAMPORTS ?? "80000000", 10);
+
+/** The record goes where the run came from, so one cluster cannot overwrite another's. */
+const IS_LOCAL =
+  (process.env.VINCT_BASE_RPC ?? "http://127.0.0.1:8899").includes("127.0.0.1") ||
+  (process.env.VINCT_BASE_RPC ?? "").includes("localhost");
+const ARTIFACT_DIR = join(REPO_ROOT, "artifacts", IS_LOCAL ? "local-stack" : "devnet");
+
 const log: string[] = [];
+
+/**
+ * Says a line, and writes down a version of it that is safe to commit.
+ *
+ * The transcript goes into the artifact, and the artifact goes into the repository. Redacting
+ * the endpoints field alone was not enough: this run printed its own configuration at the top,
+ * so the credential arrived in the record through the transcript instead. Redaction belongs at
+ * the boundary where text is retained, not at each place somebody remembered to apply it.
+ */
 function say(line: string): void {
-  log.push(line);
+  log.push(redactSecrets(line));
   console.log(line);
+}
+
+/** Replaces every configured endpoint inside a line of prose with its redacted form. */
+function redactSecrets(line: string): string {
+  let safe = line;
+  for (const endpoint of [BASE_RPC, ER_RPC]) {
+    if (endpoint) safe = safe.split(endpoint).join(redactEndpoint(endpoint));
+  }
+  return safe;
 }
 
 function sha256(input: string | Buffer): Uint8Array {
@@ -130,6 +161,31 @@ interface Step {
 }
 const steps: Step[] = [];
 
+/**
+ * Confirms by polling rather than subscribing.
+ *
+ * Several hosted RPC tiers serve no websockets, and `signatureSubscribe` failing there looks
+ * like a 30 second timeout on a transaction that landed fine.
+ */
+async function confirm(connection: Connection, signature: string): Promise<void> {
+  const deadline = Date.now() + CONFIRM_TIMEOUT_MS;
+  for (;;) {
+    const { value } = await connection.getSignatureStatuses([signature]);
+    const status = value[0];
+    if (status?.err) throw new Error(`${signature} failed: ${JSON.stringify(status.err)}`);
+    if (
+      status &&
+      (status.confirmationStatus === "confirmed" || status.confirmationStatus === "finalized")
+    ) {
+      return;
+    }
+    if (Date.now() > deadline) {
+      throw new Error(`${signature} was not confirmed within ${CONFIRM_TIMEOUT_MS}ms`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 700));
+  }
+}
+
 async function send(
   connection: Connection,
   instructions: TransactionInstruction[],
@@ -141,13 +197,43 @@ async function send(
   const first = signers[0];
   if (!first) throw new Error("a transaction needs at least one signer");
   transaction.feePayer = first.publicKey;
-  const signature = await sendAndConfirmTransaction(connection, transaction, signers, {
+  transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+  transaction.sign(...signers);
+  const signature = await connection.sendRawTransaction(transaction.serialize(), {
     skipPreflight: runtime === "er",
-    commitment: "confirmed",
   });
+  await confirm(connection, signature);
   steps.push({ step: label, runtime, signature });
   say(`  ${label} ${signature.slice(0, 12)}…`);
   return signature;
+}
+
+/** Gives an account enough SOL to act: a faucet locally, a funded keypair anywhere else. */
+async function fund(
+  base: Connection,
+  funder: Keypair | null,
+  target: PublicKey,
+  lamports: number,
+): Promise<void> {
+  if (!funder) {
+    await confirm(base, await base.requestAirdrop(target, lamports));
+    return;
+  }
+  const existing = await base.getBalance(target);
+  if (existing >= lamports) return;
+  await send(
+    base,
+    [
+      SystemProgram.transfer({
+        fromPubkey: funder.publicKey,
+        toPubkey: target,
+        lamports: lamports - existing,
+      }),
+    ],
+    [funder],
+    `fund ${target.toBase58().slice(0, 8)}`,
+    "base",
+  );
 }
 
 async function main(): Promise<void> {
@@ -155,11 +241,17 @@ async function main(): Promise<void> {
   const base = new Connection(BASE_RPC, "confirmed");
   const er = new Connection(ER_RPC, "confirmed");
 
+  const funder = FUNDER_PATH
+    ? Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(FUNDER_PATH, "utf8"))))
+    : null;
+  if (!IS_LOCAL && !funder) {
+    throw new Error(
+      "This is not a local validator, so set VINCT_KEYPAIR to a funded keypair. Devnet's faucet cannot fund a run.",
+    );
+  }
+
   const payer = Keypair.generate();
-  await base.confirmTransaction(
-    await base.requestAirdrop(payer.publicKey, 50_000_000_000),
-    "confirmed",
-  );
+  await fund(base, funder, payer.publicKey, PAYER_LAMPORTS);
 
   const validator = new PublicKey(
     (
@@ -181,10 +273,7 @@ async function main(): Promise<void> {
   }));
   const memberKeys = protocols.map((p) => p.authority.publicKey);
   for (const keypair of [steward, ...protocols.map((p) => p.authority)]) {
-    await base.confirmTransaction(
-      await base.requestAirdrop(keypair.publicKey, 10_000_000_000),
-      "confirmed",
-    );
+    await fund(base, funder, keypair.publicKey, ACTOR_LAMPORTS);
   }
 
   let covenantId = 1n;
@@ -563,7 +652,7 @@ async function main(): Promise<void> {
         run: RUN_LABEL,
         verdict,
         expected_state: expectedState,
-        endpoints: { base: BASE_RPC, er: ER_RPC },
+        endpoints: redactEndpoints({ base: BASE_RPC, er: ER_RPC }),
         validator_identity: validator.toBase58(),
         covenant: covenant.toBase58(),
         incident: core.toBase58(),
@@ -592,7 +681,7 @@ async function main(): Promise<void> {
       2,
     )}\n`,
   );
-  say(`\nWrote artifacts/local-stack/phase6-expiry-${RUN_LABEL}.json`);
+  say(`\nWrote ${ARTIFACT_DIR.replace(`${REPO_ROOT}/`, "")}/phase6-expiry-${RUN_LABEL}.json`);
   if (verdict !== "PASS") process.exitCode = 1;
 }
 

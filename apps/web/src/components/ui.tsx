@@ -235,10 +235,22 @@ export function Empty({ children }: { children: ReactNode }) {
  * The distinction is the same one the settlement monitor draws. A page that shows "nothing
  * found" when the RPC is down tells somebody an incident does not exist.
  */
-export function Problem({ kind, message }: { kind: "unreachable" | "error"; message: string }) {
+export function Problem({
+  kind,
+  message,
+}: {
+  kind: "unreachable" | "error" | "unsupported";
+  message: string;
+}) {
   return (
     <div
-      data-testid={kind === "unreachable" ? "outage" : "read-error"}
+      data-testid={
+        kind === "unreachable"
+          ? "outage"
+          : kind === "unsupported"
+            ? "unsupported-rpc"
+            : "read-error"
+      }
       style={{
         border: "1px solid var(--hairline)",
         borderRadius: "var(--radius-card)",
@@ -250,7 +262,9 @@ export function Problem({ kind, message }: { kind: "unreachable" | "error"; mess
       <p style={{ color: "var(--color-steel)", marginBottom: 0 }}>
         {kind === "unreachable"
           ? "Nothing below is current. This is a connection problem, not an empty result, and the page will keep retrying."
-          : "The node answered and the read failed. Nothing below is current."}
+          : kind === "unsupported"
+            ? "The node is up and declined the query this page needs. That is a property of the endpoint, not of the chain, so nothing below is missing; it is unread."
+            : "The node answered and the read failed. Nothing below is current."}
       </p>
       <p className="mono" style={{ color: "var(--color-graphite)", marginBottom: 0 }}>
         {message}

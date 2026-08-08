@@ -13,6 +13,8 @@ export type ReadState<T> =
   | { status: "loading" }
   | { status: "ready"; value: T; at: number }
   | { status: "unreachable"; message: string }
+  /** The node answered and declined. A billing tier is not an empty chain. */
+  | { status: "unsupported"; message: string }
   | { status: "error"; message: string };
 
 /**
@@ -51,7 +53,14 @@ export function usePolled<T>(
           message.includes("Failed to fetch") ||
           message.includes("ECONNREFUSED") ||
           message.includes("NetworkError");
-        setState(unreachable ? { status: "unreachable", message } : { status: "error", message });
+        const unsupported = error instanceof Error && error.name === "DiscoveryUnavailable";
+        setState(
+          unsupported
+            ? { status: "unsupported", message }
+            : unreachable
+              ? { status: "unreachable", message }
+              : { status: "error", message },
+        );
       }
       if (alive.current && intervalMs > 0) timer = setTimeout(run, intervalMs);
     };

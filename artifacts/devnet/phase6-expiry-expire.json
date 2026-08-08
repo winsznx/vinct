@@ -1,0 +1,382 @@
+{
+  "captured_at": "2026-08-08T17:15:48.636Z",
+  "run": "expire",
+  "verdict": "PASS",
+  "expected_state": "DESIRED_STATE_REACHED",
+  "endpoints": {
+    "base": "https://solana-devnet.g.alchemy.com/v2/<redacted>",
+    "er": "https://devnet-us.magicblock.app/"
+  },
+  "validator_identity": "MUS3hc9TCw4cGC12vHNoYcCGzJG1txjgQLZWVoeNHNd",
+  "covenant": "4bp5nxMv1vF9Ke8Lca6mJiBGsaM81LMJsQYQBdt5c9kR",
+  "incident": "AEDgQPiRBuDJuNd5CPf3hbjz6vyE3jUZd91PJhUC74YR",
+  "task_id": "7712133553396474458",
+  "response_window_slots": "120",
+  "requested": {
+    "execution_interval_millis": "1000",
+    "iterations": "32",
+    "note": "A requested iteration count is not a delivered one. See docs/decision-log.md D-0059."
+  },
+  "observation": {
+    "taskId": "7712133553396474458",
+    "state": "DESIRED_STATE_REACHED",
+    "requestSignature": "3NnChBx6r5UmfghtKrvB7TQLKobT11uq1wxxue56cFZ5weVLwJYZ5rR2j2GbLjTqwcL3JLR9RuVMNrEqoJp5A3Vb",
+    "cancelSignature": null,
+    "iterationSignatures": [
+      "5moBp3e1DNPT74rMPdV6z3MBCvvH6WUJMwXHjehzYU2NR8MDjbWkiMyjqkM2VwSpLaVMveE9mESLopQD6wPuQZkx",
+      "2Ps7de53kEw5VDbQPntbzAP4ECqeizoCqd3WPCgWNtMp1RjoXyEDdNDgCkBGoRZyGymEnm1fAhxsdFQWcR47S1e1",
+      "jUePQtGNVqq26oSzzKUqHbY25AQevzvuaqRkhqwjbgRePhy5XUjV9ggzxWd8TTk9ZUGGusNpGWzMYTiVgfMnQcR",
+      "47gJTNsG4WunSigZvnpd7JbuE1PtZotBX5uCQac8Z2ZKe75fvdHV2gjXphVGeHJUrkHtexudu8eM47XRsbTiP6CF"
+    ],
+    "incidentStatus": "Expired",
+    "desiredStateReached": true,
+    "iterationsExhausted": false,
+    "observedAt": "2026-08-08T17:15:48.636Z",
+    "windowElapsed": false
+  },
+  "trailing_iteration_count": 18,
+  "iterations_after_release": [
+    {
+      "signature": "5sSAerJbBNxqaGgxVRVeXFZYHb767ZBh1tYoviZc6eTQRVCLasMW8rAABeaNcT1a59mmhCDcopxPUmZ3YVEnpP1o",
+      "succeeded": false,
+      "error": "{\"InstructionError\":[1,{\"Custom\":3007}]}"
+    },
+    {
+      "signature": "arXhYUCD5YxW9McPmWdRenNaR8T8ZhYviQk2MFmHP5CPb4zk3pAYh7Jcu7fSfsh9pBvRSwdm6K6Z7idcgByh4sF",
+      "succeeded": false,
+      "error": "{\"InstructionError\":[1,{\"Custom\":3007}]}"
+    },
+    {
+      "signature": "39fwsQjfwn7Pt1Ze3Vog32ZPH39E3K62hBrKqoGxf2DaQu9avG3VmErvML9nSJZzQj8HsXkHLKsYu9rnyEeADb2o",
+      "succeeded": false,
+      "error": "{\"InstructionError\":[1,{\"Custom\":3007}]}"
+    },
+    {
+      "signature": "5nyU8N85msYSpM6yVdrCTHAqJgdzCQ8hJTJdyjJo2W6LTfCaM7CxdFfMrMAPWWXtVdTKgLCr6kM1app2DJWQeUWS",
+      "succeeded": false,
+      "error": "{\"InstructionError\":[1,{\"Custom\":3007}]}"
+    },
+    {
+      "signature": "2Ked7ArpDzRcLbBRek3pjAhQka8ctKYctqzJwhcr5iNN2JVnc48A9KJgfqpsZKhxU8dzyRjr1EA4SQJBNkkGk5fL",
+      "succeeded": false,
+      "error": "{\"InstructionError\":[1,{\"Custom\":3007}]}"
+    },
+    {
+      "signature": "Ri7BmyFXd2gkzTE5G2e7avsgpLUvpMMWeYNkcoedZBR57h2j9Zd1LczYTymLZTRyf6wcx9GUEPxK9ewRYMyVMmV",
+      "succeeded": false,
+      "error": "{\"InstructionError\":[1,{\"Custom\":3007}]}"
+    },
+    {
+      "signature": "2JMaZMTgQEJA2k3BDmoWpxeqrV5P8fwTHeiSqJ2du7VtzznD4Wtb1kryvUgKn178SkTmxw7qRKSN7h3712hf4G4j",
+      "succeeded": false,
+      "error": "{\"InstructionError\":[1,{\"Custom\":3007}]}"
+    },
+    {
+      "signature": "2GXdvQxv3FidiE9emFBrDmyPhGDttkZai4Gt2hiYwxartfPnuu9hy36C6iT3JjMXFzLTj9ePZfW4WNmfibRjwEhR",
+      "succeeded": false,
+      "error": "\"InvalidWritableAccount\""
+    },
+    {
+      "signature": "3iRuDkz2JZpY9tQx7qjENVrGHta9mCEWGkvSkq8uLPi4vE9K2bdqY2phuWLwMmSN3fqDhp2cWPJidr593FnUSJQp",
+      "succeeded": false,
+      "error": "\"InvalidWritableAccount\""
+    }
+  ],
+  "iterations_after_release_note": "VINCT cannot undelegate an incident that is still collecting, because release_incident requires a terminal status. These are the iterations that outlived the release, and they touch accounts that are no longer on the rollup.",
+  "settled_by_the_scheduler": true,
+  "scrub_verified_on_base": true,
+  "safe_to_undelegate": true,
+  "state_machine": [
+    "REQUESTED",
+    "REGISTRATION_OBSERVED",
+    "ITERATION_OBSERVED",
+    "DESIRED_STATE_REACHED",
+    "CANCELLATION_REQUESTED",
+    "REMOVAL_OBSERVED"
+  ],
+  "means": "A schedule or cancel transaction is REQUESTED. Every later state was read from the rollup, and registration is inferred from an observed execution because this validator exposes no task registry.",
+  "steps": [
+    {
+      "step": "fund 3hVniWXR",
+      "runtime": "base",
+      "signature": "3HDBtAT2cxPWbf5gXrqR15UedEXEBy7YLY2Msb6F1z8SftrXM784QP6Kw4GcxM9xwKDu2cMGUMXDSHiVTQghqt4D"
+    },
+    {
+      "step": "fund Cck3JWWP",
+      "runtime": "base",
+      "signature": "QGgJvzE5by6z7hUJzpdTGgzLL5dVTC6YoQWwe3N9CFMcMCnPgyzUAwwpetNnV1MTdv24dXLj27AUZuv82gkTYDE"
+    },
+    {
+      "step": "fund 53XBgYcz",
+      "runtime": "base",
+      "signature": "jnV5o1PsKQvn4Fwxq32bqKfair6aPRQ3vVdXnZf3KCa5DtdjFYydg3FHXc79eJTD6BvixLJgybX14K8wa7MEETD"
+    },
+    {
+      "step": "fund EBeW4yRN",
+      "runtime": "base",
+      "signature": "2KQcJwvKFTrctG18Q3F4SW4aTCPK6QqwTgSD6kukCaMD84DKYKwCGvUiaxK7QLZENLsnLhaiDTMGo2d6uhyTA7cu"
+    },
+    {
+      "step": "fund 3jZYduPw",
+      "runtime": "base",
+      "signature": "oeJbC3ACA1NWYkrnxgBDLrCodNixaLj7va58WfBshqaVaGJt2o8EYeHrYkmYohwVKETYMLKETTmigh6wkaaVvDL"
+    },
+    {
+      "step": "convene",
+      "runtime": "base",
+      "signature": "61aZirgZEbg4Z2Znjeg9mjgJvd9mhGPKo6BT9C2Jdb8BQ3hDF7Yg78njrKZeacxrVzYXBHqpyHZF2SFG9usrtM56"
+    },
+    {
+      "step": "add 3jZYduPw",
+      "runtime": "base",
+      "signature": "5yntUMwaC6RGR4qSm8Hij8bMRjjud8Jc56Xbbah3TZwcbMLoWcEmg8mZpm5EuKE93nFCYDcs2cuLYgtXATFt4BAs"
+    },
+    {
+      "step": "add 53XBgYcz",
+      "runtime": "base",
+      "signature": "4MqFR5dLjJHwn1RkcN1LLMv1y6x3C8sk7UZcdt79Sfjs4K9nrUkFAR8jteqbEWR8YUTDB1Zn9QsR4GAZoAH1WF6g"
+    },
+    {
+      "step": "add EBeW4yRN",
+      "runtime": "base",
+      "signature": "yhAXUFsvYzBtm1EgycZ8q9xp5FPtmoA2RuWdFqP6QJNaGpa5xEi4ELU212D7orFow7NUC63z5KttEeyCdfNSDq1"
+    },
+    {
+      "step": "alpha ratifies",
+      "runtime": "base",
+      "signature": "189TKaTmAEFquHjvRpC62XEjRUjx6tPTcesdBfHB1jDUMfi6UWVb6T3ZBAHwJbyTiTEhZsDYK4Mv7mTw3hGSGCW"
+    },
+    {
+      "step": "beta ratifies",
+      "runtime": "base",
+      "signature": "4ayPAevThRunHfDWU48KfHAVSkE5KSefB2fwDf14utEGgBzxduqr3dQMmgC68tbsXewSTg6byx41Bn7bhmiAYcPX"
+    },
+    {
+      "step": "gamma ratifies",
+      "runtime": "base",
+      "signature": "aiK8v6Ag6Mb3XWQ2eJKbARn39tKPnuEnaVhhu8tyGUEYWuWpjR22u3vv2gSGshPTDAhCzanK7roApkSsrDvgfRV"
+    },
+    {
+      "step": "covenant ratifies",
+      "runtime": "base",
+      "signature": "3cXiza5guejAjfKMZP5MSanUAYJjw9HbdMqQsisXibyxePeCefoEii32n2pvaqGBPE1W66C78LbyubGPoaYGFULh"
+    },
+    {
+      "step": "alpha arms",
+      "runtime": "base",
+      "signature": "4vo5LpwBK4o26Qp83s8VGhc3TjHh2Etooo2nTMiBPspaMN7vijtfqrdBJDQGdxL93c3NqwuUuCdpWQ4wgmbFEL8T"
+    },
+    {
+      "step": "beta arms",
+      "runtime": "base",
+      "signature": "5ErE3fUJ1HJyxRtXB43THBRTwZ8W419HpEX8oZQ7LipQrEvbJ69FF24vE1FeAVU954iL8EPsYTpZuaM8YCjW24vU"
+    },
+    {
+      "step": "gamma arms",
+      "runtime": "base",
+      "signature": "2nNefhY3opkAAACYbWFMw32Gf1nApV2fQHtjZ7AfYP66Yrik6PHf9XdW4hNs17k5czX5cgEEvU8LPVY1md5uzHPk"
+    },
+    {
+      "step": "covenant arms",
+      "runtime": "base",
+      "signature": "pypR7FL21A62A9sSPZRk44UWg8v8obPVhZk5RVgdwmdQXaWKC4cswnNKB4M1E4jXPjUFEioNQt8jjEdE1VzXYG5"
+    },
+    {
+      "step": "incident core",
+      "runtime": "base",
+      "signature": "39kE2SWSiQHpqhFwV6tn4DPwBrtSy1DAAo6AiLhiWRDYkrZUXKXwKePU1N8oLz9wSmdrMmy6GN2qySazxX4jbBye"
+    },
+    {
+      "step": "claim",
+      "runtime": "base",
+      "signature": "5WVon141gKQHdX6AnYQQ52w2LWb45kVxcftac5gFaKQCNgQo7jvet66gw1nrDLn9grbpKnyKZLEVu145v6bd5YbU"
+    },
+    {
+      "step": "alpha: ballot",
+      "runtime": "base",
+      "signature": "3ofuk4abiTCXtwcdKoQ4gmDoav3oqKqesQGj31hejFm4WrDRCaL5uvPDM2mYKjZFVVUeU2dVuYzXQNZ68fq3eiFj"
+    },
+    {
+      "step": "beta: ballot",
+      "runtime": "base",
+      "signature": "3eUmApPjRuqPvqvuPtguSwNwXnVx9MH94iPT76HM798RyJDyRABd1pKYdEiBHak3iddX7TXS9BDycaer4avwzruu"
+    },
+    {
+      "step": "gamma: ballot",
+      "runtime": "base",
+      "signature": "3rU7zX1bwMrXD2iwxjzo2VRSKU7ZM6BfhhYgTs8YvxgktgnBYhVxcPeJ7rUXx18pcFxNXNFPmhkjwNGbHAzrDZfY"
+    },
+    {
+      "step": "delegate core",
+      "runtime": "base",
+      "signature": "xqVJW6afzhPA3TKJ88JaxnCUs3cCDperM3uvWbpw4ZupSb8XajPaFVQMWKszvRfQbfmMHGHJeLukcXfJgntuSuF"
+    },
+    {
+      "step": "delegate claim",
+      "runtime": "base",
+      "signature": "5zTG72JvW6cZDbdgXEYpGmXTzUm8ZFaueFrKAuygvyBA3dD31fqaCtqQ1LT38Y5zfvGyWEBDmVWfZddHSk1LcbFe"
+    },
+    {
+      "step": "delegate alpha's ballot",
+      "runtime": "base",
+      "signature": "5WwqCffKiWhJ4PZ3nK9YKHQL59KbyjzeuGU4cHyyCEkiqGC4cpy56ZmjGZjuasPuY7tNzFqnQwTHY9mYFY8NksHs"
+    },
+    {
+      "step": "delegate beta's ballot",
+      "runtime": "base",
+      "signature": "4H9iA1uBJaiQTdecEQ9AboDmS4KxfcAxLS4ZeoZDCXWG49pwsVh82Zgc2ug2XRRw1XaMLtj7DyFygcUXxg93VJz1"
+    },
+    {
+      "step": "delegate gamma's ballot",
+      "runtime": "base",
+      "signature": "9TuvsZcSuJ4HusbY7rCNrSqsQYgqv9jd3F2XwY12aBJiVmABwXv3zc6rsPrTzxPCuznEScTckuFd7mjm5WeEEy5"
+    },
+    {
+      "step": "claim permission",
+      "runtime": "er",
+      "signature": "4QguqhwjdvNv1hcvhA3mCTT9AwAjbBUxqM3dbzg9mAe5AgLYy5JccfZkM23WEkSRTw7ReRnkJrjot5rwbWETiTm2"
+    },
+    {
+      "step": "alpha's ballot permission",
+      "runtime": "er",
+      "signature": "2qooyV8fkAGr723RtDhuPueeg3doDFyNUSEYhR5pYdcDfj8NYxv1gnXw8pyBHMN8y2G2J6rNWbrwbyT34keMS9iJ"
+    },
+    {
+      "step": "beta's ballot permission",
+      "runtime": "er",
+      "signature": "3Lv2mpgobYeDFvVUUiwmkfWr7AnBogZ7MmmKV6HhNFb2BZDG9JABTy4xDnAMuPXMe9bdjfnsYL7q5ppatfYoiSfy"
+    },
+    {
+      "step": "gamma's ballot permission",
+      "runtime": "er",
+      "signature": "3AA8XqhbqQYYHSTCAZsBBqrjFLpTvL79CYRjtq4BbnfjNHUxzWuU64iczcusyLH5aRJDJQJbaf6j5nePDWLJQS4J"
+    },
+    {
+      "step": "open incident",
+      "runtime": "er",
+      "signature": "4eX8sBjPNwrJTRfPbUcXneXzAnqrUftFPHqDmADdzy4fDyetyauyxn5EHunkaG6q8uXjm9mTGXvY8J8ffvyW7aBZ"
+    },
+    {
+      "step": "private claim",
+      "runtime": "er",
+      "signature": "2CkULkD4z9Uw53KW1DThYQPaXNJZicZZehuzLwDQHZmjqXyWA4mcFXfbGkTdDMxus3EhYbGZRqx4Kb9LE5RsCQR5"
+    },
+    {
+      "step": "request expiry crank",
+      "runtime": "er",
+      "signature": "3NnChBx6r5UmfghtKrvB7TQLKobT11uq1wxxue56cFZ5weVLwJYZ5rR2j2GbLjTqwcL3JLR9RuVMNrEqoJp5A3Vb"
+    },
+    {
+      "step": "scrub claim",
+      "runtime": "er",
+      "signature": "4jqLoFZXmS9obj3g7tjEa3xR8SKucmz7z5qbXGQV5rTDpAGchtAvAozJBdRb5UHpPerAzEcE14vEssCPyAWzNxPX"
+    },
+    {
+      "step": "scrub alpha's ballot",
+      "runtime": "er",
+      "signature": "5HgtWwrrSqkFDFaVEqFXDqCHoRRLzE1RdFP9hDCSLNJAeR3iwU8y87gkbArMLJhKZcJyi5e1wcWzMHLeFvjhT9NS"
+    },
+    {
+      "step": "scrub beta's ballot",
+      "runtime": "er",
+      "signature": "Rn9t3vLb9ArtD5w1roYvjxxn96q7gPmHK3iP6dXZacued9mwZR9vx77UinGX1N5KrJZWWguMJwVsFpyBVWusK6p"
+    },
+    {
+      "step": "scrub gamma's ballot",
+      "runtime": "er",
+      "signature": "5gXrowmLiMxW8SLYKTZ9hHGhji7qjpKBpoTpwo7rCJfiqJSki1VTqjBLCDQFxdnsG7rQKFy7ftby5KnSCytWcUVv"
+    },
+    {
+      "step": "close claim permission",
+      "runtime": "er",
+      "signature": "5rNYEs2hamCCT41DtDw5YLUgqCUWhndsgYhSk1t6TaswaH8vL1sLQhAqPSqKvHY5neGLEVeHc5ZTG8U3f9bZomiU"
+    },
+    {
+      "step": "close alpha's ballot permission",
+      "runtime": "er",
+      "signature": "569enZaCNH4DWVVokseSzW7AeYvXsuRiFRdx4UquSncn2Y3HWRBqtc1obdED4bidxe4gpCepydEt2QMZrs4tdQ62"
+    },
+    {
+      "step": "close beta's ballot permission",
+      "runtime": "er",
+      "signature": "41kSNP5Gw19GrMySn4hEKNw8tBD92BArg15VoF4Rou5GovqMB4CmWM9cVawuYWG1rTvdQH2WB6zhhDbWo3rV6KkP"
+    },
+    {
+      "step": "close gamma's ballot permission",
+      "runtime": "er",
+      "signature": "2Yj3WmvdbVatTXn5P2n8X1kxy86vAFpEmU9zPPKudQRKQdmKgGHJDE5NYKz78qemNMXARwoGbHp1nEieJNYaiGiE"
+    },
+    {
+      "step": "release the incident family",
+      "runtime": "er",
+      "signature": "3n2EMKPt22nE4zw8Z6MmY9EssRCDm8LRg8jsNn3n69kBeXZQAuqWDU7xr21ewrC4kbbiZGM3xiZKgDrSYFTyeLh"
+    }
+  ],
+  "transcript": [
+    "  fund 3hVniWXR 3HDBtAT2cxPW…",
+    "  fund Cck3JWWP QGgJvzE5by6z…",
+    "  fund 53XBgYcz jnV5o1PsKQvn…",
+    "  fund EBeW4yRN 2KQcJwvKFTrc…",
+    "  fund 3jZYduPw oeJbC3ACA1NW…",
+    "VINCT Phase 6 — expiry crank on the local stack (expire)",
+    "  base https://solana-devnet.g.alchemy.com/v2/<redacted>   er https://devnet-us.magicblock.app/",
+    "  incident AEDgQPiRBuDJuNd5CPf3hbjz6vyE3jUZd91PJhUC74YR",
+    "  response window 120 slots",
+    "",
+    "Forming the covenant",
+    "  convene 61aZirgZEbg4…",
+    "  add 3jZYduPw 5yntUMwaC6RG…",
+    "  add 53XBgYcz 4MqFR5dLjJHw…",
+    "  add EBeW4yRN yhAXUFsvYzBt…",
+    "  alpha ratifies 189TKaTmAEFq…",
+    "  beta ratifies 4ayPAevThRun…",
+    "  gamma ratifies aiK8v6Ag6Mb3…",
+    "  covenant ratifies 3cXiza5guejA…",
+    "  alpha arms 4vo5LpwBK4o2…",
+    "  beta arms 5ErE3fUJ1HJy…",
+    "  gamma arms 2nNefhY3opkA…",
+    "  covenant arms pypR7FL21A62…",
+    "\nOpening the incident",
+    "  incident core 39kE2SWSiQHp…",
+    "  claim 5WVon141gKQH…",
+    "  alpha: ballot 3ofuk4abiTCX…",
+    "  beta: ballot 3eUmApPjRuqP…",
+    "  gamma: ballot 3rU7zX1bwMrX…",
+    "  delegate core xqVJW6afzhPA…",
+    "  delegate claim 5zTG72JvW6cZ…",
+    "  delegate alpha's ballot 5WwqCffKiWhJ…",
+    "  delegate beta's ballot 4H9iA1uBJaiQ…",
+    "  delegate gamma's ballot 9TuvsZcSuJ4H…",
+    "  claim permission 4QguqhwjdvNv…",
+    "  alpha's ballot permission 2qooyV8fkAGr…",
+    "  beta's ballot permission 3Lv2mpgobYeD…",
+    "  gamma's ballot permission 3AA8XqhbqQYY…",
+    "  open incident 4eX8sBjPNwrJ…",
+    "  private claim 2CkULkD4z9Uw…",
+    "  nobody answers, which is the whole point of this run",
+    "\nRequesting the expiry task (id 7712133553396474458)",
+    "  request expiry crank 3NnChBx6r5Um…",
+    "  REQUESTED — the validator logged a request. Nothing is registered, and nothing has run.",
+    "\nWatching the scheduler",
+    "  iterations observed: 4",
+    "  incident status: Expired",
+    "  DESIRED_STATE_REACHED",
+    "\nSafe to take the accounts off the rollup: true",
+    "\nScrubbing and releasing",
+    "  scrub claim 4jqLoFZXmS9o…",
+    "  scrub alpha's ballot 5HgtWwrrSqkF…",
+    "  scrub beta's ballot Rn9t3vLb9Art…",
+    "  scrub gamma's ballot 5gXrowmLiMxW…",
+    "  close claim permission 5rNYEs2hamCC…",
+    "  close alpha's ballot permission 569enZaCNH4D…",
+    "  close beta's ballot permission 41kSNP5Gw19G…",
+    "  close gamma's ballot permission 2Yj3WmvdbVat…",
+    "  release the incident family 3n2EMKPt22nE…",
+    "  released as Expired",
+    "  scrub verified on base: true",
+    "\nIterations after the accounts left the rollup: 9, of which 9 failed",
+    "  A failed iteration here is expected and harmless. The incident already settled on",
+    "  base, and the handler has no account left to touch.",
+    "\nPhase 6 expiry (expire): PASS — expected DESIRED_STATE_REACHED"
+  ]
+}
