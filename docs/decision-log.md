@@ -1159,3 +1159,26 @@ expiry, suspendable and revocable by its own protocol authority, and replay-prot
 operation by a receipt. A certificate is the circle saying an incident happened; it is not the
 protocol saying it is still willing to act.
 `a_capability_suspended_after_certification_refuses_to_execute` holds that line.
+
+### D-0051 A hand-written decoder does not fail, it lies
+
+Re-running the local lifecycle after the template correction reported two approvals as fifty
+and zero rejections as two hundred and thirty-nine, and still printed PASS.
+
+Two separate faults, and the second is the one worth recording. The client's
+`decodeIncidentCore` walks the account by offset, and three fields had been added to
+`IncidentCore` since it was written, so every field after them was read from the wrong bytes.
+A decoder that has drifted does not return an error. It returns numbers that look like
+numbers.
+
+The run passed anyway because its verdict only checked the status. A verdict that reads one
+field from a decoder it does not trust is not checking the decoder at all.
+
+Both are fixed, and both got a guard rather than a correction. The runner's verdict now
+requires the aggregate to be the number the ballots actually produced, so a drifted decoder
+fails the run. And `the_client_decodes_the_core_the_program_writes` builds a buffer to the
+program's declared field order and checks every field, so the drift is caught in the test
+suite before it reaches a runner at all.
+
+The general shape: every hand-written decoder in this repository is a second implementation of
+a layout, and the layout is the one that moves. Where one exists, something has to pin it.

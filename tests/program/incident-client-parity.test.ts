@@ -41,6 +41,9 @@ import {
   commitIncident,
   createAttestationPermission,
   createClaimPermission,
+  decodeIncidentCore,
+  INCIDENT_SCHEMA_VERSION,
+  IncidentStatus,
   delegateAttestation,
   delegateClaim,
   delegateIncident,
@@ -331,4 +334,101 @@ test("an attestation permission cannot be given extra readers", () => {
     8,
     "the instruction carries a discriminator and nothing else",
   );
+});
+
+/**
+ * The client's decoder matches the account the program writes.
+ *
+ * A hand-written decoder that has drifted from its account does not fail: it reads the wrong
+ * bytes and returns plausible numbers. That is exactly what happened once, and a local run
+ * reported two approvals as fifty because the verdict only looked at the status. This checks
+ * the layout by construction, against a buffer built to the program's declared field order.
+ */
+test("the client decodes the core the program writes", () => {
+  const covenantKey = Keypair.generate().publicKey;
+  const openerKey = Keypair.generate().publicKey;
+  const fill = (byte: number): Buffer => Buffer.alloc(32, byte);
+
+  const parts: Buffer[] = [
+    Buffer.alloc(8), // discriminator
+    (() => {
+      const b = Buffer.alloc(2);
+      b.writeUInt16LE(INCIDENT_SCHEMA_VERSION);
+      return b;
+    })(),
+    covenantKey.toBuffer(),
+    (() => {
+      const b = Buffer.alloc(8);
+      b.writeBigUInt64LE(7n);
+      return b;
+    })(),
+    (() => {
+      const b = Buffer.alloc(8);
+      b.writeBigUInt64LE(42n);
+      return b;
+    })(),
+    openerKey.toBuffer(),
+    Buffer.from([IncidentStatus.CertifiedPendingSettlement]),
+    fill(0xa1), // policy
+    fill(0xa2), // member set
+    fill(0xa3), // cluster
+    Buffer.from([2]), // required approvals
+    Buffer.from([1]), // maximum rejections
+    (() => {
+      const b = Buffer.alloc(8);
+      b.writeBigUInt64LE(100n);
+      return b;
+    })(),
+    (() => {
+      const b = Buffer.alloc(8);
+      b.writeBigUInt64LE(600n);
+      return b;
+    })(),
+    (() => {
+      const b = Buffer.alloc(8);
+      b.writeBigUInt64LE(500n);
+      return b;
+    })(),
+    fill(0xa4), // action bundle template
+    fill(0xa5), // claim digest
+    fill(0xa6), // operation id
+    (() => {
+      const b = Buffer.alloc(8);
+      b.writeBigUInt64LE(550n);
+      return b;
+    })(),
+    (() => {
+      const b = Buffer.alloc(8);
+      b.writeBigUInt64LE(9_000n);
+      return b;
+    })(),
+    Buffer.from([3]), // member count
+    Buffer.from([2]), // approvals
+    Buffer.from([0]), // rejections
+    Buffer.from([254]), // bump
+  ];
+
+  const decoded = decodeIncidentCore(Buffer.concat(parts));
+  assert.equal(decoded.version, INCIDENT_SCHEMA_VERSION);
+  assert.equal(decoded.covenant.toBase58(), covenantKey.toBase58());
+  assert.equal(decoded.circleEpoch, 7n);
+  assert.equal(decoded.incidentId, 42n);
+  assert.equal(decoded.opener.toBase58(), openerKey.toBase58());
+  assert.equal(decoded.status, IncidentStatus.CertifiedPendingSettlement);
+  assert.deepEqual(Buffer.from(decoded.policyId), fill(0xa1));
+  assert.deepEqual(Buffer.from(decoded.memberSetHash), fill(0xa2));
+  assert.deepEqual(Buffer.from(decoded.clusterGenesisHash), fill(0xa3));
+  assert.equal(decoded.requiredApprovals, 2);
+  assert.equal(decoded.maximumRejections, 1);
+  assert.equal(decoded.openedAtSlot, 100n);
+  assert.equal(decoded.expiresAtSlot, 600n);
+  assert.equal(decoded.responseWindowSlots, 500n);
+  assert.deepEqual(Buffer.from(decoded.actionBundleTemplateHash), fill(0xa4));
+  assert.deepEqual(Buffer.from(decoded.claimDigest), fill(0xa5));
+  assert.deepEqual(Buffer.from(decoded.operationId), fill(0xa6));
+  assert.equal(decoded.certifiedAtSlot, 550n);
+  assert.equal(decoded.certificateLifetimeSlots, 9_000n);
+  assert.equal(decoded.memberCount, 3);
+  assert.equal(decoded.approvalCountAfterTerminal, 2);
+  assert.equal(decoded.rejectionCountAfterTerminal, 0);
 });

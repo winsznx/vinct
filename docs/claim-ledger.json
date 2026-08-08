@@ -900,7 +900,7 @@
     "status": "verified",
     "proof_level": 4,
     "network": "litesvm",
-    "source_commit": "PENDING",
+    "source_commit": "eaee097",
     "program_ids": [
       "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4"
     ],

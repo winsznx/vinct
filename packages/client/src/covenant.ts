@@ -55,6 +55,8 @@ export interface CreateCovenantArgs {
   circleEpoch: bigint;
   clusterGenesisHash: Uint8Array;
   policyId: Uint8Array;
+  /** The action template the policy commits to. Feeds the operation ID. */
+  actionBundleTemplateHash: Uint8Array;
   requiredApprovals: number;
   maximumRejections: number;
   responseWindowSlots: bigint;
@@ -71,6 +73,7 @@ export function createCovenant(
     .u64(args.circleEpoch)
     .bytes32(args.clusterGenesisHash)
     .bytes32(args.policyId)
+    .bytes32(args.actionBundleTemplateHash)
     .u8(args.requiredApprovals)
     .u8(args.maximumRejections)
     .u64(args.responseWindowSlots)
@@ -182,6 +185,8 @@ export interface CovenantView {
   clusterGenesisHash: Uint8Array;
   status: CovenantStatus;
   policyId: Uint8Array;
+  /** The action template the policy commits to. Feeds the operation ID. */
+  actionBundleTemplateHash: Uint8Array;
   requiredApprovals: number;
   maximumRejections: number;
   responseWindowSlots: bigint;
@@ -228,6 +233,7 @@ export function decodeCovenant(data: Buffer): CovenantView {
     clusterGenesisHash: bytes32(),
     status: u8() as CovenantStatus,
     policyId: bytes32(),
+    actionBundleTemplateHash: bytes32(),
     requiredApprovals: u8(),
     maximumRejections: u8(),
     responseWindowSlots: u64(),

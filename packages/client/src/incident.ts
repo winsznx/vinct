@@ -595,13 +595,23 @@ export interface IncidentCoreView {
   openedAtSlot: bigint;
   expiresAtSlot: bigint;
   responseWindowSlots: bigint;
+  actionBundleTemplateHash: Uint8Array;
   claimDigest: Uint8Array;
   operationId: Uint8Array;
+  certifiedAtSlot: bigint;
+  certificateLifetimeSlots: bigint;
   memberCount: number;
   approvalCountAfterTerminal: number;
   rejectionCountAfterTerminal: number;
 }
 
+/**
+ * Decodes the public core.
+ *
+ * Field order mirrors `vinct_core::incident::IncidentCore` exactly. A decoder that drifts
+ * from the account it reads produces plausible-looking nonsense rather than an error, which
+ * is why `the_client_decodes_the_core_the_program_wrote` exists.
+ */
 export function decodeIncidentCore(data: Buffer): IncidentCoreView {
   const body = data.subarray(8);
   let offset = 0;
@@ -620,12 +630,12 @@ export function decodeIncidentCore(data: Buffer): IncidentCoreView {
     offset += 8;
     return value;
   };
-  const u8 = (): number => body[offset++] ?? 0;
   const u16 = (): number => {
     const value = body.readUInt16LE(offset);
     offset += 2;
     return value;
   };
+  const u8 = (): number => body[offset++] ?? 0;
 
   return {
     version: u16(),
@@ -642,8 +652,11 @@ export function decodeIncidentCore(data: Buffer): IncidentCoreView {
     openedAtSlot: u64(),
     expiresAtSlot: u64(),
     responseWindowSlots: u64(),
+    actionBundleTemplateHash: bytes32(),
     claimDigest: bytes32(),
     operationId: bytes32(),
+    certifiedAtSlot: u64(),
+    certificateLifetimeSlots: u64(),
     memberCount: u8(),
     approvalCountAfterTerminal: u8(),
     rejectionCountAfterTerminal: u8(),

@@ -218,6 +218,7 @@ async function main(): Promise<void> {
         circleEpoch: 1n,
         clusterGenesisHash: new PublicKey(await base.getGenesisHash()).toBytes(),
         policyId: sha256("local:policy"),
+        actionBundleTemplateHash: sha256("local:template"),
         requiredApprovals: 2,
         maximumRejections: 1,
         responseWindowSlots: 200_000n,
@@ -459,7 +460,14 @@ async function main(): Promise<void> {
     }
   }
 
-  const mechanicsWork = undelegated && view?.status === IncidentStatus.CertifiedPendingSettlement;
+  // The counts matter as much as the status. A decoder that has drifted from the account it
+  // reads produces plausible nonsense rather than an error, so the verdict checks the number
+  // the ballots actually produced.
+  const mechanicsWork =
+    undelegated &&
+    view?.status === IncidentStatus.CertifiedPendingSettlement &&
+    view.approvalCountAfterTerminal === ATTESTING_MEMBERS &&
+    view.rejectionCountAfterTerminal === 0;
   const peersBlind =
     !matrix.alphaReadsBetaBallot.readable &&
     !matrix.betaReadsAlphaBallot.readable &&

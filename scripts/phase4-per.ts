@@ -691,6 +691,7 @@ async function main(): Promise<void> {
         circleEpoch: 1n,
         clusterGenesisHash,
         policyId,
+        actionBundleTemplateHash: sha256(`${RUN_LABEL}:template`),
         requiredApprovals: 2,
         maximumRejections: 1,
         responseWindowSlots: 200_000n,
