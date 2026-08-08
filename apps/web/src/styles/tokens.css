@@ -707,16 +707,148 @@ ol {
 
 /* --------------------------------------------------------- site nav */
 
+/* ------------------------------------------------------------ site header */
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--frosted);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+
 /**
- * The public nav collapses by dropping words, not by hiding behind a tap.
+ * Three zones: brand, links, action.
  *
- * At 390px the four items plus the wordmark are 418px wide, which pushes the page sideways.
- * Below the breakpoint the secondary links go and the two that matter stay: the demo, which is
- * where a visitor should go, and the app. `Status` is reachable from the footer and from the
- * application header, so nothing becomes unreachable.
+ * A grid rather than flex with `space-between`, because the centre column has to stay centred on
+ * the bar rather than drifting with the width of whatever sits either side of it. The outer
+ * columns are equal so the middle one is truly centred.
  */
+.site-bar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--s4);
+  min-height: 64px;
+}
+.site-links {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  justify-self: center;
+}
+.site-actions {
+  justify-self: end;
+}
+
+/** design.md: 12px uppercase at 0.07em, quiet enough to recede into the bar. */
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+  transition: color 120ms ease;
+}
+.nav-link:hover,
+.nav-link[aria-expanded="true"] {
+  color: var(--text);
+}
+.nav-link.active {
+  color: var(--text);
+}
+.nav-link-status {
+  letter-spacing: 0.06em;
+}
+
+/** The panel a grouped nav item opens. */
+.nav-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  min-width: 272px;
+  padding: var(--s2);
+  display: grid;
+  gap: 2px;
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  z-index: 50;
+}
+.nav-menu-item {
+  display: grid;
+  gap: 1px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  transition: background 120ms ease;
+}
+.nav-menu-item:hover {
+  background: var(--panel-hover);
+}
+
+/** The reference's single filled pill on the end of the bar, with its arrow. */
+.btn-pill {
+  border-radius: var(--r-pill);
+  padding: 9px 8px 9px 18px;
+  background: var(--almost-white);
+  color: var(--near-black);
+  border-color: var(--almost-white);
+  font-weight: 600;
+  font-size: var(--t-base);
+  gap: 6px;
+}
+.btn-pill:hover:not(:disabled) {
+  background: #fff;
+  border-color: #fff;
+}
+.btn-pill svg {
+  /* The arrow sits in its own round well, as it does in the reference. */
+  background: rgba(9, 9, 9, 0.1);
+  border-radius: 50%;
+  padding: 4px;
+  width: 21px;
+  height: 21px;
+}
+
+.site-menu-toggle {
+  display: none;
+}
+.site-mobile {
+  border-top: 1px solid var(--line);
+  padding: var(--s5) 0 var(--s6);
+  background: var(--canvas);
+}
+
+/**
+ * Below the breakpoint the centred group cannot fit, so it becomes a disclosure.
+ *
+ * Dropping links outright was the previous approach and it works for three items. It does not
+ * work for seven, and hiding a destination is worse than asking for one tap.
+ */
+@media (max-width: 940px) {
+  .site-bar {
+    grid-template-columns: 1fr auto;
+  }
+  .site-links {
+    display: none;
+  }
+  .site-menu-toggle {
+    display: inline-flex;
+  }
+  .nav-link-status {
+    display: none;
+  }
+}
 @media (max-width: 560px) {
-  .site-nav-secondary {
+  .btn-pill {
     display: none;
   }
 }
@@ -802,4 +934,14 @@ ol {
     padding-left: var(--s7);
     padding-right: var(--s7);
   }
+}
+
+/**
+ * An anchored section stops below the sticky bar rather than under it.
+ *
+ * Without this, following a link from the nav menu scrolls the stamp behind the header and the
+ * reader lands mid-section wondering whether the link worked.
+ */
+.band[id] {
+  scroll-margin-top: 84px;
 }

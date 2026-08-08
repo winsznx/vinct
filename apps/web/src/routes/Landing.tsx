@@ -100,7 +100,7 @@ export function Landing() {
       </section>
 
       {/* ------------------------------------------------------------- why */}
-      <Band stamp="Why this exists">
+      <Band stamp="Why this exists" id="why">
         <Head
           title="Everyone finds out from Twitter"
           lead="Three lending protocols use the same price feed. It starts printing garbage. Each of them has a runbook, each acts alone, and the slowest one absorbs the damage. They could have agreed months earlier, and there was nothing to agree with."
@@ -122,7 +122,7 @@ export function Landing() {
       </Band>
 
       {/* ------------------------------------------------------- what you keep */}
-      <Band stamp="Sovereignty" raised>
+      <Band stamp="Sovereignty" id="sovereignty" raised>
         <Head
           title="You authorise one action, not a relationship"
           lead="A capability is a bound you place on yourself, before any incident exists. It names one instruction, one account it may touch, one effect ceiling, and a window outside which nothing is accepted at all."
@@ -169,7 +169,7 @@ export function Landing() {
       </Band>
 
       {/* ------------------------------------------------------------ private */}
-      <Band stamp="Sealed quorum">
+      <Band stamp="Sealed quorum" id="sealed">
         <Head
           title="Your response is sealed from every other member"
           lead="Not merely from the public. Each member's answer lives in its own account inside a private rollup, readable by exactly one key. The program counts them in memory and never writes the count anywhere."
@@ -191,7 +191,7 @@ export function Landing() {
       </Band>
 
       {/* ----------------------------------------------------------- failure */}
-      <Band stamp="Commit without actions" raised>
+      <Band stamp="Commit without actions" id="failure" raised>
         <Head
           title="VINCT will tell you nothing happened"
           lead="This is the part most coordination systems get wrong. A transaction that schedules emergency actions can succeed while every one of those actions is stripped and never runs."
@@ -262,13 +262,15 @@ function Band({
   stamp,
   children,
   raised,
+  id,
 }: {
   stamp: string;
   children: React.ReactNode;
   raised?: boolean;
+  id?: string;
 }) {
   return (
-    <section className={`band ${raised ? "band-raised" : ""}`}>
+    <section id={id} className={`band ${raised ? "band-raised" : ""}`}>
       <div className="wrap" style={{ display: "grid", gap: "var(--s7)" }}>
         <h2 className="m-stamp">{stamp}</h2>
         {children}

@@ -1,6 +1,6 @@
 import "./polyfill";
 
-import { StrictMode } from "react";
+import { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 
@@ -26,40 +26,59 @@ import "./styles/tokens.css";
  * one mounts itself so a route can control its own header. The old build had one nav for both,
  * which is how a product ends up with navigation named after its own internals.
  */
+/**
+ * Scrolls to a hash after the route has rendered.
+ *
+ * React Router changes the URL without moving the viewport, so a link to `/#sealed` from another
+ * page lands at the top and looks broken. This runs after paint, when the target exists.
+ */
+function HashScroll() {
+  const { hash, pathname } = useLocation();
+  useEffect(() => {
+    if (!hash) return;
+    const target = document.querySelector(hash);
+    if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [hash, pathname]);
+  return null;
+}
+
 function App() {
   return (
-    <Routes>
-      <Route
-        path="/"
-        element={
-          <SiteChrome>
-            <Landing />
-          </SiteChrome>
-        }
-      />
-      <Route
-        path="/demo"
-        element={
-          <SiteChrome>
-            <Demo />
-          </SiteChrome>
-        }
-      />
-      <Route path="/proof" element={<Proof />} />
-      <Route path="/proof/:operationId" element={<Proof />} />
-      <Route path="/status" element={<Status />} />
+    <>
+      <HashScroll />
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <SiteChrome>
+              <Landing />
+            </SiteChrome>
+          }
+        />
+        <Route
+          path="/demo"
+          element={
+            <SiteChrome>
+              <Demo />
+            </SiteChrome>
+          }
+        />
+        <Route path="/proof" element={<Proof />} />
+        <Route path="/proof/:operationId" element={<Proof />} />
+        <Route path="/status" element={<Status />} />
 
-      <Route path="/app" element={<AppHome />} />
-      <Route path="/app/covenants" element={<Covenants />} />
-      <Route path="/app/covenants/new" element={<CreateCovenant />} />
-      <Route path="/app/covenants/:covenantId" element={<CovenantWorkspace />} />
-      <Route path="/app/covenants/:covenantId/incidents/:incidentId" element={<IncidentRoom />} />
-      <Route path="/app/incidents" element={<Incidents />} />
-      <Route path="/app/adapters" element={<Adapters />} />
-      <Route path="/app/proof" element={<ProofRedirect />} />
+        <Route path="/app" element={<AppHome />} />
+        <Route path="/app/covenants" element={<Covenants />} />
+        <Route path="/app/covenants/new" element={<CreateCovenant />} />
+        <Route path="/app/covenants/:covenantId" element={<CovenantWorkspace />} />
+        <Route path="/app/covenants/:covenantId/incidents/:incidentId" element={<IncidentRoom />} />
+        <Route path="/app/incidents" element={<Incidents />} />
+        <Route path="/app/adapters" element={<Adapters />} />
+        <Route path="/app/proof" element={<ProofRedirect />} />
 
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
   );
 }
 

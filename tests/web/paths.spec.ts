@@ -156,3 +156,65 @@ test.describe("resilience", () => {
     await expect(page.getByText(/nothing anywhere in the product is current/i)).toBeVisible();
   });
 });
+
+test.describe("navigation", () => {
+  // The centred group only exists above the breakpoint. Below it the same destinations live in
+  // a disclosure panel, which is covered by its own test rather than by skipping the case.
+  test.skip(({ viewport }) => (viewport?.width ?? 0) < 940, "desktop navigation");
+
+  test("a grouped menu opens, closes on Escape, and reaches its section", async ({ page }) => {
+    await page.goto("/");
+    const trigger = page.getByTestId("site-nav-how-it-works");
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+
+    await trigger.click();
+    await expect(trigger).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByRole("link", { name: /sealed quorum/i })).toBeVisible();
+
+    // A hover-only menu would fail here, which is why these are disclosure widgets.
+    await page.keyboard.press("Escape");
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+
+    await trigger.click();
+    await page.getByRole("link", { name: /sealed quorum/i }).click();
+    await page.waitForTimeout(900);
+    // Landing under the sticky bar would look like a broken link.
+    const top = await page.evaluate(
+      () => document.getElementById("sealed")?.getBoundingClientRect().top ?? -999,
+    );
+    expect(top).toBeGreaterThan(0);
+    expect(top).toBeLessThan(140);
+  });
+
+  test("every nav destination exists", async ({ page }) => {
+    await page.goto("/");
+    for (const group of ["site-nav-product", "site-nav-how-it-works"]) {
+      await page.getByTestId(group).click();
+      const links = page.locator(".nav-menu a");
+      const count = await links.count();
+      expect(count).toBeGreaterThan(0);
+      for (let index = 0; index < count; index += 1) {
+        const href = await links.nth(index).getAttribute("href");
+        expect(href, `${group} item ${index} has no destination`).toBeTruthy();
+      }
+      await page.keyboard.press("Escape");
+    }
+  });
+});
+
+test.describe("navigation on a phone", () => {
+  test.skip(({ viewport }) => (viewport?.width ?? 0) >= 940, "mobile navigation");
+
+  test("every destination is one tap away", async ({ page }) => {
+    await page.goto("/");
+    // Hiding a destination is worse than asking for a tap, so nothing is dropped on mobile.
+    await page.getByTestId("site-menu-toggle").click();
+    // Scoped to the panel, because the footer carries the same destinations and an unscoped
+    // match would pass on a panel that rendered nothing.
+    const panel = page.locator("#site-mobile-menu");
+    await expect(panel).toBeVisible();
+    for (const label of [/live demo/i, /open the console/i, /service status/i, /sealed quorum/i]) {
+      await expect(panel.getByRole("link", { name: label })).toBeVisible();
+    }
+  });
+});
