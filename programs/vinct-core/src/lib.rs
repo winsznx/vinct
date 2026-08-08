@@ -15,6 +15,10 @@
 // VINCT's own logic still fails the lint gate.
 #![allow(clippy::diverging_sub_expression)]
 #![allow(clippy::result_large_err)]
+// No unsafe, enforced by the compiler rather than by a code-review habit. VINCT's rule is that
+// unsafe needs written approval, and a rule a build cannot check is a rule that holds until
+// somebody is in a hurry.
+#![forbid(unsafe_code)]
 
 pub mod covenant;
 pub mod incident;

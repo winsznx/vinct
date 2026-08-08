@@ -13,30 +13,45 @@ Each protocol owns its adapter and the one narrow action it permits.
 
 ## Status
 
-Phase 4 of 8. The two mechanisms the product depends on have both run on Devnet.
+Phase 7 of 8 complete. The whole mechanism runs end to end on a local MagicBlock stack, and
+the two hardest seams have also run on Devnet.
 
-Magic Actions settlement (Phase 3): three protocol-owned adapters paused three markets
-through one intent bundle, and a deliberately broken cohort produced
-`COMMIT_WITHOUT_ACTIONS` rather than a partial application. One failing BaseAction removes
-the whole cohort, confirmed on both a local stack and Devnet.
+Formation, a private incident, certification, settlement, and expiry all run in one sequence
+with nothing chosen by the runner. Three protocols form a covenant and arm their own adapters
+before any incident exists. An incident opens under it, collects a private claim and sealed
+attestations inside the rollup, certifies in memory, scrubs, and returns to base. The
+certificate is published permissionlessly from the released incident, and the Magic Action
+cohort settles under the operation ID certification derived. Every effect is then read back off
+the base layer.
 
-Sealed quorum (Phase 4): a member learns that their own submission was accepted and nothing
-else. Not another member's decision, not how close the incident is to its threshold. That
-holds because the state is split into a public core, a claim private to the member set, and
-one ballot per member private to that member, with no account anywhere holding a live tally.
+The failure paths are the interesting half. An unregistered adapter signer and a capability
+suspended after certification both produce `COMMIT_WITHOUT_ACTIONS`, with no market paused,
+because one failing BaseAction removes the whole transaction strategy. Nothing partial was ever
+observed.
 
-The architecture rests on a property of private ephemeral rollups that took an experiment to
-establish: a permission gates *reading* an account, not touching it. Two members each mutated
-an account neither could read, neither could read the other's ballot, and the program's
-arithmetic over both was correct. See
-[docs/privacy-boundary.md](docs/privacy-boundary.md), limitations included.
+An incident nobody answers settles itself. A crank requested on the rollup runs, does nothing
+while the response window is open, and settles the incident at its deadline without anyone
+acting.
 
-The full lifecycle run against the attested rollup is pending: that endpoint is still serving
-a cached clone of an older build, and the freshness gate refuses to collect evidence from it.
+Sealed quorum holds. A member learns that their own submission was accepted and nothing else.
+Not another member's decision, not how close the incident is to its threshold. The state is
+split into a public core, a claim private to the member set, and one ballot per member private
+to that member, and no account anywhere holds a live tally.
 
-There is no user interface yet; that is Phase 7. See
-[docs/IMPLEMENTATION_GATES.md](docs/IMPLEMENTATION_GATES.md) for what each phase has to prove
-before the next one starts.
+That rests on a property of private ephemeral rollups that took an experiment to establish: a
+permission gates reading an account, not touching it. Two members each mutated an account
+neither could read, neither could read the other's ballot, and the program's arithmetic over
+both was correct. See [docs/privacy-boundary.md](docs/privacy-boundary.md), limitations
+included.
+
+The web product reads a chain and holds nothing. Eight surfaces, no server, no session, no
+database. The proof path takes an operation ID and re-derives it from the covenant's frozen
+terms with an implementation that shares no code with the on-chain program, with no wallet and
+no login.
+
+What is not done: the Devnet deployment of the current build. The programs grew past their
+deployed capacity during Phases 5 and 6, and the public Devnet RPC cannot sustain the upload.
+The claim ledger marks every Devnet claim with the build it was verified against.
 
 ## What the design rests on
 
@@ -56,12 +71,13 @@ missing action is never retried blindly; recovery takes a new operation ID and a
 ```
 docs/          PRD, gates, source lock, decision log, claim ledger, privacy boundary, runbooks
 programs/      vinct-core, vinct-adapter, and a mock protocol to act on
-crates/        pure types, the executable reference model, program tests
-packages/      TypeScript client, standalone verifier, canonical test vectors
-scripts/       toolchain pinning, source lock, service status, the Phase 3 and 4 seam runners
-tests/         cross-language parity and client/IDL account-order tests
+crates/        pure types, the executable reference model, program tests, layout vectors
+packages/      TypeScript client, settlement monitor, standalone verifier, test vectors
+apps/web       the web product: observer, proof path, incident room, status
+scripts/       toolchain pinning, source lock, and every phase runner
+tests/         cross-language parity, account layouts, and the browser suite
 probes/        compatibility and PER-visibility probes. Experiments, not product code
-artifacts/     evidence: Devnet runs, benchmarks, leak scans, status captures
+artifacts/     evidence: run records, benchmarks, leak scans, browser video
 ```
 
 Every claim the project makes is in [docs/claim-ledger.json](docs/claim-ledger.json) with the
@@ -103,10 +119,39 @@ pnpm exec tsx scripts/probe-router.ts
 pnpm source-lock
 ```
 
+## Running the whole thing
+
+Start the local MagicBlock stack, deploy the three programs, and run the sequence:
+
+```bash
+bash scripts/bootstrap-local.sh start
+pnpm exec tsx scripts/phase5-composition.ts                  # the full mechanism
+pnpm exec tsx scripts/phase5-composition.ts --fail-one       # one adapter cannot act
+pnpm exec tsx scripts/phase5-composition.ts --suspend-one    # a protocol pulls out late
+pnpm exec tsx scripts/phase6-expiry.ts                       # nobody answers; the crank settles it
+pnpm exec tsx scripts/phase6-expiry.ts --cancel              # the opener stops the crank
+```
+
+Each writes a record under `artifacts/local-stack/`. Verify one independently, trusting the
+run's addresses and none of its claims:
+
+```bash
+pnpm verify-operation artifacts/local-stack/phase5-composition-success.json
+```
+
+The web product, with a real chain behind it:
+
+```bash
+pnpm web                # dev server
+pnpm proof:web          # compose an incident, build, then the browser suite with video
+```
+
 ## Reproducing the Devnet proofs
 
 Both runners need a funded Devnet deployer at `.toolchain/keys/devnet-deployer.json` and
-resolve their rollup from live routing rather than from a configured endpoint.
+resolve their rollup from live routing rather than from a configured endpoint. A public RPC
+will not sustain a program deploy of this size; use a dedicated endpoint through
+`VINCT_BASE_RPC`.
 
 ```bash
 pnpm exec tsx scripts/phase3-seam.ts             # Magic Actions cohort
@@ -120,6 +165,14 @@ The Phase 4 runner refuses to collect anything from a rollup that is not executi
 in this checkout, and refuses to pass on a leak scan that had nothing to find. What goes
 wrong on Devnet and what to do about it is in
 [docs/runbooks/devnet-proof-runs.md](docs/runbooks/devnet-proof-runs.md).
+
+## Checking the work
+
+```bash
+pnpm audit-claims     # every ledger claim: stamped, reproducible, bounded, artifacts present
+pnpm check-vectors    # committed vectors are what the Rust would generate today
+pnpm verify-vectors   # the standalone verifier agrees with them, byte for byte
+```
 
 ## Versions
 
