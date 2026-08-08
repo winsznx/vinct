@@ -53,11 +53,15 @@ program's `ProgramData` from the rollup returns bytes identical to base, `last_d
 included. Neither a fresh delegation nor a real transaction that invokes the program clears
 it (D-0040).
 
-There is no known instruction that forces a re-clone. Wait and re-probe:
+There is no known instruction that forces a re-clone. Wait for it:
 
 ```
-pnpm exec tsx scripts/phase4-per.ts
+pnpm exec tsx scripts/await-fresh-runtime.ts && pnpm exec tsx scripts/phase4-per.ts
 ```
+
+`await-fresh-runtime.ts` probes every attested endpoint until one reports this checkout's
+fingerprint, and exits non-zero if the base-layer deployment is stale, because waiting on the
+rollup would be futile until that is fixed. `--once` prints the current state and exits.
 
 Do not work around this by reverting the source to match the deployed build. The fingerprint
 would then agree and the run would prove something about code that is not the code.

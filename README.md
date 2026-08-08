@@ -111,8 +111,9 @@ resolve their rollup from live routing rather than from a configured endpoint.
 ```bash
 pnpm exec tsx scripts/phase3-seam.ts             # Magic Actions cohort
 pnpm exec tsx scripts/phase3-seam.ts --fail-one  # one adapter deliberately fails
-pnpm exec tsx scripts/phase4-per.ts              # private incident lifecycle
+pnpm exec tsx scripts/phase4-per.ts                  # private incident lifecycle
 pnpm exec tsx scripts/per-visibility-experiment.ts  # does a permission gate reads or execution?
+pnpm exec tsx scripts/await-fresh-runtime.ts        # wait for a rollup to pick up this build
 ```
 
 The Phase 4 runner refuses to collect anything from a rollup that is not executing the build
