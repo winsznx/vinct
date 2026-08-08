@@ -100,7 +100,7 @@ export function Settlement() {
 
         actions.push({
           actionIndex: index,
-          label: shortAddress(entry.capability.authority),
+          label: shortAddress(entry.capability.protocolAuthority),
           receipt:
             receipt && receipt.executed && hex(receipt.operationId) === hex(operationId)
               ? Observation.Present

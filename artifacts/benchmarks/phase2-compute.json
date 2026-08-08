@@ -18,7 +18,7 @@
     "execute_bounded_action[beta]": 55936,
     "execute_bounded_action[gamma]": 55936,
     "finalize_settlement": 11467,
-    "initialize_adapter_receipt": 8163,
+    "initialize_adapter_receipt": 11163,
     "initialize_settlement_receipt": 12893,
     "install_capability": 11607,
     "set_adapter": 2494

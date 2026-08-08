@@ -3,7 +3,25 @@
   "compilerOptions": {
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "types": ["node"],
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    // The same aliases vite.config.ts resolves. Without them tsc checks the app against
+    // nothing and reports success, which is how a whole surface goes unchecked.
+    "baseUrl": ".",
+    "paths": {
+      "@vinct/client": ["packages/client/src/index.ts"],
+      "@vinct/monitor": ["packages/monitor/src/index.ts"],
+      "@vinct/verifier": ["packages/verifier/src/browser.ts"]
+    }
   },
-  "include": ["apps/web/src/**/*.ts", "apps/web/src/**/*.tsx", "tests/web/**/*.ts", "playwright.config.ts", "apps/web/vite.config.ts"]
+  // `exclude` is inherited from the base config, and the base excludes `apps` and `tests/web`
+  // so a Node-targeted check never sees DOM code. Inheriting it here silently emptied this
+  // project: `tsc` reported success while checking nothing at all. Overridden, not extended.
+  "exclude": ["node_modules", "target", "**/dist", ".toolchain"],
+  "include": [
+    "apps/web/src/**/*.ts",
+    "apps/web/src/**/*.tsx",
+    "apps/web/vite.config.ts",
+    "tests/web/**/*.ts",
+    "playwright.config.ts"
+  ]
 }

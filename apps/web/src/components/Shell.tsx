@@ -11,15 +11,15 @@ import { NavLink, useLocation } from "react-router-dom";
 
 import { readEndpoints } from "../data/config";
 
-const LINKS = [
+const LINKS: { to: string; label: string; end: boolean }[] = [
   { to: "/", label: "Overview", end: true },
-  { to: "/formation", label: "Formation" },
-  { to: "/adapters", label: "Adapters" },
-  { to: "/incident", label: "Incident room" },
-  { to: "/observer", label: "Observer" },
-  { to: "/settlement", label: "Settlement" },
-  { to: "/proof", label: "Proof" },
-  { to: "/status", label: "Status" },
+  { to: "/formation", label: "Formation", end: false },
+  { to: "/adapters", label: "Adapters", end: false },
+  { to: "/incident", label: "Incident room", end: false },
+  { to: "/observer", label: "Observer", end: false },
+  { to: "/settlement", label: "Settlement", end: false },
+  { to: "/proof", label: "Proof", end: false },
+  { to: "/status", label: "Status", end: false },
 ];
 
 export function Shell({ children }: { children: ReactNode }) {
@@ -28,17 +28,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <nav
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 10,
-          background: "var(--surface-panel)",
-          backdropFilter: "blur(10px)",
-          WebkitBackdropFilter: "blur(10px)",
-          borderBottom: "1px solid var(--color-ash)",
-        }}
-      >
+      <nav className="nav">
         <div
           className="page"
           style={{

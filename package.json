@@ -34,12 +34,13 @@
     "@magicblock-labs/ephemeral-rollups-sdk": "0.14.3",
     "@noble/hashes": "1.8.0",
     "@solana/web3.js": "1.98.4",
+    "buffer": "6.0.3",
     "magic-router-sdk": "1.0.10",
     "tweetnacl": "1.0.3"
   },
   "devDependencies": {
     "@magicblock-labs/ephemeral-validator": "0.13.19",
-    "@playwright/test": "1.52.0",
+    "@playwright/test": "1.57.0",
     "@types/node": "24.13.3",
     "@types/react": "19.1.2",
     "@types/react-dom": "19.1.2",

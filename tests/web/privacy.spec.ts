@@ -69,7 +69,10 @@ test.describe("privacy", () => {
   test("no route persists anything private", async ({ page }) => {
     for (const route of ROUTES) {
       await page.goto(route);
-      await page.waitForLoadState("networkidle");
+      // Not networkidle. Every surface polls the chain on an interval, so the page never goes
+      // idle and the wait would burn its timeout on each route. What matters here is that the
+      // app mounted and had a chance to write storage, which the heading proves.
+      await expect(page.locator(".stamp, .display").first()).toBeVisible();
 
       const stored = await readAllStorage(page);
       for (const entry of stored) {
@@ -98,7 +101,10 @@ test.describe("privacy", () => {
 
     for (const route of ROUTES) {
       await page.goto(route);
-      await page.waitForLoadState("networkidle");
+      // Not networkidle. Every surface polls the chain on an interval, so the page never goes
+      // idle and the wait would burn its timeout on each route. What matters here is that the
+      // app mounted and had a chance to write storage, which the heading proves.
+      await expect(page.locator(".stamp, .display").first()).toBeVisible();
     }
 
     expect(
@@ -133,7 +139,7 @@ test.describe("privacy", () => {
     page,
   }) => {
     await page.goto("/incident");
-    await page.waitForLoadState("networkidle");
+    await expect(page.locator(".stamp").first()).toBeVisible();
 
     const text = (await page.locator("body").innerText()).toLowerCase();
     // Whatever the chain says, the page must never render a decision word next to a member.

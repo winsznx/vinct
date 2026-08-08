@@ -1583,3 +1583,67 @@ binds to `localhost`, which resolves to `::1` on macOS. A Playwright `baseURL` o
 `http://127.0.0.1:4173` then cannot connect, and the run hangs in `webServer` startup with no
 output at all, which is indistinguishable from a slow build. `--host 127.0.0.1` is the fix and
 it is now in `playwright.config.ts` with a comment saying why.
+
+### D-0067 Four things the browser suite caught that nothing else could
+
+Every one of these passed a typecheck, a build, and every program test. They are the argument
+for running a browser at all.
+
+`Buffer` is not a browser global. `packages/client` decodes accounts with
+`Buffer.readBigUInt64LE`, and `@solana/web3.js` v1 assumes it exists. The app died on load with
+a blank page. `apps/web/src/polyfill.ts` shims it, imported first, before anything touches it.
+Rewriting the decoders against `DataView` was the alternative and it would have meant two
+implementations of the layouts the whole decoder-drift argument exists to prevent.
+
+The proof page passed capability addresses where adapter receipt addresses belong. It read a
+capability as a receipt, and `expectAccount`'s discriminator check refused it with
+`AdapterReceipt: discriminator mismatch` instead of returning a plausible wrong answer. That is
+D-0052 paying for itself on a surface written months after it.
+
+Two pages read `capability.authority`, and the field is `protocolAuthority`. It rendered
+`Cannot read properties of undefined`.
+
+That third one should have been a type error, and finding out why exposed the fourth.
+`tsconfig.web.json` extended the base config, and `exclude` is inherited rather than merged
+with `include`. The base excluded `apps`, so the web project resolved to zero files and `tsc`
+reported success while checking nothing. The whole app had never been typechecked. Overriding
+`exclude` turned up the missing path aliases and an `exactOptionalPropertyTypes` violation too.
+
+The check that found it is worth keeping as a habit: break something on purpose and confirm the
+gate fails. A typecheck that has never been seen to fail is not evidence that the code is
+correct.
+
+### D-0068 Two layout bugs where the control stayed visible and stopped working
+
+Both from the mobile project, and both a worse failure than a broken layout.
+
+The nav is sticky and its links wrap to two rows on a phone, so the bar took a third of the
+viewport and sat on top of whatever the reader scrolled to. Playwright resolved the button,
+found it visible, enabled, and stable, and then timed out clicking it. It is now static below
+720px: a two-row sticky bar on a phone is bad design regardless of the test.
+
+The proof and formation forms were flex with a 420px flex-basis on the label. On a narrow
+screen the label kept its basis, overflowed the row, and covered the button that had wrapped
+below it, so the input intercepted every click aimed at Verify. They are grids now, one column
+below the breakpoint, with the input's `min-width` zeroed so it shrinks instead of pushing. A
+grid cannot produce this failure at all.
+
+Worth naming the shape: a control that is visible and unclickable is harder to notice than one
+that is missing, and neither a screenshot nor a human skim reliably catches it. An actionability
+check does.
+
+### D-0069 Playwright's ESM loader deadlocks under Node 24
+
+Recorded because the symptom is silence. Playwright 1.52 hangs at `load tests` for any spec
+inside a package with `"type": "module"` on Node 24.14.1, including a spec whose entire body is
+`expect(1).toBe(1)`. No output, no error, no timeout. The same file outside the repo loads
+instantly, which makes it look like a project problem rather than a version one.
+
+Upgrading to 1.57.0 fixes it. The bisection that found it is the useful part: trivial spec
+outside the repo works, trivial spec inside the repo hangs, so it is neither the test content
+nor the config, and a `.js` spec hanging too rules out the TypeScript transform.
+
+Separately, `vite preview` binds to `localhost`, which is `::1` on macOS, so a `baseURL` of
+`127.0.0.1` cannot connect and the run hangs in `webServer` startup with no output either.
+`--host 127.0.0.1` is in the config with a comment, because two silent hangs with the same
+symptom and different causes is a bad afternoon.

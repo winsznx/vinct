@@ -33,8 +33,8 @@ import {
   decodeSettlementReceipt,
   incidentAddress,
   settlementReceiptAddress,
-  type Covenant,
-  type CovenantMember,
+  type CovenantView as CovenantAccount,
+  type CovenantMemberView,
   type IncidentCertificate,
   type IncidentCoreView,
   type SovereignCapability,
@@ -42,8 +42,8 @@ import {
 
 export interface CovenantView {
   address: PublicKey;
-  covenant: Covenant;
-  members: { address: PublicKey; member: CovenantMember }[];
+  covenant: CovenantAccount;
+  members: { address: PublicKey; member: CovenantMemberView }[];
 }
 
 export interface IncidentView {
@@ -116,12 +116,12 @@ export async function readCovenant(
 export async function findCovenantMembers(
   connection: Connection,
   covenant: PublicKey,
-): Promise<{ address: PublicKey; member: CovenantMember }[]> {
+): Promise<{ address: PublicKey; member: CovenantMemberView }[]> {
   const COVENANT_FIELD_OFFSET = 8 + 2;
   const accounts = await connection.getProgramAccounts(CORE_PROGRAM_ID, {
     filters: [{ memcmp: { offset: COVENANT_FIELD_OFFSET, bytes: covenant.toBase58() } }],
   });
-  const members: { address: PublicKey; member: CovenantMember }[] = [];
+  const members: { address: PublicKey; member: CovenantMemberView }[] = [];
   for (const { pubkey, account } of accounts) {
     try {
       members.push({ address: pubkey, member: decodeCovenantMember(account.data) });

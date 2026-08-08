@@ -1,0 +1,178 @@
+{
+  "captured_at": "2026-08-08T00:00:00Z",
+  "verdict": "PASS",
+  "note": "Run against the built bundle served by vite preview, not a dev server, so nothing passes because of a dev-only transform. The chain data is a real composition run, not a fixture.",
+  "chain": {
+    "base": "http://127.0.0.1:8899",
+    "covenant": "FBEToL5tCLHdtxs7amZHuQMLj6GW4o2mDeTc9He3B2Hw",
+    "operation_id": "e4213182fbf1d96388a8c794000051a7e4e64541128dd68ccf6fa240764af262"
+  },
+  "projects": [
+    "desktop (Desktop Chrome)",
+    "mobile (Pixel 7)"
+  ],
+  "total": 30,
+  "tests": [
+    {
+      "project": "desktop",
+      "file": "tests/web/paths.spec.ts",
+      "name": "core path \u203a the first screen names the outcome and the two things that make it hard"
+    },
+    {
+      "project": "desktop",
+      "file": "tests/web/paths.spec.ts",
+      "name": "core path \u203a every route in the nav loads and keeps the selected covenant"
+    },
+    {
+      "project": "desktop",
+      "file": "tests/web/paths.spec.ts",
+      "name": "core path \u203a a route that does not exist says nothing is being withheld"
+    },
+    {
+      "project": "desktop",
+      "file": "tests/web/paths.spec.ts",
+      "name": "core path \u203a a deep link survives a reload"
+    },
+    {
+      "project": "desktop",
+      "file": "tests/web/paths.spec.ts",
+      "name": "core path \u203a an unreachable node is shown as an outage, never as an empty result"
+    },
+    {
+      "project": "desktop",
+      "file": "tests/web/paths.spec.ts",
+      "name": "core path \u203a the status page says what breaks when a service is down"
+    },
+    {
+      "project": "desktop",
+      "file": "tests/web/paths.spec.ts",
+      "name": "proof path \u203a a bad operation id cannot be submitted"
+    },
+    {
+      "project": "desktop",
+      "file": "tests/web/paths.spec.ts",
+      "name": "proof path \u203a an operation that does not exist says which cluster it looked at"
+    },
+    {
+      "project": "desktop",
+      "file": "tests/web/paths.spec.ts",
+      "name": "proof path \u203a a real operation verifies inside two minutes, with no wallet"
+    },
+    {
+      "project": "desktop",
+      "file": "tests/web/paths.spec.ts",
+      "name": "settlement \u203a the classification and every observation are shown separately"
+    },
+    {
+      "project": "desktop",
+      "file": "tests/web/paths.spec.ts",
+      "name": "settlement \u203a the observer never shows a live approval count"
+    },
+    {
+      "project": "desktop",
+      "file": "tests/web/privacy.spec.ts",
+      "name": "privacy \u203a no route persists anything private"
+    },
+    {
+      "project": "desktop",
+      "file": "tests/web/privacy.spec.ts",
+      "name": "privacy \u203a no route contacts a host the user did not choose"
+    },
+    {
+      "project": "desktop",
+      "file": "tests/web/privacy.spec.ts",
+      "name": "privacy \u203a the bundle carries no analytics or tag manager"
+    },
+    {
+      "project": "desktop",
+      "file": "tests/web/privacy.spec.ts",
+      "name": "privacy \u203a the incident room shows the shape of the private state and never its contents"
+    },
+    {
+      "project": "mobile",
+      "file": "tests/web/paths.spec.ts",
+      "name": "core path \u203a the first screen names the outcome and the two things that make it hard"
+    },
+    {
+      "project": "mobile",
+      "file": "tests/web/paths.spec.ts",
+      "name": "core path \u203a every route in the nav loads and keeps the selected covenant"
+    },
+    {
+      "project": "mobile",
+      "file": "tests/web/paths.spec.ts",
+      "name": "core path \u203a a route that does not exist says nothing is being withheld"
+    },
+    {
+      "project": "mobile",
+      "file": "tests/web/paths.spec.ts",
+      "name": "core path \u203a a deep link survives a reload"
+    },
+    {
+      "project": "mobile",
+      "file": "tests/web/paths.spec.ts",
+      "name": "core path \u203a an unreachable node is shown as an outage, never as an empty result"
+    },
+    {
+      "project": "mobile",
+      "file": "tests/web/paths.spec.ts",
+      "name": "core path \u203a the status page says what breaks when a service is down"
+    },
+    {
+      "project": "mobile",
+      "file": "tests/web/paths.spec.ts",
+      "name": "proof path \u203a a bad operation id cannot be submitted"
+    },
+    {
+      "project": "mobile",
+      "file": "tests/web/paths.spec.ts",
+      "name": "proof path \u203a an operation that does not exist says which cluster it looked at"
+    },
+    {
+      "project": "mobile",
+      "file": "tests/web/paths.spec.ts",
+      "name": "proof path \u203a a real operation verifies inside two minutes, with no wallet"
+    },
+    {
+      "project": "mobile",
+      "file": "tests/web/paths.spec.ts",
+      "name": "settlement \u203a the classification and every observation are shown separately"
+    },
+    {
+      "project": "mobile",
+      "file": "tests/web/paths.spec.ts",
+      "name": "settlement \u203a the observer never shows a live approval count"
+    },
+    {
+      "project": "mobile",
+      "file": "tests/web/privacy.spec.ts",
+      "name": "privacy \u203a no route persists anything private"
+    },
+    {
+      "project": "mobile",
+      "file": "tests/web/privacy.spec.ts",
+      "name": "privacy \u203a no route contacts a host the user did not choose"
+    },
+    {
+      "project": "mobile",
+      "file": "tests/web/privacy.spec.ts",
+      "name": "privacy \u203a the bundle carries no analytics or tag manager"
+    },
+    {
+      "project": "mobile",
+      "file": "tests/web/privacy.spec.ts",
+      "name": "privacy \u203a the incident room shows the shape of the private state and never its contents"
+    }
+  ],
+  "video": "artifacts/web/test-results/**/video.webm, one per test, regenerated by pnpm proof:web",
+  "commands": [
+    "pnpm --filter @vinct/web build",
+    "pnpm exec playwright test"
+  ],
+  "source_commit": "af93032",
+  "limitations": [
+    "The chain-dependent assertions need VINCT_COVENANT and VINCT_OPERATION from a real run. Without them they skip rather than pass, because a green tick for a test that read nothing is worse than a skip.",
+    "Local stack only. The same suite against Devnet needs a funded deployment.",
+    "Fonts are substituted per design.md's own substitution list. Proportions, tracking, and weights survive; the exact letterforms do not."
+  ]
+}

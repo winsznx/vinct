@@ -96,7 +96,7 @@ export function Adapters() {
                       <div>
                         <Eyebrow>Protocol authority</Eyebrow>
                         <div style={{ marginTop: "var(--spacing-8)" }}>
-                          <Address value={shortAddress(capability.authority)} />
+                          <Address value={shortAddress(capability.protocolAuthority)} />
                         </div>
                       </div>
                       <div style={{ display: "flex", gap: "var(--spacing-16)", flexWrap: "wrap" }}>

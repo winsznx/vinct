@@ -1248,5 +1248,88 @@
     "limitations": [
       "This validator exposes no task registry, so REGISTRATION_OBSERVED cannot be established directly. The weakening is one-way and recorded in docs/decision-log.md D-0063."
     ]
+  },
+  {
+    "id": "phase7-the-web-product-holds-nothing",
+    "wording": "Walking every route of the built bundle, the browser persists exactly one storage key, holding a covenant address, which is public on chain. Nothing resembling a claim, a decision, a nonce, or a signature reaches storage. The app contacts its own origin and the RPC endpoints named in the URL and no other host, carries no analytics global, and loads no script from a CDN.",
+    "status": "verified",
+    "proof_level": 5,
+    "network": "local-magicblock-stack",
+    "source_commit": "PENDING",
+    "program_ids": [],
+    "transactions": [],
+    "commands": [
+      "pnpm --filter @vinct/web build",
+      "pnpm exec playwright test"
+    ],
+    "artifacts": [
+      "artifacts/web/phase7-browser-proof.json"
+    ],
+    "verified_at": "2026-08-08T00:00:00Z",
+    "limitations": [
+      "Asserted against the built bundle on desktop and mobile Chromium. A different engine could in principle differ, though none of these properties is engine-specific."
+    ]
+  },
+  {
+    "id": "phase7-the-proof-path-needs-no-wallet",
+    "wording": "A deep link carrying an operation ID verifies it with no wallet, no login, and no signature: the page reads the incident and its covenant from the chain, re-derives the operation ID with an implementation that shares no code with the program, and renders every check separately. Timed under the gate's two minutes. Delivery is reported next to the verdict and explicitly not folded into it.",
+    "status": "verified",
+    "proof_level": 5,
+    "network": "local-magicblock-stack",
+    "source_commit": "PENDING",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
+    ],
+    "transactions": [],
+    "commands": [
+      "pnpm proof:web"
+    ],
+    "artifacts": [
+      "artifacts/web/phase7-browser-proof.json"
+    ],
+    "verified_at": "2026-08-08T00:00:00Z",
+    "limitations": [
+      "The operation must exist on the cluster the link names. The page says which cluster it looked at when it does not, rather than reporting a failed verification."
+    ]
+  },
+  {
+    "id": "phase7-the-core-path-works-on-a-phone",
+    "wording": "The same 15 assertions pass on Desktop Chrome and on a Pixel 7 viewport: every route loads and keeps the selected covenant, a missing route explains that nothing is being withheld, a deep link survives a reload, an unreachable node renders as an outage rather than an empty result, and the status page names what stops working for each service that is down.",
+    "status": "verified",
+    "proof_level": 5,
+    "network": "local-magicblock-stack",
+    "source_commit": "PENDING",
+    "program_ids": [],
+    "transactions": [],
+    "commands": [
+      "pnpm exec playwright test"
+    ],
+    "artifacts": [
+      "artifacts/web/phase7-browser-proof.json"
+    ],
+    "verified_at": "2026-08-08T00:00:00Z",
+    "limitations": [
+      "Two viewports. The mobile project found two bugs where a control stayed visible and stopped being clickable, so the coverage is load-bearing rather than decorative. See docs/decision-log.md D-0068."
+    ]
+  },
+  {
+    "id": "phase7-the-observer-cannot-show-a-live-tally",
+    "wording": "The public incident view renders no approval count while an incident is collecting, and says why: no account holds it. The count exists only as a number the program computes in memory during certification. The incident room shows which private accounts exist and their state, never their contents, and states that it holds no member key and opens no authenticated rollup connection.",
+    "status": "verified",
+    "proof_level": 5,
+    "network": "local-magicblock-stack",
+    "source_commit": "PENDING",
+    "program_ids": [],
+    "transactions": [],
+    "commands": [
+      "pnpm exec playwright test"
+    ],
+    "artifacts": [
+      "artifacts/web/phase7-browser-proof.json"
+    ],
+    "verified_at": "2026-08-08T00:00:00Z",
+    "limitations": [
+      "The page cannot leak what it cannot read, which is a property of the account model rather than of the page. The browser assertion is a regression guard on the wording and the absence, not the proof of the privacy claim; that is the PER experiment."
+    ]
   }
 ]

@@ -14,8 +14,7 @@ import { test } from "node:test";
 
 import { Keypair } from "@solana/web3.js";
 
-import {
-} from "../../packages/client/src/index.js";
+import {} from "../../packages/client/src/index.js";
 import {
   checkRuntimeFreshness,
   expectedBuildFingerprint,

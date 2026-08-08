@@ -79,15 +79,9 @@ export function Formation() {
           next.set("covenant", trimmed);
           navigate({ pathname: "/formation", search: `?${next.toString()}` }, { replace: true });
         }}
-        style={{
-          display: "flex",
-          gap: "var(--spacing-12)",
-          flexWrap: "wrap",
-          margin: "var(--spacing-32) 0 var(--spacing-64)",
-          maxWidth: 820,
-        }}
+        className="form-row"
       >
-        <label style={{ flex: "1 1 420px", display: "grid", gap: "var(--spacing-8)" }}>
+        <label>
           <span className="label">Covenant address</span>
           <input
             value={input}
@@ -96,19 +90,9 @@ export function Formation() {
             autoComplete="off"
             data-testid="covenant-input"
             placeholder="Paste a covenant address"
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "var(--text-body-sm)",
-              background: "var(--surface-wash)",
-              color: "var(--color-almost-white)",
-              border: "1px solid var(--hairline)",
-              borderRadius: "var(--radius-control)",
-              padding: "12px 14px",
-              width: "100%",
-            }}
           />
         </label>
-        <div style={{ display: "flex", alignItems: "end" }}>
+        <div>
           <Button type="submit" variant="filled" testId="load-covenant">
             Load
           </Button>

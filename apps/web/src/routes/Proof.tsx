@@ -17,6 +17,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import { PublicKey } from "@solana/web3.js";
 import {
+  adapterReceiptAddress,
   certificateAddress,
   incidentAddress,
   settlementReceiptAddress,
@@ -89,9 +90,13 @@ export function Proof() {
         incidentCore: core,
         certificate: certificateAddress(id),
         settlementReceipt: settlementReceiptAddress(id),
+        // The receipt's address, derived from the operation and the capability. Passing the
+        // capability itself here was a real bug, and the decoder's discriminator check is what
+        // caught it: reading a capability as a receipt failed loudly instead of returning a
+        // plausible wrong answer. See docs/decision-log.md D-0052.
         adapterReceipts: capabilities.map((entry, index) => ({
           label: `adapter ${index + 1}`,
-          address: entry.address,
+          address: adapterReceiptAddress(id, entry.address),
         })),
       });
       setResult(verification);
@@ -128,15 +133,9 @@ export function Proof() {
           next.set("operation", operationInput.trim());
           navigate({ pathname: "/proof", search: `?${next.toString()}` }, { replace: true });
         }}
-        style={{
-          display: "flex",
-          gap: "var(--spacing-12)",
-          flexWrap: "wrap",
-          margin: "var(--spacing-32) 0 var(--spacing-64)",
-          maxWidth: 820,
-        }}
+        className="form-row"
       >
-        <label style={{ flex: "1 1 420px", display: "grid", gap: "var(--spacing-8)" }}>
+        <label>
           <span className="label">Operation ID (64 hex characters)</span>
           <input
             value={operationInput}
@@ -145,19 +144,9 @@ export function Proof() {
             autoComplete="off"
             data-testid="operation-input"
             placeholder="597e1c096aac45b2…"
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "var(--text-body-sm)",
-              background: "var(--surface-wash)",
-              color: "var(--color-almost-white)",
-              border: "1px solid var(--hairline)",
-              borderRadius: "var(--radius-control)",
-              padding: "12px 14px",
-              width: "100%",
-            }}
           />
         </label>
-        <div style={{ display: "flex", alignItems: "end" }}>
+        <div>
           <Button type="submit" variant="filled" disabled={!operationId || running} testId="verify">
             {running ? "Reading the chain…" : "Verify"}
           </Button>
