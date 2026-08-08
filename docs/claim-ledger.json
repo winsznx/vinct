@@ -852,7 +852,7 @@
     "status": "verified",
     "proof_level": 5,
     "network": "local-magicblock-stack",
-    "source_commit": "PENDING",
+    "source_commit": "e3bf11c",
     "program_ids": [
       "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
     ],
