@@ -27,7 +27,8 @@
     "web:build": "pnpm --filter @vinct/web build",
     "test:web": "playwright test",
     "test:web:desktop": "playwright test --project=desktop",
-    "proof:web": "bash scripts/phase7-web-proof.sh"
+    "proof:web": "bash scripts/phase7-web-proof.sh",
+    "audit-claims": "tsx scripts/audit-claims.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "0.32.1",

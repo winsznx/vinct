@@ -379,6 +379,29 @@ interface TeeCandidate {
 }
 
 /**
+ * A thrown value, in words.
+ *
+ * Errors are the part of an artifact somebody reads when something went wrong, so a serializer
+ * that can produce "[object Object]" is worse than useless: it records that a failure happened
+ * and destroys the only evidence of why. `JSON.stringify` on an object whose own properties are
+ * non-enumerable yields "{}", and the SDK throws exactly that shape, so one run recorded four
+ * identical useless strings where four reasons should have been.
+ */
+function describeCause(cause: unknown): string {
+  if (cause instanceof Error) {
+    return cause.cause ? `${cause.message} (cause: ${describeCause(cause.cause)})` : cause.message;
+  }
+  if (typeof cause === "string") return cause;
+  if (cause && typeof cause === "object") {
+    const own = Object.getOwnPropertyNames(cause)
+      .map((key) => `${key}=${String((cause as Record<string, unknown>)[key])}`)
+      .join(", ");
+    return own.length > 0 ? own : Object.prototype.toString.call(cause);
+  }
+  return String(cause);
+}
+
+/**
  * Finds the TEE-backed rollups among whatever the router currently advertises.
  *
  * The discriminator is a live one: `verifyTeeRpcIntegrity` asks the endpoint for a TDX quote
@@ -403,7 +426,11 @@ async function findTeeBackedRollups(): Promise<TeeCandidate[]> {
         fqdn: route.fqdn,
         identity: route.identity,
         attested: false,
-        attestationError: cause instanceof Error ? cause.message : JSON.stringify(cause),
+        // `JSON.stringify` on a thrown object whose own properties are all non-enumerable
+        // yields "{}", and String() on it yields "[object Object]". The SDK throws exactly
+        // that shape, so a run recorded four identical useless strings where the reason a
+        // rollup failed attestation should have been. Read the fields by name instead.
+        attestationError: describeCause(cause),
       });
     }
   }

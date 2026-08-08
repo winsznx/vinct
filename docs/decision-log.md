@@ -1647,3 +1647,32 @@ Separately, `vite preview` binds to `localhost`, which is `::1` on macOS, so a `
 `127.0.0.1` cannot connect and the run hangs in `webServer` startup with no output either.
 `--host 127.0.0.1` is in the config with a comment, because two silent hangs with the same
 symptom and different causes is a bad afternoon.
+
+### D-0070 A claim pointed at an artifact that was never written
+
+The Phase 8 claims audit found one: `tee-attestation-is-discovered-live` named
+`artifacts/devnet/phase4-per-phase4-per-latest.json`, and no such file has ever existed. The
+run that would have produced it stopped at the runtime-freshness gate with
+`BLOCKED_STALE_RUNTIME` and wrote `phase4-per-phase4-stale-gate-latest.json` instead.
+
+The claim itself is supported. That artifact carries the four candidates probed and the one
+that answered with a valid quote, which is exactly what the wording says. The reference was
+wrong, not the finding, and it is corrected along with a limitation saying the artifact covers
+attestation discovery and nothing later in Phase 4.
+
+Worth being precise about the failure, because "the claim was true anyway" is the least
+interesting part. A ledger row exists so somebody else can check it. A row naming a file that
+does not exist is unfalsifiable, and unfalsifiable is the exact property a claim ledger is
+supposed to eliminate. It read as evidence and was a promise.
+
+`scripts/audit-claims.ts` is now a gate. Every claim must carry a source commit reachable in
+this history, artifact files that exist on disk, a command that reproduces it, and at least one
+recorded limitation, and a claim at proof level 5 or above must carry an artifact at all. It
+judges nothing about whether a claim is true. It judges whether a reader could find out.
+
+The same run turned up a smaller thing worth fixing. Every failed attestation in that artifact
+recorded `attestationError: "[object Object]"`, because `JSON.stringify` on a thrown object
+whose own properties are non-enumerable yields `{}` and `String()` yields that. Four rollups
+failed for reasons the artifact then destroyed. `describeCause` reads the own property names
+instead. An error serializer that can lose the error is worse than no error field: it records
+that something went wrong and removes the only evidence of what.

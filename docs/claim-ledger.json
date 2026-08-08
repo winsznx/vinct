@@ -681,12 +681,13 @@
       "pnpm exec tsx scripts/phase4-per.ts"
     ],
     "artifacts": [
-      "artifacts/devnet/phase4-per-phase4-per-latest.json"
+      "artifacts/devnet/phase4-per-phase4-stale-gate-latest.json"
     ],
     "verified_at": "2026-08-07T23:05:00Z",
     "limitations": [
       "The check does not compare MRTD, RTMR, or configuration values against an expected workload allowlist, so it does not establish which code runs inside the enclave.",
-      "It establishes neither traffic-analysis resistance nor concealment of an incident’s existence."
+      "It establishes neither traffic-analysis resistance nor concealment of an incident's existence.",
+      "The run that produced this evidence then stopped at the runtime-freshness gate with BLOCKED_STALE_RUNTIME, so the artifact covers attestation discovery and nothing later in Phase 4. The claim was originally recorded against an artifact path that never existed; see docs/decision-log.md D-0070."
     ]
   },
   {
