@@ -236,10 +236,18 @@ incident is to its threshold. A successful submission returns no data at all, wh
 
 | Rung | State |
 | --- | --- |
-| Architecture experiment on the attested rollup | proven, `per-visibility-experiment-latest.json` |
+| Architecture experiment on the attested rollup | proven, `artifacts/devnet/per-visibility-experiment-latest.json` |
 | Program-level sealed quorum and zeroization | proven, 27 tests in `crates/vinct-program-tests/tests/privacy.rs` |
 | Client and IDL account-order parity | proven, `tests/program/incident-client-parity.test.ts` |
+| Full lifecycle and read matrix on the local stack | proven, `artifacts/local-stack/phase4-local-lifecycle.json` |
 | Full lifecycle on the TEE-backed rollup | blocked: the attested endpoint is serving a cached clone of an older build, and the freshness gate refuses to collect from it |
+
+The local run is worth being precise about. The local MagicBlock stack runs the same
+query-filtering service with the same challenge-sign-login flow, so it exercises the read
+matrix for real: alpha reads alpha's ballot, and alpha, beta, the opener, an outsider, and an
+anonymous caller are each refused beta's. It has no enclave and no attestation, so it says the
+permission model behaves as documented on the reference implementation. It does not say a
+confidential runtime is holding the line. That is what the Devnet run is for.
 
 ## Reproducing this
 

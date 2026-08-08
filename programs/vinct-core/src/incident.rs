@@ -235,6 +235,12 @@ pub struct MemberAttestation {
     pub incident: Pubkey,
     /// The member this slot belongs to.
     pub member: Pubkey,
+    /// The responder that opened the incident.
+    ///
+    /// Copied here so delegation can check who is asking without reading the core. By the
+    /// time this account is delegated the core already is, which means the core is owned by
+    /// the delegation program and can no longer be deserialized as ours.
+    pub opener: Pubkey,
     /// Whether this member has been quarantined for this incident.
     ///
     /// Written by the opener, who cannot read this account. A permission gates reading, not
@@ -259,7 +265,7 @@ pub struct MemberAttestation {
 
 impl MemberAttestation {
     /// Serialized size, excluding the 8-byte discriminator.
-    pub const SIZE: usize = 32 + 32 + 1 + 1 + 8 + 8 + 1 + 1 + 1;
+    pub const SIZE: usize = 32 + 32 + 32 + 1 + 1 + 8 + 8 + 1 + 1 + 1;
 
     /// True when every protected field is provably all-zero.
     pub fn protected_fields_are_zero(&self) -> bool {

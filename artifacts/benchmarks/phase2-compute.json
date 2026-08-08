@@ -20,7 +20,7 @@
     "finalize_settlement": 10947,
     "initialize_adapter_receipt": 8163,
     "initialize_settlement_receipt": 12893,
-    "install_capability": 16107,
+    "install_capability": 11607,
     "publish_certificate": 14059,
     "set_adapter": 2494
   }

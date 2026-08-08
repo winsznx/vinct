@@ -215,7 +215,6 @@ export function delegateClaim(
     programId: CORE_PROGRAM_ID,
     keys: [
       { pubkey: opener, isSigner: true, isWritable: false },
-      { pubkey: core, isSigner: false, isWritable: false },
       ...delegationTail(claimAddress(core), validator, delegation),
     ],
     data: withDiscriminator(discriminator(CORE_IDL, "delegate_claim"), args),
@@ -234,7 +233,6 @@ export function delegateAttestation(
     programId: CORE_PROGRAM_ID,
     keys: [
       { pubkey: opener, isSigner: true, isWritable: false },
-      { pubkey: core, isSigner: false, isWritable: false },
       ...delegationTail(attestationAddress(core, member), validator, delegation),
     ],
     data: withDiscriminator(discriminator(CORE_IDL, "delegate_attestation"), args),

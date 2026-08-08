@@ -186,6 +186,7 @@ pub mod vinct_core {
         let attestation = &mut ctx.accounts.attestation;
         attestation.incident = ctx.accounts.core.key();
         attestation.member = member;
+        attestation.opener = ctx.accounts.core.opener;
         attestation.private_fields_zeroized = true;
         attestation.bump = ctx.bumps.attestation;
         Ok(())
@@ -221,9 +222,27 @@ pub mod vinct_core {
     }
 
     /// Base layer. Delegates the private claim.
+    ///
+    /// The opener is read off the claim rather than off the core, because by the time this
+    /// runs the core is already delegated and therefore owned by the delegation program. An
+    /// account that has left cannot vouch for one that has not.
     pub fn delegate_claim(ctx: Context<DelegateClaim>, core: Pubkey) -> Result<()> {
-        require_opener_of_core(&ctx.accounts.core, ctx.accounts.opener.key())?;
-        require_keys_eq!(core, ctx.accounts.core.key(), CoreError::OperationMismatch);
+        {
+            require_keys_eq!(
+                *ctx.accounts.claim.owner,
+                crate::ID,
+                CoreError::IncidentWrongOwner
+            );
+            let data = ctx.accounts.claim.try_borrow_data()?;
+            let claim = incident::IncidentClaim::try_deserialize(&mut &data[..])
+                .map_err(|_| error!(CoreError::IncidentAccountMalformed))?;
+            require_keys_eq!(claim.incident, core, CoreError::OperationMismatch);
+            require_keys_eq!(
+                claim.opener,
+                ctx.accounts.opener.key(),
+                CoreError::NotTheOpener
+            );
+        }
         let validator = ctx.accounts.validator.as_ref().map(|v| v.key());
         ctx.accounts.delegate_claim(
             &ctx.accounts.opener,
@@ -242,8 +261,23 @@ pub mod vinct_core {
         core: Pubkey,
         member: Pubkey,
     ) -> Result<()> {
-        require_opener_of_core(&ctx.accounts.core, ctx.accounts.opener.key())?;
-        require_keys_eq!(core, ctx.accounts.core.key(), CoreError::OperationMismatch);
+        {
+            require_keys_eq!(
+                *ctx.accounts.attestation.owner,
+                crate::ID,
+                CoreError::IncidentWrongOwner
+            );
+            let data = ctx.accounts.attestation.try_borrow_data()?;
+            let attestation = incident::MemberAttestation::try_deserialize(&mut &data[..])
+                .map_err(|_| error!(CoreError::IncidentAccountMalformed))?;
+            require_keys_eq!(attestation.incident, core, CoreError::OperationMismatch);
+            require_keys_eq!(attestation.member, member, CoreError::NotAnEligibleMember);
+            require_keys_eq!(
+                attestation.opener,
+                ctx.accounts.opener.key(),
+                CoreError::NotTheOpener
+            );
+        }
         let validator = ctx.accounts.validator.as_ref().map(|v| v.key());
         ctx.accounts.delegate_attestation(
             &ctx.accounts.opener,
@@ -1131,10 +1165,9 @@ pub struct DelegateIncident<'info> {
 #[instruction(core: Pubkey)]
 pub struct DelegateClaim<'info> {
     pub opener: Signer<'info>,
-    /// CHECK: read by hand to check the opener; not mutated here.
-    pub core: UncheckedAccount<'info>,
-    /// CHECK: delegated by the delegation program.
-    #[account(mut, del, seeds = [incident::CLAIM_SEED, core.key().as_ref()], bump)]
+    /// CHECK: delegated by the delegation program; the opener is checked against this
+    /// account's own bytes in the handler.
+    #[account(mut, del, seeds = [incident::CLAIM_SEED, core.as_ref()], bump)]
     pub claim: UncheckedAccount<'info>,
     /// CHECK: optional pinned validator.
     pub validator: Option<UncheckedAccount<'info>>,
@@ -1145,13 +1178,12 @@ pub struct DelegateClaim<'info> {
 #[instruction(core: Pubkey, member: Pubkey)]
 pub struct DelegateAttestation<'info> {
     pub opener: Signer<'info>,
-    /// CHECK: read by hand to check the opener; not mutated here.
-    pub core: UncheckedAccount<'info>,
-    /// CHECK: delegated by the delegation program.
+    /// CHECK: delegated by the delegation program; the opener is checked against this
+    /// account's own bytes in the handler.
     #[account(
         mut,
         del,
-        seeds = [incident::ATTESTATION_SEED, core.key().as_ref(), member.as_ref()],
+        seeds = [incident::ATTESTATION_SEED, core.as_ref(), member.as_ref()],
         bump
     )]
     pub attestation: UncheckedAccount<'info>,

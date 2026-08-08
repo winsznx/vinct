@@ -1,0 +1,132 @@
+{
+  "captured_at": "2026-08-08T00:10:22.708Z",
+  "verdict": "PASS",
+  "what_this_proves": "The lifecycle mechanics: five accounts delegated, three permissions created by CPI, certification over every ballot passed at once, a per-account scrub, and one intent committing and undelegating all five.",
+  "what_this_does_not_prove": "Anything about a TEE. There is no enclave here and no attestation. A passing read matrix says the reference query-filtering service behaves as expected, not that a confidential runtime is holding the line.",
+  "endpoints": {
+    "base": "http://127.0.0.1:8899",
+    "er": "http://127.0.0.1:7799",
+    "qfs": "http://127.0.0.1:6699"
+  },
+  "validator": "mAGicPQYBMvcYveUZA5F5UNNwyHvfYh5xkLS2Fr1mev",
+  "accounts": {
+    "core": "7F4mc7hw4a3PC9nmWoPXAtHW8KhAE4YDry3RWCcNX6jB",
+    "claim": "7RziH3N3q8vhA6W8NdGuf4AC6SSv34ZHnpcp3F6hM1SV",
+    "ballots": [
+      "7zJhWf7tUvfJUm8BdfSekjY31yHi8VmQRJVb5JKckpcU",
+      "5BG5pGPJYwUYcGFjAnmJVuNYUayAc42i3SxhvcLpowwZ",
+      "34FQT1Yetpu1xxG5vTEH2TFBxEzWVTSCuRJbr1eYx9Ym"
+    ]
+  },
+  "read_matrix": {
+    "alphaOwnBallot": {
+      "readable": true,
+      "byteLength": 125
+    },
+    "alphaReadsBetaBallot": {
+      "readable": false,
+      "byteLength": null
+    },
+    "betaOwnBallot": {
+      "readable": true,
+      "byteLength": 125
+    },
+    "betaReadsAlphaBallot": {
+      "readable": false,
+      "byteLength": null
+    },
+    "openerReadsAlphaBallot": {
+      "readable": false,
+      "byteLength": null
+    },
+    "outsiderReadsAlphaBallot": {
+      "readable": false,
+      "byteLength": null
+    },
+    "memberReadsClaim": {
+      "readable": true,
+      "byteLength": 478
+    },
+    "outsiderReadsClaim": {
+      "readable": false,
+      "byteLength": null
+    },
+    "anyoneReadsCore": {
+      "readable": true,
+      "byteLength": 271
+    },
+    "anonymousReadsClaim": {
+      "readable": false,
+      "byteLength": null
+    },
+    "anonymousReadsAlphaBallot": {
+      "readable": false,
+      "byteLength": null
+    }
+  },
+  "peers_blind": true,
+  "base_state": {
+    "owner": "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG",
+    "undelegated": true,
+    "status": "CertifiedPendingSettlement",
+    "approvals": 2,
+    "rejections": 0
+  },
+  "canary_findings": [],
+  "transcript": [
+    "VINCT Phase 4 — sealed-quorum lifecycle on the local stack",
+    "  base http://127.0.0.1:8899   er http://127.0.0.1:7799   qfs http://127.0.0.1:6699",
+    "  validator mAGicPQYBMvcYveUZA5F5UNNwyHvfYh5xkLS2Fr1mev",
+    "  no TEE here: this proves the mechanics and the permission model, not confidentiality",
+    "",
+    "Creating the incident's accounts on base",
+    "  core 4uJUjyLZRN8FJpth…",
+    "  claim 3XiQA5Qxc1crPoho…",
+    "  ballot alpha 47EnWyGirnyG5doA…",
+    "  ballot beta 51iXWozpXbMCBxTF…",
+    "  ballot gamma 5iL7i6fpoqQPjJJs…",
+    "\nDelegating all five accounts",
+    "  delegate core yCnE9hcgvQfu48cJ…",
+    "  delegate claim 2VpDjJqq95zmK9nk…",
+    "  delegate ballot alpha 4z7m26ygKTv5fGHZ…",
+    "  delegate ballot beta 4U9pvARincJgfrz5…",
+    "  delegate ballot gamma gXAxcDGFzHfahPbt…",
+    "\nCreating permissions",
+    "  claim permission 3kYyFR2t12Qy3zcQ…",
+    "  ballot alpha permission oC376QdDjXibgstU…",
+    "  ballot beta permission 4gFmqGp4QvtP64AD…",
+    "  ballot gamma permission 63pXxVzoLhtCSoTc…",
+    "\nRunning the incident",
+    "  open hkLEfXFTLjC3FTnq…",
+    "  claim ntT6he8D3deShLk8…",
+    "  alpha attests 4ZmiUvBXoHkbqBqX…",
+    "  beta attests 3wDcaPuNoeAvLRc8…",
+    "  gamma stays silent",
+    "\nThe read matrix, through each principal's own authenticated session",
+    "  alphaOwnBallot             READABLE (125 bytes)",
+    "  alphaReadsBetaBallot       refused",
+    "  betaOwnBallot              READABLE (125 bytes)",
+    "  betaReadsAlphaBallot       refused",
+    "  openerReadsAlphaBallot     refused",
+    "  outsiderReadsAlphaBallot   refused",
+    "  memberReadsClaim           READABLE (478 bytes)",
+    "  outsiderReadsClaim         refused",
+    "  anyoneReadsCore            READABLE (271 bytes)",
+    "  anonymousReadsClaim        refused",
+    "  anonymousReadsAlphaBallot  refused",
+    "\nCertifying, scrubbing, and releasing",
+    "  certify 62mVeveE4yZ9crLf…",
+    "  scrub claim 52C5q8ZmdTddNvQs…",
+    "  scrub alpha vAx1t1UbEvtAMVgG…",
+    "  scrub beta 4o5DRF6DJPoy3g8v…",
+    "  scrub gamma 4aVcYQRLwaZdKKAD…",
+    "  close claim permission 4Np84gR3BrK9xc2N…",
+    "  close alpha permission 3FL7uJFwFZzwHjaN…",
+    "  close beta permission HKKgxbNtfdxFFBGF…",
+    "  close gamma permission 2qdvyWSNEd5VrrVJ…",
+    "  release TungG9fq2U3CyGkv…",
+    "\nObserving base propagation",
+    "  owner 9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG status CertifiedPendingSettlement approvals 2 rejections 0",
+    "\nLocal lifecycle: PASS"
+  ]
+}

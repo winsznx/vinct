@@ -756,5 +756,29 @@
     "limitations": [
       "The Devnet observation of the same gate is pending on the attested rollup refreshing its executable cache."
     ]
+  },
+  {
+    "id": "sealed-quorum-read-matrix-on-the-local-stack",
+    "wording": "On the local MagicBlock stack, a member reads their own ballot and is refused every other member’s; so are the opening responder, an authenticated outsider, and an anonymous caller. The claim is readable by members only, the public core by anyone, and the whole five-account lifecycle certifies, scrubs, and releases.",
+    "status": "verified",
+    "proof_level": 5,
+    "network": "local-magicblock-stack",
+    "source_commit": "d3c0ac3",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
+    ],
+    "transactions": [],
+    "commands": [
+      "bash scripts/bootstrap-local.sh start",
+      "pnpm exec tsx scripts/phase4-local-lifecycle.ts"
+    ],
+    "artifacts": [
+      "artifacts/local-stack/phase4-local-lifecycle.json"
+    ],
+    "verified_at": "2026-08-08T01:10:00Z",
+    "limitations": [
+      "No enclave and no attestation. This establishes that the reference query-filtering service enforces the permission model as documented, not that a confidential runtime is holding the line. The TEE claim needs the Devnet run.",
+      "The local stack has no router, so endpoint resolution is configured rather than discovered."
+    ]
   }
 ]
