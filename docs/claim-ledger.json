@@ -69,8 +69,13 @@
     "source_commit": "f229bb7420c88ad1e8eb83eb97d254cadaf3ca72",
     "program_ids": [],
     "transactions": [],
-    "commands": ["bash scripts/bootstrap-local.sh cycle"],
-    "artifacts": ["artifacts/local-stack/stack-lifecycle.json", "scripts/bootstrap-local.sh"],
+    "commands": [
+      "bash scripts/bootstrap-local.sh cycle"
+    ],
+    "artifacts": [
+      "artifacts/local-stack/stack-lifecycle.json",
+      "scripts/bootstrap-local.sh"
+    ],
     "verified_at": "2026-08-07T16:24:00Z",
     "limitations": [
       "Process lifecycle and RPC health only. No account was created, delegated, or committed.",
@@ -87,7 +92,9 @@
     "source_commit": "f229bb7420c88ad1e8eb83eb97d254cadaf3ca72",
     "program_ids": [],
     "transactions": [],
-    "commands": ["pnpm check-magicblock-status"],
+    "commands": [
+      "pnpm check-magicblock-status"
+    ],
     "artifacts": [
       "artifacts/source-lock/magicblock-status-devnet-latest.json",
       "scripts/check-magicblock-status.ts"
@@ -108,8 +115,13 @@
     "source_commit": "f229bb7420c88ad1e8eb83eb97d254cadaf3ca72",
     "program_ids": [],
     "transactions": [],
-    "commands": ["pnpm exec tsx scripts/probe-router.ts"],
-    "artifacts": ["artifacts/source-lock/router-probe-latest.json", "scripts/probe-router.ts"],
+    "commands": [
+      "pnpm exec tsx scripts/probe-router.ts"
+    ],
+    "artifacts": [
+      "artifacts/source-lock/router-probe-latest.json",
+      "scripts/probe-router.ts"
+    ],
     "verified_at": "2026-08-07T16:23:53Z",
     "limitations": [
       "getDelegationStatus was probed with an undelegated account and returned only {isDelegated:false}.",
@@ -126,8 +138,13 @@
     "source_commit": "f229bb7420c88ad1e8eb83eb97d254cadaf3ca72",
     "program_ids": [],
     "transactions": [],
-    "commands": ["cargo check (probe source rebuilt with the anchor-compat feature)"],
-    "artifacts": ["docs/source-lock.md", "docs/decision-log.md"],
+    "commands": [
+      "cargo check (probe source rebuilt with the anchor-compat feature)"
+    ],
+    "artifacts": [
+      "docs/source-lock.md",
+      "docs/decision-log.md"
+    ],
     "verified_at": "2026-08-07T16:29:00Z",
     "limitations": [
       "The counterexample crate is a scratch build and is not committed to this repository.",
@@ -143,8 +160,14 @@
     "source_commit": "e594b39a650e70854a1f4f0b2b5c0fca554b10a4",
     "program_ids": [],
     "transactions": [],
-    "commands": ["cargo test --workspace", "cargo clippy --workspace --all-targets -- -D warnings"],
-    "artifacts": ["crates/vinct-types/src", "crates/vinct-reference/src"],
+    "commands": [
+      "cargo test --workspace",
+      "cargo clippy --workspace --all-targets -- -D warnings"
+    ],
+    "artifacts": [
+      "crates/vinct-types/src",
+      "crates/vinct-reference/src"
+    ],
     "verified_at": "2026-08-07T18:20:00Z",
     "limitations": [
       "Deterministic model only. No account constraint, no runtime, no network behaviour is proven here.",
@@ -160,7 +183,9 @@
     "source_commit": "e594b39a650e70854a1f4f0b2b5c0fca554b10a4",
     "program_ids": [],
     "transactions": [],
-    "commands": ["cargo test -p vinct-types"],
+    "commands": [
+      "cargo test -p vinct-types"
+    ],
     "artifacts": [
       "crates/vinct-types/tests/canonical_hashes.rs",
       "packages/test-vectors/canonical-vectors.json"
@@ -180,7 +205,9 @@
     "source_commit": "e594b39a650e70854a1f4f0b2b5c0fca554b10a4",
     "program_ids": [],
     "transactions": [],
-    "commands": ["cargo test -p vinct-reference --test exhaustive_three_member"],
+    "commands": [
+      "cargo test -p vinct-reference --test exhaustive_three_member"
+    ],
     "artifacts": [
       "artifacts/test-vectors/exhaustive-three-member.json",
       "crates/vinct-reference/tests/exhaustive_three_member.rs"
@@ -204,7 +231,10 @@
       "cargo test -p vinct-reference --test exhaustive_three_member",
       "cargo test -p vinct-reference --test properties"
     ],
-    "artifacts": ["docs/decision-log.md", "crates/vinct-reference/src/evaluate.rs"],
+    "artifacts": [
+      "docs/decision-log.md",
+      "crates/vinct-reference/src/evaluate.rs"
+    ],
     "verified_at": "2026-08-07T18:20:00Z",
     "limitations": [
       "A property test found the original implementation violating this. The claim describes the corrected model, recorded as D-0013.",
@@ -220,7 +250,9 @@
     "source_commit": "e594b39a650e70854a1f4f0b2b5c0fca554b10a4",
     "program_ids": [],
     "transactions": [],
-    "commands": ["cargo test -p vinct-reference --test operation_binding"],
+    "commands": [
+      "cargo test -p vinct-reference --test operation_binding"
+    ],
     "artifacts": [
       "docs/decision-log.md",
       "crates/vinct-types/src/action.rs",
@@ -241,7 +273,10 @@
     "source_commit": "e594b39a650e70854a1f4f0b2b5c0fca554b10a4",
     "program_ids": [],
     "transactions": [],
-    "commands": ["pnpm verify-vectors", "pnpm test:ts"],
+    "commands": [
+      "pnpm verify-vectors",
+      "pnpm test:ts"
+    ],
     "artifacts": [
       "packages/verifier/src",
       "packages/test-vectors/canonical-vectors.json",
@@ -290,7 +325,9 @@
       "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
     ],
     "transactions": [],
-    "commands": ["cargo test -p vinct-program-tests --test sovereignty"],
+    "commands": [
+      "cargo test -p vinct-program-tests --test sovereignty"
+    ],
     "artifacts": [
       "crates/vinct-program-tests/tests/sovereignty.rs",
       "programs/vinct-mock-protocol/src/lib.rs"
@@ -315,7 +352,9 @@
       "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
     ],
     "transactions": [],
-    "commands": ["cargo test -p vinct-program-tests --test adversarial"],
+    "commands": [
+      "cargo test -p vinct-program-tests --test adversarial"
+    ],
     "artifacts": [
       "crates/vinct-program-tests/tests/adversarial.rs",
       "programs/vinct-adapter/src/lib.rs"
@@ -340,8 +379,12 @@
       "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
     ],
     "transactions": [],
-    "commands": ["cargo test -p vinct-program-tests --test adversarial"],
-    "artifacts": ["crates/vinct-program-tests/tests/adversarial.rs"],
+    "commands": [
+      "cargo test -p vinct-program-tests --test adversarial"
+    ],
+    "artifacts": [
+      "crates/vinct-program-tests/tests/adversarial.rs"
+    ],
     "verified_at": "2026-08-07T20:10:00Z",
     "limitations": [
       "Idempotency is per operation ID. A recovery operation deliberately carries a new one and is therefore executable, which is the intended behaviour.",
@@ -361,8 +404,12 @@
       "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
     ],
     "transactions": [],
-    "commands": ["cargo test -p vinct-program-tests --test benchmarks"],
-    "artifacts": ["artifacts/benchmarks/phase2-compute.json"],
+    "commands": [
+      "cargo test -p vinct-program-tests --test benchmarks"
+    ],
+    "artifacts": [
+      "artifacts/benchmarks/phase2-compute.json"
+    ],
     "verified_at": "2026-08-07T20:10:00Z",
     "limitations": [
       "Measured in LiteSVM, which is not an ephemeral rollup and not Devnet. A floor and a regression guard, not the Phase 3 budget.",
@@ -383,7 +430,9 @@
       "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
     ],
     "transactions": [],
-    "commands": ["cargo test -p vinct-program-tests --test benchmarks"],
+    "commands": [
+      "cargo test -p vinct-program-tests --test benchmarks"
+    ],
     "artifacts": [
       "crates/vinct-program-tests/tests/benchmarks.rs",
       "programs/vinct-adapter/src/lib.rs"
@@ -410,8 +459,12 @@
       "4QAi3V5QBDw4je91pXRDSUgFPBErEcahTfRDQGqrRUctuwvVW7bWnVvjE7TQ4ezELsQFS8EYG8sLS5wJ3sv6J6HW",
       "5t9GYs4zfuAYQdBTxsvbX7gR1NeoLpdAoXH3X8JbPEvMo5Nca4sPpTFrWXsYEqUvmPMZUc6p38JALh2wVds95w5c"
     ],
-    "commands": ["solana program deploy"],
-    "artifacts": ["artifacts/devnet/deployment.json"],
+    "commands": [
+      "solana program deploy"
+    ],
+    "artifacts": [
+      "artifacts/devnet/deployment.json"
+    ],
     "verified_at": "2026-08-07T20:00:00Z",
     "limitations": [
       "vinct_core on Devnet predates the D-0025 scheduling-order correction and needs an upgrade before a Devnet cohort can be scheduled.",
@@ -431,8 +484,13 @@
       "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
     ],
     "transactions": [],
-    "commands": ["pnpm exec tsx scripts/phase3-seam.ts"],
-    "artifacts": ["packages/client/src/routing.ts", "docs/decision-log.md"],
+    "commands": [
+      "pnpm exec tsx scripts/phase3-seam.ts"
+    ],
+    "artifacts": [
+      "packages/client/src/routing.ts",
+      "docs/decision-log.md"
+    ],
     "verified_at": "2026-08-07T20:00:00Z",
     "limitations": [
       "Observed once, for one delegated account, on devnet. The response was {delegationRecord, fqdn, isDelegated} and resolved to https://devnet-as.magicblock.app/.",
@@ -454,8 +512,12 @@
     "transactions": [
       "pLkCCEQyGVuzj17nPt56BWAtpFk64XnaCjsht74dZfy1YM7EmJsMtF5Syjinmo27uipjSBjugLDVXB4hnwD8k1k"
     ],
-    "commands": ["pnpm exec tsx scripts/phase3-seam.ts"],
-    "artifacts": ["artifacts/local-stack/phase3-seam-local-success-v2-latest.json"],
+    "commands": [
+      "pnpm exec tsx scripts/phase3-seam.ts"
+    ],
+    "artifacts": [
+      "artifacts/local-stack/phase3-seam-local-success-v2-latest.json"
+    ],
     "verified_at": "2026-08-07T20:08:00Z",
     "limitations": [
       "Local stack, not Devnet. Says nothing about the Devnet committor.",
@@ -479,7 +541,9 @@
       "1PygThopun69JiommSLboEiw4UsoeVvYjsyRyZumZHZ1nRAUMXUoS9xWh1fjvGfPTiAiwmpNCtNZhcC2vkF3uyu",
       "4Cro3CEvGpeAu9VMWc5ZodjcHTW9LyCFg4W2dAj8YDzqCxA3Lzhr7VnsvYYQC8qqovD9wU7PZyoxjZ8hjFdZr6fJ"
     ],
-    "commands": ["pnpm exec tsx scripts/phase3-seam.ts --fail-one"],
+    "commands": [
+      "pnpm exec tsx scripts/phase3-seam.ts --fail-one"
+    ],
     "artifacts": [
       "artifacts/local-stack/committor-behaviour.json",
       "artifacts/local-stack/committor-behaviour-raw.log"
@@ -509,7 +573,9 @@
       "pnpm exec tsx scripts/phase3-seam.ts",
       "pnpm exec tsx scripts/phase3-seam.ts --fail-one"
     ],
-    "artifacts": ["artifacts/local-stack/committor-behaviour.json"],
+    "artifacts": [
+      "artifacts/local-stack/committor-behaviour.json"
+    ],
     "verified_at": "2026-08-07T20:10:10Z",
     "limitations": [
       "This is the falsification of the naive settlement model, demonstrated rather than argued. It does not prove the classifier is correct for cases not yet observed."
@@ -530,8 +596,12 @@
     "transactions": [
       "5GNFqCWagRWAGYQRYfVrDa9RjtStJtXjEcsmDuQhT2VDPty1n5fhZ3vFCaca3TPV8yNYhincksAco8ygRvpyHk2d"
     ],
-    "commands": ["pnpm exec tsx scripts/phase3-seam.ts"],
-    "artifacts": ["artifacts/devnet/phase3-seam-devnet-success-eu-latest.json"],
+    "commands": [
+      "pnpm exec tsx scripts/phase3-seam.ts"
+    ],
+    "artifacts": [
+      "artifacts/devnet/phase3-seam-devnet-success-eu-latest.json"
+    ],
     "verified_at": "2026-08-07T21:20:00Z",
     "limitations": [
       "Three reference protocols, not real deployed protocols. Each has an independent authority and its own registered adapter signer.",
@@ -554,7 +624,9 @@
     "transactions": [
       "2kqX3ewrFdwSQ4echtCorotg1PtAghvXBH5ieR8s1HmB9BvjhGxUcQFUHzRbbFPVgA2EnK4KSPJJYA1NL2PZjDi1"
     ],
-    "commands": ["pnpm exec tsx scripts/phase3-seam.ts --fail-one"],
+    "commands": [
+      "pnpm exec tsx scripts/phase3-seam.ts --fail-one"
+    ],
     "artifacts": [
       "artifacts/devnet/phase3-seam-devnet-fail-eu-latest.json",
       "artifacts/local-stack/committor-behaviour.json"
@@ -581,13 +653,108 @@
     "transactions": [
       "5GNFqCWagRWAGYQRYfVrDa9RjtStJtXjEcsmDuQhT2VDPty1n5fhZ3vFCaca3TPV8yNYhincksAco8ygRvpyHk2d"
     ],
-    "commands": ["pnpm exec tsx scripts/phase3-seam.ts"],
-    "artifacts": ["artifacts/devnet/phase3-seam-devnet-success-eu-latest.json"],
+    "commands": [
+      "pnpm exec tsx scripts/phase3-seam.ts"
+    ],
+    "artifacts": [
+      "artifacts/devnet/phase3-seam-devnet-success-eu-latest.json"
+    ],
     "verified_at": "2026-08-07T21:20:00Z",
     "limitations": [
       "The 280,000 CU across the four actions is the declared per-action budget, not consumed units. Per-action consumption inside a Magic Action attempt is not exposed by the committor.",
       "The 19.2 second figure is one observation on one ER and is not a latency guarantee.",
       "LiteSVM measured 49,854 CU for one adapter action directly, which remains the best per-action figure available."
+    ]
+  },
+  {
+    "id": "tee-attestation-is-discovered-live",
+    "wording": "The rollup used for Phase 4 was selected by asking every router-advertised endpoint for a TDX quote over a fresh 64-byte challenge; one of four answered with a quote whose report data matched the challenge.",
+    "status": "verified",
+    "proof_level": 7,
+    "network": "devnet",
+    "source_commit": "943e22cb555480f77428d15009411a401b1a3605",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
+    ],
+    "transactions": [],
+    "commands": [
+      "pnpm exec tsx scripts/phase4-per.ts"
+    ],
+    "artifacts": [
+      "artifacts/devnet/phase4-per-phase4-per-latest.json"
+    ],
+    "verified_at": "2026-08-07T23:05:00Z",
+    "limitations": [
+      "The check does not compare MRTD, RTMR, or configuration values against an expected workload allowlist, so it does not establish which code runs inside the enclave.",
+      "It establishes neither traffic-analysis resistance nor concealment of an incident’s existence."
+    ]
+  },
+  {
+    "id": "per-permission-gates-reading-not-execution",
+    "wording": "On the TEE-backed Devnet rollup, two members each mutated an account neither of them could read, and neither could read the other’s private account; the program’s arithmetic over all three was correct.",
+    "status": "verified",
+    "proof_level": 7,
+    "network": "devnet",
+    "source_commit": "943e22cb555480f77428d15009411a401b1a3605",
+    "program_ids": [
+      "4bjRNqNtEnPt9WwstJkNGqDAbQGj3tu9U7gUEMEdLN1W"
+    ],
+    "transactions": [
+      "5KsrJDE4VDX36sEL7LzJs3KncUofPTFaCdGqXU8oxP6RiZFKMh3JkTSrQDiPwCJ4eDcsAipHf1AouGm1Rja8hieL",
+      "3U4GLqFmWETc4YR5Hy9dpBBkgyTxcVqLX532jU21qTnUTHUHcGB9sAqJLsXZR45H6nXmMCpnGWsn5TYSzLHqUh5B"
+    ],
+    "commands": [
+      "pnpm exec tsx scripts/per-visibility-experiment.ts"
+    ],
+    "artifacts": [
+      "artifacts/devnet/per-visibility-experiment-latest.json"
+    ],
+    "verified_at": "2026-08-08T00:45:00Z",
+    "limitations": [
+      "Established against one attested rollup on Devnet. It is behaviour of the current MagicBlock runtime, not a documented protocol guarantee, so it should be re-checked after a validator upgrade.",
+      "The probe program is a throwaway that models the shape of the question. The same property is exercised end to end by the Phase 4 runner, which is still blocked on that rollup’s stale executable cache."
+    ]
+  },
+  {
+    "id": "sealed-quorum-holds-at-the-program-level",
+    "wording": "No account holds quorum progress while an incident is live, a member’s decision is written only to that member’s own account, and certification of two of three members does not wait for the third.",
+    "status": "verified",
+    "proof_level": 4,
+    "network": "litesvm",
+    "source_commit": "943e22cb555480f77428d15009411a401b1a3605",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
+    ],
+    "transactions": [],
+    "commands": [
+      "anchor build --ignore-keys",
+      "cargo test -p vinct-program-tests --test privacy"
+    ],
+    "artifacts": [],
+    "verified_at": "2026-08-08T00:45:00Z",
+    "limitations": [
+      "This is the half no rollup can do for us: that the program never puts a peer’s decision or a running tally where a peer could read it. Whether the rollup then enforces who may read which account needs a live PER, and that run is pending."
+    ]
+  },
+  {
+    "id": "zeroization-gate-is-per-account",
+    "wording": "A release with the claim and two of three ballots scrubbed is still refused with PrivateFieldsNotZeroized; every private account is checked on its own bytes before the flag.",
+    "status": "verified",
+    "proof_level": 4,
+    "network": "litesvm",
+    "source_commit": "943e22cb555480f77428d15009411a401b1a3605",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
+    ],
+    "transactions": [],
+    "commands": [
+      "anchor build --ignore-keys",
+      "cargo test -p vinct-program-tests --test privacy"
+    ],
+    "artifacts": [],
+    "verified_at": "2026-08-08T00:45:00Z",
+    "limitations": [
+      "The Devnet observation of the same gate is pending on the attested rollup refreshing its executable cache."
     ]
   }
 ]

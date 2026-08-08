@@ -13,15 +13,15 @@
   },
   "compute_units": {
     "arm_capability": 3752,
-    "cohort_total": 156598,
+    "cohort_total": 160500,
     "execute_bounded_action[alpha]": 49851,
     "execute_bounded_action[beta]": 49851,
     "execute_bounded_action[gamma]": 49851,
-    "finalize_settlement": 7045,
-    "initialize_adapter_receipt": 9663,
-    "initialize_settlement_receipt": 10752,
+    "finalize_settlement": 10947,
+    "initialize_adapter_receipt": 8163,
+    "initialize_settlement_receipt": 12893,
     "install_capability": 16107,
-    "publish_certificate": 11231,
+    "publish_certificate": 14059,
     "set_adapter": 2494
   }
 }

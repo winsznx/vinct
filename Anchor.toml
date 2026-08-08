@@ -7,6 +7,7 @@ skip-lint = false
 
 [programs.localnet]
 magicblock_compat_probe = "8WGMvBi8nigXpfzR62Jsz62WQzPifKUKhoFYdPk4i5i5"
+per_visibility_probe = "4bjRNqNtEnPt9WwstJkNGqDAbQGj3tu9U7gUEMEdLN1W"
 vinct_adapter = "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4"
 vinct_core = "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
 vinct_mock_protocol = "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS"
@@ -16,7 +17,7 @@ cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [workspace]
-members = ["programs/vinct-core", "programs/vinct-adapter", "programs/vinct-mock-protocol", "probes/magicblock-compat-probe"]
+members = ["programs/vinct-core", "programs/vinct-adapter", "programs/vinct-mock-protocol", "probes/magicblock-compat-probe", "probes/per-visibility-probe"]
 
 [scripts]
 test = "pnpm exec tsx --test tests/**/*.test.ts"

@@ -2304,6 +2304,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "per-visibility-probe"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "ephemeral-rollups-sdk",
+]
+
+[[package]]
 name = "percent-encoding"
 version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5747,6 +5755,7 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "ephemeral-rollups-sdk",
+ "sha2 0.10.9",
 ]
 
 [[package]]

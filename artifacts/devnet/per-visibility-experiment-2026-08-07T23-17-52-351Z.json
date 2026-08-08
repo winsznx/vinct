@@ -1,0 +1,132 @@
+{
+  "captured_at": "2026-08-07T23:17:52.351Z",
+  "question": "On a private ephemeral rollup, does an account's permission gate reading it, or gate any transaction that touches it?",
+  "why_it_matters": "If membership is required to mutate, every voting member must be inside the aggregate's permission and can therefore read the live tally and every peer's ballot. If not, per-member ballot accounts and an unreadable aggregate become possible.",
+  "endpoint": "https://devnet-tee.magicblock.app/",
+  "validator": "MTEWGuqxUpYZGFJQcp8tLN7x5v9BSeoFHYWQQ3n3xzo",
+  "probe_program": "4bjRNqNtEnPt9WwstJkNGqDAbQGj3tu9U7gUEMEdLN1W",
+  "round": "1",
+  "accounts": {
+    "aggregate": "Vr5NABCu37B9efT395gfeimRWEV8vF6BYRmzi4uBQ43",
+    "aggregate_permission_members": [
+      "the aggregate PDA itself, which is off-curve and unauthenticatable"
+    ],
+    "ballot_a": "2myPSuqrcfAuyfzBdhRyUuZa2ogaNiCG9t385vDGVPdb",
+    "ballot_b": "F7vyf1VFDnTViZ2qnK8UHVHp1fMVJ3N76diKTruNdzNK",
+    "member_a": "D9Kya2QvtdnUPwLjmMqj38a7DPYFmxwe429mQoAXFkfq",
+    "member_b": "3UyA4zu74yYwQ7tNsvVBKtkL9GzR3D6ofKAKMrGQ6Nf9"
+  },
+  "casts": {
+    "A": "5KsrJDE4VDX36sEL7LzJs3KncUofPTFaCdGqXU8oxP6RiZFKMh3JkTSrQDiPwCJ4eDcsAipHf1AouGm1Rja8hieL",
+    "B": "3U4GLqFmWETc4YR5Hy9dpBBkgyTxcVqLX532jU21qTnUTHUHcGB9sAqJLsXZR45H6nXmMCpnGWsn5TYSzLHqUh5B"
+  },
+  "reads": {
+    "aOwnBallot": {
+      "readable": true,
+      "byteLength": 51,
+      "detail": "51 bytes"
+    },
+    "aOtherBallot": {
+      "readable": false,
+      "byteLength": null,
+      "detail": "the rollup returned no account"
+    },
+    "aAggregate": {
+      "readable": false,
+      "byteLength": null,
+      "detail": "the rollup returned no account"
+    },
+    "bOwnBallot": {
+      "readable": true,
+      "byteLength": 51,
+      "detail": "51 bytes"
+    },
+    "bOtherBallot": {
+      "readable": false,
+      "byteLength": null,
+      "detail": "the rollup returned no account"
+    },
+    "bAggregate": {
+      "readable": false,
+      "byteLength": null,
+      "detail": "the rollup returned no account"
+    },
+    "payerAggregate": {
+      "readable": false,
+      "byteLength": null,
+      "detail": "the rollup returned no account"
+    },
+    "payerBallotA": {
+      "readable": false,
+      "byteLength": null,
+      "detail": "the rollup returned no account"
+    },
+    "anonymousAggregate": {
+      "readable": false,
+      "byteLength": null,
+      "detail": "the rollup returned no account"
+    },
+    "anonymousBallotA": {
+      "readable": false,
+      "byteLength": null,
+      "detail": "the rollup returned no account"
+    }
+  },
+  "aggregate_after_opening": {
+    "approvals": 1,
+    "rejections": 1
+  },
+  "findings": {
+    "both_members_could_cast": true,
+    "neither_member_could_read_the_other_ballot": true,
+    "neither_member_could_read_the_aggregate": true,
+    "each_member_could_read_their_own_ballot": true,
+    "program_arithmetic_correct": true
+  },
+  "outcome": "EXECUTION_IS_NOT_QUERY_AUTHORIZATION",
+  "transcript": [
+    "PER visibility experiment, round 1",
+    "  probe program 4bjRNqNtEnPt9WwstJkNGqDAbQGj3tu9U7gUEMEdLN1W",
+    "  aggregate     Vr5NABCu37B9efT395gfeimRWEV8vF6BYRmzi4uBQ43",
+    "  ballot A      2myPSuqrcfAuyfzBdhRyUuZa2ogaNiCG9t385vDGVPdb  member D9Kya2QvtdnUPwLjmMqj38a7DPYFmxwe429mQoAXFkfq",
+    "  ballot B      F7vyf1VFDnTViZ2qnK8UHVHp1fMVJ3N76diKTruNdzNK  member 3UyA4zu74yYwQ7tNsvVBKtkL9GzR3D6ofKAKMrGQ6Nf9",
+    "",
+    "Resolving an attested rollup from live routing",
+    "  https://devnet-us.magicblock.app/ no quote",
+    "  https://devnet-as.magicblock.app/ no quote",
+    "  https://devnet-eu.magicblock.app/ no quote",
+    "  https://devnet-tee.magicblock.app/ TDX quote verified",
+    "  fund members 2cbA877UuVFkaVUqm3UorMCGdN1uWNQ3Tm8KMN6BrR8TMa86anYKQCUMZdhRqyT6Zyb4etYFUQdU1c8G6f8MRxgL",
+    "\nCreating and delegating the three accounts on base",
+    "  init aggregate 2dXrDVhku6YASVXQ2HArsWXytSw8rXSWsktFKA1deZwB9YXVGeiJUDvAcdbCaTtMbmEJwdQKYdCKzfdaGsx6WDTz",
+    "  init ballot A 3N66JxgqwKgMWS5mS2qzz142u5wBQQucTUrzRwu985mPdJBBMiLeS1wrboy8fLkphonRNLZ8vKv9btMDADfsKTd1",
+    "  init ballot B fE4suW5uu2PzKPQeWpGxScX8yBHSqugq73mvSGhirhtYNBoehwd3U5aPmBW2PDGkfoE9fFYBNRT9SDHE5YGGZwX",
+    "  delegate aggregate EAH79AhSCtLzoRSr9LpayEHa9iy1TkjWwKQPhN3S48KfNSVp53NWyRrjZz9PDed5U6JsuSqXGKirHyuxfjWBSXS",
+    "  delegate ballot A MFv797jgjwqe9wDdh8NN4BiHQuTcV1qaYqxhqm6YYeoDHjV9aFSXVJa1gTjy4fucsZz1Yf1wGvKawNBMa2KQdG2",
+    "  delegate ballot B 2K6R5VxR8NvuWQTVN8pGGSzxEzZvtF4DUvU1h2ersGNqS4fkJdSwDkdrMLqEbjvAVXSpMxAdtLTPPmnNT3ikt3Xo",
+    "\nAuthenticating each principal separately",
+    "  three sessions on https://devnet-tee.magicblock.app/?token=<redacted>",
+    "\nCreating permissions",
+    "  aggregate permission (member: the aggregate PDA, a key nobody holds) 47TCFARNRnKG1BcqjnVn6txRD9bxvKVK1nBgFVZR3bBGMwVsjt21p8Ferh4bWZFPRfMs2XQW1m4cD1DxW2pDaG9E",
+    "  ballot A permission (member: A alone) 4fh3NjbHcAeS2ttXjoWSJfk8odusem2ZLHcSz6qHcMPGc4k3YHXAmQ6LpkALJ9Mmzskf6YJLqYdHSbXUsjvHD3QA",
+    "  ballot B permission (member: B alone) 4gSvafozRoT2fXcA2g9NDTjkdpsKe26TzjZ4NRStPqKtNs13bcGt7NHDzvWdX9TemsW1nr7feuCT69iPd2D4Q6DM",
+    "\nCasting: each member writes their own ballot and the aggregate",
+    "  A casts approve 5KsrJDE4VDX36sEL7LzJs3KncUofPTFaCdGqXU8oxP6RiZFKMh3JkTSrQDiPwCJ4eDcsAipHf1AouGm1Rja8hieL",
+    "  B casts reject 3U4GLqFmWETc4YR5Hy9dpBBkgyTxcVqLX532jU21qTnUTHUHcGB9sAqJLsXZR45H6nXmMCpnGWsn5TYSzLHqUh5B",
+    "\nReading, one principal at a time",
+    "  aOwnBallot           READABLE  51 bytes",
+    "  aOtherBallot         refused  the rollup returned no account",
+    "  aAggregate           refused  the rollup returned no account",
+    "  bOwnBallot           READABLE  51 bytes",
+    "  bOtherBallot         refused  the rollup returned no account",
+    "  bAggregate           refused  the rollup returned no account",
+    "  payerAggregate       refused  the rollup returned no account",
+    "  payerBallotA         refused  the rollup returned no account",
+    "  anonymousAggregate   refused  the rollup returned no account",
+    "  anonymousBallotA     refused  the rollup returned no account",
+    "\nOpening the aggregate to check the program's arithmetic",
+    "  close aggregate permission 3iJ8XSQxXgzikzSj6C4HkjVdR2fb4dP2LMuxwYhHMX5kNZWfz1BBpefUqZttBhiyZKC2UQGcUx6EJyrtNofaXDJ5",
+    "  aggregate now readable: 1 approvals, 1 rejections",
+    "\nOutcome: EXECUTION_IS_NOT_QUERY_AUTHORIZATION"
+  ]
+}

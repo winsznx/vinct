@@ -13,14 +13,30 @@ Each protocol owns its adapter and the one narrow action it permits.
 
 ## Status
 
-Phase 0 of 8. Source and compatibility lock only.
+Phase 4 of 8. The two mechanisms the product depends on have both run on Devnet.
 
-There is no product yet. What exists is a pinned toolchain, a compatibility probe that
-compiles against every MagicBlock surface the design depends on, and scripts that record
-live service state. See [docs/IMPLEMENTATION_GATES.md](docs/IMPLEMENTATION_GATES.md) for
-what each phase has to prove before the next one starts.
+Magic Actions settlement (Phase 3): three protocol-owned adapters paused three markets
+through one intent bundle, and a deliberately broken cohort produced
+`COMMIT_WITHOUT_ACTIONS` rather than a partial application. One failing BaseAction removes
+the whole cohort, confirmed on both a local stack and Devnet.
 
-Nothing in this repository has run on Devnet.
+Sealed quorum (Phase 4): a member learns that their own submission was accepted and nothing
+else. Not another member's decision, not how close the incident is to its threshold. That
+holds because the state is split into a public core, a claim private to the member set, and
+one ballot per member private to that member, with no account anywhere holding a live tally.
+
+The architecture rests on a property of private ephemeral rollups that took an experiment to
+establish: a permission gates *reading* an account, not touching it. Two members each mutated
+an account neither could read, neither could read the other's ballot, and the program's
+arithmetic over both was correct. See
+[docs/privacy-boundary.md](docs/privacy-boundary.md), limitations included.
+
+The full lifecycle run against the attested rollup is pending: that endpoint is still serving
+a cached clone of an older build, and the freshness gate refuses to collect evidence from it.
+
+There is no user interface yet; that is Phase 7. See
+[docs/IMPLEMENTATION_GATES.md](docs/IMPLEMENTATION_GATES.md) for what each phase has to prove
+before the next one starts.
 
 ## What the design rests on
 
@@ -38,14 +54,18 @@ missing action is never retried blindly; recovery takes a new operation ID and a
 ## Repository
 
 ```
-docs/          PRD, implementation gates, source lock, decision log, claim ledger
-probes/        Phase 0 compatibility probe. Not product code, never deployed
-scripts/       toolchain pinning, source lock, service status, router probe, local stack
-artifacts/     evidence: version reports, status captures, stack lifecycle records
-programs/      empty until Phase 2
-crates/        empty until Phase 1
-packages/      TypeScript client, verifier, test vectors, config
+docs/          PRD, gates, source lock, decision log, claim ledger, privacy boundary, runbooks
+programs/      vinct-core, vinct-adapter, and a mock protocol to act on
+crates/        pure types, the executable reference model, program tests
+packages/      TypeScript client, standalone verifier, canonical test vectors
+scripts/       toolchain pinning, source lock, service status, the Phase 3 and 4 seam runners
+tests/         cross-language parity and client/IDL account-order tests
+probes/        compatibility and PER-visibility probes. Experiments, not product code
+artifacts/     evidence: Devnet runs, benchmarks, leak scans, status captures
 ```
+
+Every claim the project makes is in [docs/claim-ledger.json](docs/claim-ledger.json) with the
+transactions, artifacts, and commands behind it, and its limitations written next to it.
 
 ## Getting set up
 
@@ -82,6 +102,23 @@ pnpm check-magicblock-status
 pnpm exec tsx scripts/probe-router.ts
 pnpm source-lock
 ```
+
+## Reproducing the Devnet proofs
+
+Both runners need a funded Devnet deployer at `.toolchain/keys/devnet-deployer.json` and
+resolve their rollup from live routing rather than from a configured endpoint.
+
+```bash
+pnpm exec tsx scripts/phase3-seam.ts             # Magic Actions cohort
+pnpm exec tsx scripts/phase3-seam.ts --fail-one  # one adapter deliberately fails
+pnpm exec tsx scripts/phase4-per.ts              # private incident lifecycle
+pnpm exec tsx scripts/per-visibility-experiment.ts  # does a permission gate reads or execution?
+```
+
+The Phase 4 runner refuses to collect anything from a rollup that is not executing the build
+in this checkout, and refuses to pass on a leak scan that had nothing to find. What goes
+wrong on Devnet and what to do about it is in
+[docs/runbooks/devnet-proof-runs.md](docs/runbooks/devnet-proof-runs.md).
 
 ## Versions
 

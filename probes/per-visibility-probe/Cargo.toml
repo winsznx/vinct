@@ -1,13 +1,13 @@
 [package]
-name = "vinct-core"
+name = "per-visibility-probe"
 version = "0.1.0"
-description = "VINCT vinct-core program"
+description = "Experiment: does a PER permission gate reads only, or execution too? Not product code."
 edition = "2021"
 publish = false
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "vinct_core"
+name = "per_visibility_probe"
 
 [features]
 default = []
@@ -21,11 +21,8 @@ custom-heap = []
 custom-panic = []
 
 [dependencies]
-anchor-lang = { version = "=1.0.2", features = ["init-if-needed"] }
+anchor-lang = "=1.0.2"
 ephemeral-rollups-sdk = { version = "=0.16.2", features = ["anchor", "access-control"] }
-
-[build-dependencies]
-sha2 = "=0.10.9"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }

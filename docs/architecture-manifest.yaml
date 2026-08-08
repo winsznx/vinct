@@ -207,3 +207,76 @@ phase_0_constraints:
   - "The #[action] macro appends escrow_auth as a non-mutable UncheckedAccount, so a Magic Action target cannot init its own accounts. adapter_receipt and settlement_receipt PDAs must exist on base before the action is scheduled, or be created by a payer other than escrow_auth."
   # Constrains every local-stack run. See docs/decision-log.md D-0007.
   - "The local stack requires the ephemeral validator identity funded to at least 5 SOL on base; the packaged dump funds 0.0534 SOL."
+
+privacy_boundary:
+  # The property: a member learns their own submission was accepted and nothing else.
+  # Full narrative in docs/privacy-boundary.md.
+  sealed_quorum: "holds by construction, not by care. See docs/decision-log.md D-0042 and D-0043."
+  account_split:
+    incident_core:
+      permission: none
+      readable_by: "anyone"
+      holds: "covenant, policy, threshold, deadline, status, member count, and the aggregate counts that only exist once the outcome is settled"
+    incident_claim:
+      permission: "the incident's member set"
+      readable_by: "members"
+      holds: "the responder's raw claim, notes, and observation window"
+    member_attestation:
+      permission: "that one member"
+      readable_by: "that member alone, not the opener, not the payer, not the other members"
+      holds: "that member's decision, nonce, and submission slot"
+      created: "for every member when the incident opens, so existence says nothing about who has responded"
+    live_tally: "there is none. Certification is handed every attestation at once and counts in memory."
+  why_it_works: "A PER permission gates reading an account, not touching it. A member's transaction writes their own ballot while the program reads every ballot, and that member still cannot read any but their own. Proven in artifacts/devnet/per-visibility-experiment-latest.json."
+  no_commit_reveal: "An all-member reveal round would turn k-of-n into n-of-n liveness. Certification needs every attestation account passed, not every member to have acted, so a silent member never stalls it."
+  permission_member_flags: 0
+  permission_member_flags_note: "No visibility flags are granted. Membership alone allows interaction. A consequence is that the rollup withholds transaction logs even from the sender, so refusal reasons are resolved from error codes against the IDL. See docs/decision-log.md D-0034."
+  delegation_authority: "the opening responder signs delegate_incident, delegate_claim, and delegate_attestation, checked by hand because #[delegate] needs the account untyped. The caller chooses the validator, so this decides which rollup the private material lands on. See D-0041."
+  permission_authority:
+    claim_create_and_update: "the opening responder signs; both decide who may read the evidence"
+    attestation_create: "no member list argument at all; the program reads the single member off the account"
+    close: "no signer, gated on the scrub; requiring one would let a responder strand a scrubbed account inside the rollup"
+    note: "The permission program accepts only the permissioned PDA as a permission's authority. That is a separate question from who may ask vinct_core to make the call. See D-0039."
+  protected_field_classes:
+    - "private_claim"
+    - "private_notes"
+    - "private_observation_start"
+    - "private_observation_end"
+    - "attestation decision"
+    - "attestation submission nonce"
+  zeroization_gate:
+    guards:
+      - "commit_incident"
+      - "release_incident"
+      - "close_claim_permission"
+      - "close_attestation_permission"
+    per_account: "every private account is checked on its own bytes; one unscrubbed ballot blocks the whole release"
+    ordering: "bytes first, flag second; a program that sets private_fields_zeroized without scrubbing is caught by the byte check"
+    account_handling: "exit paths hold their accounts as UncheckedAccount and decode by hand, because Anchor's typed write-back lands after commit_and_undelegate has taken the account. See D-0029."
+  certification:
+    permissionless: true
+    uniform_refusal: "every non-terminal refusal is IncidentNotTerminal whatever the reason, so a caller cannot distinguish too-few-approvals from too-many-rejections"
+    no_early_failure: "an incident that cannot reach its threshold waits for its deadline, so the moment a blocking rejection lands is not observable"
+    leaked_bit: "whether the incident has certified, which is the public status anyway"
+  documented_limitations:
+    - "Existence and activity remain visible. Accounts are created, delegated, and undelegated in public. No traffic-analysis resistance is claimed."
+    - "The TDX quote check does not compare MRTD or RTMR against an expected workload allowlist, so it does not establish which code runs inside the enclave."
+    - "Browser storage surfaces are not scanned by the Phase 4 run because no browser is involved. Phase 7 covers them."
+
+runtime_freshness:
+  # The operational answer to D-0030's stale ER program clone.
+  fingerprint_source: "programs/vinct-core/build.rs, SHA-256 over every .rs file in the crate with paths relative to the source root"
+  exposed_by: "the build_info instruction, through set_return_data and a log line"
+  compared: ["the checkout", "the base-layer deployment", "the selected rollup"]
+  verdicts: ["FRESH", "STALE_ER", "STALE_BASE", "UNDETERMINED"]
+  on_failure: "try the next attested endpoint; if none is fresh, write BLOCKED_STALE_RUNTIME and collect no artifacts"
+  undetermined_is_not_a_pass: "a runtime that does not answer build_info has not said it is current"
+  cost: "simulation only, so the gate cannot be skipped for being expensive"
+
+tee_selection:
+  method: "ask every router-advertised endpoint for a TDX quote over a fresh 64-byte challenge and verify the quote's report data is that challenge"
+  helper: "verifyTeeRpcIntegrity from @magicblock-labs/ephemeral-rollups-sdk"
+  never: "no region name, country code, or hostname takes part in the decision"
+  observed: "one of four Devnet routes answered"
+  establishes: "a genuine quote bound to this challenge, from hardware Intel's chain vouches for"
+  does_not_establish: "which code runs inside the enclave; traffic-analysis resistance; concealment of an incident's existence"

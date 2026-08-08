@@ -6,6 +6,19 @@ resolver = "2"
 overflow-checks = true
 lto = "fat"
 codegen-units = 1
+strip = true
+panic = "abort"
+
+# vinct-core is the only program whose size is a real constraint: it is deployed to Devnet,
+# a byte of program data costs rent, and an upgrade needs a transient buffer of the whole
+# binary. Optimising it for size rather than speed takes roughly 120 KB off both.
+#
+# Scoped to this one package on purpose. The same setting applied workspace-wide pushed
+# `execute_bounded_action` from 49,854 to 70,911 compute units, and that instruction runs
+# inside a Magic Action with a declared per-action budget. Core's own instructions have room
+# to spare, so it pays the CU and the adapter does not.
+[profile.release.package.vinct-core]
+opt-level = "z"
 
 [profile.release.build-override]
 opt-level = 3

@@ -16,8 +16,17 @@
 #![allow(clippy::diverging_sub_expression)]
 #![allow(clippy::result_large_err)]
 
+pub mod incident;
+
 use anchor_lang::prelude::*;
+use ephemeral_rollups_sdk::access_control::instructions::{
+    CloseEphemeralPermissionCpi, CreateEphemeralPermissionCpi, UpdateEphemeralPermissionCpi,
+};
+use ephemeral_rollups_sdk::access_control::structs::{
+    EphemeralMembersArgs, EphemeralPermission, Member, PERMISSION_SEED,
+};
 use ephemeral_rollups_sdk::anchor::{action, commit, delegate, ephemeral};
+use ephemeral_rollups_sdk::consts::{EPHEMERAL_VAULT_ID, MAGIC_PROGRAM_ID, PERMISSION_PROGRAM_ID};
 use ephemeral_rollups_sdk::cpi::DelegateConfig;
 use ephemeral_rollups_sdk::ephem::{CallHandler, MagicIntentBundleBuilder};
 use ephemeral_rollups_sdk::{ActionArgs, ShortAccountMeta};
@@ -32,6 +41,15 @@ pub const SETTLEMENT_SEED: &[u8] = b"settlement";
 pub const SETTLEMENT_AUTHORITY_SEED: &[u8] = b"settlement-authority";
 /// Seed for the delegated settlement operation account.
 pub const OPERATION_SEED: &[u8] = b"operation";
+
+/// This build's fingerprint: SHA-256 over every source file in the crate, computed by
+/// `build.rs`.
+///
+/// Exists because a successful base-layer upgrade does not prove that a given ephemeral
+/// rollup is executing the new binary. `build_info` returns this, and a proof run compares
+/// the ER's answer against base's and against the value that was actually built. See
+/// docs/decision-log.md D-0030.
+pub const BUILD_FINGERPRINT: &str = env!("VINCT_BUILD_FINGERPRINT");
 
 /// Accounts each adapter action needs beyond the shared certificate and target program.
 ///
@@ -105,6 +123,541 @@ pub mod vinct_core {
         receipt.observed_action_count = 0;
         receipt.finalized_at_slot = 0;
         receipt.bump = ctx.bumps.settlement_receipt;
+        Ok(())
+    }
+
+    // ------------------------------------------------------------------------
+    // Private incident lifecycle
+    // ------------------------------------------------------------------------
+
+    /// Base layer. Creates the public incident core.
+    ///
+    /// Nothing here is private, so nothing here is permissioned. It is the account an
+    /// observer reads to learn that an incident is open and when it closes, and it is
+    /// deliberately incapable of telling them anything else.
+    pub fn initialize_incident(
+        ctx: Context<InitializeIncident>,
+        incident_id: u64,
+        covenant: Pubkey,
+    ) -> Result<()> {
+        let core = &mut ctx.accounts.core;
+        core.covenant = covenant;
+        core.incident_id = incident_id;
+        core.opener = ctx.accounts.opener.key();
+        core.status = incident::IncidentStatus::Draft;
+        core.bump = ctx.bumps.core;
+        Ok(())
+    }
+
+    /// Base layer. Creates the private claim account.
+    ///
+    /// Pre-funded for its own ER-local permission, because a delegated account pays that
+    /// rent itself once it is inside the rollup and cannot be topped up from base afterwards.
+    pub fn initialize_claim(ctx: Context<InitializeClaim>) -> Result<()> {
+        fund_for_permission(
+            &ctx.accounts.system_program,
+            &ctx.accounts.opener,
+            &ctx.accounts.claim.to_account_info(),
+            incident::MAX_INCIDENT_MEMBERS,
+        )?;
+        let claim = &mut ctx.accounts.claim;
+        claim.incident = ctx.accounts.core.key();
+        claim.opener = ctx.accounts.core.opener;
+        claim.private_fields_zeroized = true;
+        claim.bump = ctx.bumps.claim;
+        Ok(())
+    }
+
+    /// Base layer. Creates one member's attestation account.
+    ///
+    /// Created for every member before the incident opens, whether or not that member ever
+    /// responds. An account that appeared only when a member voted would announce that they
+    /// had, which is exactly the thing this design exists to hide.
+    pub fn initialize_attestation(
+        ctx: Context<InitializeAttestation>,
+        member: Pubkey,
+    ) -> Result<()> {
+        fund_for_permission(
+            &ctx.accounts.system_program,
+            &ctx.accounts.opener,
+            &ctx.accounts.attestation.to_account_info(),
+            1,
+        )?;
+        let attestation = &mut ctx.accounts.attestation;
+        attestation.incident = ctx.accounts.core.key();
+        attestation.member = member;
+        attestation.private_fields_zeroized = true;
+        attestation.bump = ctx.bumps.attestation;
+        Ok(())
+    }
+
+    /// Base layer. Delegates the public core.
+    ///
+    /// The opener is checked by hand because `#[delegate]` needs the account untyped, so
+    /// there is no `has_one` to lean on. It matters more than the untyped account makes it
+    /// look: the caller chooses the validator, and a stranger who could delegate someone
+    /// else's incident would be choosing which rollup that responder's private material
+    /// later lands on.
+    pub fn delegate_incident(
+        ctx: Context<DelegateIncident>,
+        incident_id: u64,
+        covenant: Pubkey,
+    ) -> Result<()> {
+        require_opener_of_core(&ctx.accounts.core, ctx.accounts.opener.key())?;
+        let validator = ctx.accounts.validator.as_ref().map(|v| v.key());
+        ctx.accounts.delegate_core(
+            &ctx.accounts.opener,
+            &[
+                incident::INCIDENT_SEED,
+                covenant.as_ref(),
+                &incident_id.to_le_bytes(),
+            ],
+            DelegateConfig {
+                validator,
+                ..Default::default()
+            },
+        )?;
+        Ok(())
+    }
+
+    /// Base layer. Delegates the private claim.
+    pub fn delegate_claim(ctx: Context<DelegateClaim>, core: Pubkey) -> Result<()> {
+        require_opener_of_core(&ctx.accounts.core, ctx.accounts.opener.key())?;
+        require_keys_eq!(core, ctx.accounts.core.key(), CoreError::OperationMismatch);
+        let validator = ctx.accounts.validator.as_ref().map(|v| v.key());
+        ctx.accounts.delegate_claim(
+            &ctx.accounts.opener,
+            &[incident::CLAIM_SEED, core.as_ref()],
+            DelegateConfig {
+                validator,
+                ..Default::default()
+            },
+        )?;
+        Ok(())
+    }
+
+    /// Base layer. Delegates one member's attestation.
+    pub fn delegate_attestation(
+        ctx: Context<DelegateAttestation>,
+        core: Pubkey,
+        member: Pubkey,
+    ) -> Result<()> {
+        require_opener_of_core(&ctx.accounts.core, ctx.accounts.opener.key())?;
+        require_keys_eq!(core, ctx.accounts.core.key(), CoreError::OperationMismatch);
+        let validator = ctx.accounts.validator.as_ref().map(|v| v.key());
+        ctx.accounts.delegate_attestation(
+            &ctx.accounts.opener,
+            &[incident::ATTESTATION_SEED, core.as_ref(), member.as_ref()],
+            DelegateConfig {
+                validator,
+                ..Default::default()
+            },
+        )?;
+        Ok(())
+    }
+
+    /// Ephemeral rollup. Makes the claim readable by the incident's members and nobody else.
+    ///
+    /// Created already private with the member list in place, rather than public and then
+    /// flipped. A window in which the account is readable is a window in which it is
+    /// readable, and there is no reason to open one.
+    pub fn create_claim_permission(
+        ctx: Context<ClaimPermissionAuthority>,
+        members: Vec<incident::PermissionMemberArgs>,
+    ) -> Result<()> {
+        let permission_members = incident::checked_permission_members(&members)?;
+        let core = ctx.accounts.claim.incident;
+        let seeds = [
+            incident::CLAIM_SEED,
+            core.as_ref(),
+            &[ctx.accounts.claim.bump],
+        ];
+        CreateEphemeralPermissionCpi {
+            payer: ctx.accounts.claim.to_account_info(),
+            permissioned_account: ctx.accounts.claim.to_account_info(),
+            permission: ctx.accounts.permission.to_account_info(),
+            vault: ctx.accounts.ephemeral_vault.to_account_info(),
+            magic_program: ctx.accounts.magic_program.to_account_info(),
+            permission_program: ctx.accounts.permission_program.to_account_info(),
+            args: EphemeralMembersArgs {
+                is_private: true,
+                members: permission_members,
+            },
+        }
+        .invoke_signed(&[&seeds])?;
+        Ok(())
+    }
+
+    /// Ephemeral rollup. Replaces the claim's member list.
+    pub fn update_claim_permission(
+        ctx: Context<ClaimPermissionAuthority>,
+        is_private: bool,
+        members: Vec<incident::PermissionMemberArgs>,
+    ) -> Result<()> {
+        let permission_members = incident::checked_permission_members(&members)?;
+        let core = ctx.accounts.claim.incident;
+        let seeds = [
+            incident::CLAIM_SEED,
+            core.as_ref(),
+            &[ctx.accounts.claim.bump],
+        ];
+        UpdateEphemeralPermissionCpi {
+            payer: ctx.accounts.claim.to_account_info(),
+            permissioned_account: ctx.accounts.claim.to_account_info(),
+            permission: ctx.accounts.permission.to_account_info(),
+            vault: ctx.accounts.ephemeral_vault.to_account_info(),
+            magic_program: ctx.accounts.magic_program.to_account_info(),
+            permission_program: ctx.accounts.permission_program.to_account_info(),
+            authority: ctx.accounts.claim.to_account_info(),
+            authority_is_signer: false,
+            args: EphemeralMembersArgs {
+                is_private,
+                members: permission_members,
+            },
+        }
+        .invoke_signed(&[&seeds])?;
+        Ok(())
+    }
+
+    /// Ephemeral rollup. Makes one attestation readable by its own member and nobody else.
+    ///
+    /// The member list is not a parameter. It is read off the account, so there is no
+    /// argument a caller could pass that would put a second reader on someone's ballot.
+    pub fn create_attestation_permission(ctx: Context<AttestationPermission>) -> Result<()> {
+        let attestation = &ctx.accounts.attestation;
+        let core = attestation.incident;
+        let member = attestation.member;
+        let seeds = [
+            incident::ATTESTATION_SEED,
+            core.as_ref(),
+            member.as_ref(),
+            &[attestation.bump],
+        ];
+        CreateEphemeralPermissionCpi {
+            payer: attestation.to_account_info(),
+            permissioned_account: attestation.to_account_info(),
+            permission: ctx.accounts.permission.to_account_info(),
+            vault: ctx.accounts.ephemeral_vault.to_account_info(),
+            magic_program: ctx.accounts.magic_program.to_account_info(),
+            permission_program: ctx.accounts.permission_program.to_account_info(),
+            args: EphemeralMembersArgs {
+                is_private: true,
+                members: vec![Member {
+                    flags: 0,
+                    pubkey: member,
+                }],
+            },
+        }
+        .invoke_signed(&[&seeds])?;
+        Ok(())
+    }
+
+    /// Ephemeral rollup. Opens the incident and freezes its snapshot.
+    pub fn open_incident(
+        ctx: Context<OpenIncident>,
+        args: incident::OpenIncidentArgs,
+    ) -> Result<()> {
+        require!(args.required_approvals > 0, CoreError::ZeroThreshold);
+        require!(
+            usize::from(args.member_count) <= incident::MAX_INCIDENT_MEMBERS,
+            CoreError::TooManyPermissionMembers
+        );
+        require!(args.member_count > 0, CoreError::PermissionNeedsAMember);
+        require!(
+            args.required_approvals <= args.member_count,
+            CoreError::ThresholdExceedsMembers
+        );
+        require!(
+            args.response_window_slots > 0,
+            CoreError::ZeroResponseWindow
+        );
+
+        let clock = Clock::get()?;
+        let core = &mut ctx.accounts.core;
+        require!(
+            core.status == incident::IncidentStatus::Draft,
+            CoreError::IncidentAlreadyOpened
+        );
+
+        core.circle_epoch = args.circle_epoch;
+        core.policy_id = args.policy_id;
+        core.member_set_hash = args.member_set_hash;
+        core.cluster_genesis_hash = args.cluster_genesis_hash;
+        core.required_approvals = args.required_approvals;
+        core.maximum_rejections = args.maximum_rejections;
+        core.opened_at_slot = clock.slot;
+        core.expires_at_slot = clock
+            .slot
+            .checked_add(args.response_window_slots)
+            .ok_or(CoreError::ArithmeticOverflow)?;
+        core.claim_digest = args.claim_digest;
+        core.member_count = args.member_count;
+        core.status = incident::IncidentStatus::Collecting;
+        Ok(())
+    }
+
+    /// Ephemeral rollup. Stores the raw private claim.
+    ///
+    /// These bytes never reach the base layer. They live inside the PER, behind the claim's
+    /// permission, until the terminal scrub overwrites them.
+    pub fn submit_private_claim(
+        ctx: Context<SubmitPrivateClaim>,
+        args: incident::PrivateClaimArgs,
+    ) -> Result<()> {
+        require!(
+            args.claim.len() <= incident::MAX_PRIVATE_CLAIM,
+            CoreError::PrivatePayloadTooLong
+        );
+        require!(
+            args.notes.len() <= incident::MAX_PRIVATE_NOTES,
+            CoreError::PrivatePayloadTooLong
+        );
+        require!(
+            ctx.accounts.core.status == incident::IncidentStatus::Collecting,
+            CoreError::IncidentNotCollecting
+        );
+        require_keys_eq!(
+            ctx.accounts.responder.key(),
+            ctx.accounts.claim.opener,
+            CoreError::NotTheOpener
+        );
+
+        let claim = &mut ctx.accounts.claim;
+        claim.private_claim = [0u8; incident::MAX_PRIVATE_CLAIM];
+        claim.private_claim[..args.claim.len()].copy_from_slice(&args.claim);
+        claim.private_claim_len = args.claim.len() as u16;
+        claim.private_notes = [0u8; incident::MAX_PRIVATE_NOTES];
+        claim.private_notes[..args.notes.len()].copy_from_slice(&args.notes);
+        claim.private_notes_len = args.notes.len() as u16;
+        claim.private_observation_start = args.observation_start;
+        claim.private_observation_end = args.observation_end;
+        claim.private_fields_zeroized = false;
+        Ok(())
+    }
+
+    /// Ephemeral rollup. Records one member's sealed decision into their own account.
+    ///
+    /// The member signs and writes only their own attestation. There is no instruction that
+    /// reads anyone else's, and no account here accumulates a running total, so a member
+    /// learns that their own submission was accepted and nothing else.
+    pub fn submit_sealed_attestation(
+        ctx: Context<SubmitSealedAttestation>,
+        decision: incident::Decision,
+        submission_nonce: u64,
+    ) -> Result<()> {
+        let clock = Clock::get()?;
+        let core = &ctx.accounts.core;
+        incident::apply_attestation(
+            core,
+            &mut ctx.accounts.attestation,
+            ctx.accounts.member.key(),
+            decision,
+            submission_nonce,
+            clock.slot,
+        )
+    }
+
+    /// Ephemeral rollup. Quarantines a member for this incident.
+    ///
+    /// The opener writes a flag into an account the opener cannot read. That is not a
+    /// loophole; it is the property the whole design rests on. Quarantine discards that
+    /// member's approval and stops them submitting again, and it never lowers
+    /// `required_approvals`. A rejection already cast keeps counting. See
+    /// docs/decision-log.md D-0013.
+    pub fn quarantine_member(ctx: Context<QuarantineMember>) -> Result<()> {
+        require!(
+            ctx.accounts.core.status == incident::IncidentStatus::Collecting,
+            CoreError::IncidentNotCollecting
+        );
+        let threshold_before = ctx.accounts.core.required_approvals;
+        ctx.accounts.attestation.quarantined = true;
+        require!(
+            ctx.accounts.core.required_approvals == threshold_before,
+            CoreError::QuarantineChangedThreshold
+        );
+        Ok(())
+    }
+
+    /// Ephemeral rollup. Counts every attestation at once and settles the outcome.
+    ///
+    /// Every attestation account for the incident is passed in `remaining_accounts`, exactly
+    /// `member_count` of them, each re-derived from the incident and the member it claims to
+    /// belong to. Counting happens in memory and the aggregate is written only when the
+    /// outcome is final. There is no running total in any account at any point, which is why
+    /// there is nothing for a member to read.
+    ///
+    /// Permissionless, and it refuses uniformly. Before the deadline it succeeds only when
+    /// the threshold is met; otherwise every caller gets `IncidentNotTerminal` regardless of
+    /// why, so a caller cannot distinguish "not enough approvals yet" from "already too many
+    /// rejections". The one bit it does leak, whether the incident has certified, is the
+    /// public status anyway.
+    ///
+    /// An incident that is going to fail waits for its deadline rather than terminating
+    /// early, so the moment a blocking rejection lands is not observable either.
+    pub fn certify_incident(ctx: Context<CertifyIncident>) -> Result<()> {
+        let clock = Clock::get()?;
+        require!(
+            ctx.accounts.core.status == incident::IncidentStatus::Collecting,
+            CoreError::IncidentNotCollecting
+        );
+
+        let attestations = read_supplied_attestations(
+            ctx.accounts.core.key(),
+            ctx.remaining_accounts,
+            usize::from(ctx.accounts.core.member_count),
+        )?;
+        let tally = incident::tally(&attestations);
+        let certified = tally.meets(&ctx.accounts.core);
+        let expired = ctx.accounts.core.is_expired(clock.slot);
+        require!(certified || expired, CoreError::IncidentNotTerminal);
+
+        let core = &mut ctx.accounts.core;
+        core.approval_count_after_terminal = tally.approvals;
+        core.rejection_count_after_terminal = tally.rejections;
+        core.status = if certified {
+            incident::IncidentStatus::CertifiedPendingSettlement
+        } else {
+            incident::IncidentStatus::Expired
+        };
+
+        emit!(IncidentCertified {
+            incident_id: core.incident_id,
+            status: core.status,
+            approval_count: core.approval_count_after_terminal,
+            rejection_count: core.rejection_count_after_terminal,
+        });
+        Ok(())
+    }
+
+    /// Ephemeral rollup. Overwrites the claim.
+    ///
+    /// Permissionless, and allowed only once the incident is terminal. Requiring a signature
+    /// would let a responder who dislikes the outcome strand the evidence inside the rollup
+    /// by never calling this.
+    pub fn scrub_claim(ctx: Context<ScrubClaim>) -> Result<()> {
+        require!(
+            ctx.accounts.core.status.is_terminal(),
+            CoreError::IncidentNotTerminal
+        );
+        ctx.accounts.claim.scrub();
+        Ok(())
+    }
+
+    /// Ephemeral rollup. Overwrites one member's decision.
+    pub fn scrub_attestation(ctx: Context<ScrubAttestation>) -> Result<()> {
+        require!(
+            ctx.accounts.core.status.is_terminal(),
+            CoreError::IncidentNotTerminal
+        );
+        ctx.accounts.attestation.scrub();
+        Ok(())
+    }
+
+    /// Ephemeral rollup. Closes the claim's permission.
+    ///
+    /// Gated on the scrub, because closing a permission makes the account readable again on
+    /// that rollup. Doing it while the evidence is still there would publish it.
+    pub fn close_claim_permission(ctx: Context<CloseClaimPermission>) -> Result<()> {
+        ctx.accounts.claim.may_leave_the_private_runtime()?;
+        let core = ctx.accounts.claim.incident;
+        let seeds = [
+            incident::CLAIM_SEED,
+            core.as_ref(),
+            &[ctx.accounts.claim.bump],
+        ];
+        CloseEphemeralPermissionCpi {
+            payer: ctx.accounts.claim.to_account_info(),
+            permissioned_account: ctx.accounts.claim.to_account_info(),
+            permission: ctx.accounts.permission.to_account_info(),
+            vault: ctx.accounts.ephemeral_vault.to_account_info(),
+            magic_program: ctx.accounts.magic_program.to_account_info(),
+            permission_program: ctx.accounts.permission_program.to_account_info(),
+            authority: ctx.accounts.claim.to_account_info(),
+            authority_is_signer: false,
+        }
+        .invoke_signed(&[&seeds])?;
+        Ok(())
+    }
+
+    /// Ephemeral rollup. Closes one attestation's permission, once it is scrubbed.
+    pub fn close_attestation_permission(ctx: Context<AttestationPermission>) -> Result<()> {
+        ctx.accounts.attestation.may_leave_the_private_runtime()?;
+        let attestation = &ctx.accounts.attestation;
+        let core = attestation.incident;
+        let member = attestation.member;
+        let seeds = [
+            incident::ATTESTATION_SEED,
+            core.as_ref(),
+            member.as_ref(),
+            &[attestation.bump],
+        ];
+        CloseEphemeralPermissionCpi {
+            payer: attestation.to_account_info(),
+            permissioned_account: attestation.to_account_info(),
+            permission: ctx.accounts.permission.to_account_info(),
+            vault: ctx.accounts.ephemeral_vault.to_account_info(),
+            magic_program: ctx.accounts.magic_program.to_account_info(),
+            permission_program: ctx.accounts.permission_program.to_account_info(),
+            authority: attestation.to_account_info(),
+            authority_is_signer: false,
+        }
+        .invoke_signed(&[&seeds])?;
+        Ok(())
+    }
+
+    /// Ephemeral rollup. Releases the whole incident back to the base layer.
+    ///
+    /// Core, claim, and every attestation commit and undelegate in one intent. Every private
+    /// account passes the zeroization gate first, on its own bytes. The core needs no gate
+    /// because it never held anything private.
+    pub fn release_incident<'info>(
+        ctx: Context<'info, ReleaseIncident<'info>>,
+        incident_id: u64,
+        covenant: Pubkey,
+    ) -> Result<()> {
+        let _ = (incident_id, covenant);
+        let accounts = gated_exit_accounts(&ctx, true)?;
+        MagicIntentBundleBuilder::new(
+            ctx.accounts.payer.to_account_info(),
+            ctx.accounts.magic_context.to_account_info(),
+            ctx.accounts.magic_program.to_account_info(),
+        )
+        .commit_and_undelegate(&accounts)
+        .build_and_invoke()?;
+        Ok(())
+    }
+
+    /// Ephemeral rollup. Commits the incident without undelegating it.
+    ///
+    /// Gated identically to the releasing path. A commit copies an account's bytes to the
+    /// base layer, so an unscrubbed commit publishes exactly what an unscrubbed undelegation
+    /// would. Both doors, one lock.
+    pub fn commit_incident<'info>(
+        ctx: Context<'info, ReleaseIncident<'info>>,
+        incident_id: u64,
+        covenant: Pubkey,
+    ) -> Result<()> {
+        let _ = (incident_id, covenant);
+        let accounts = gated_exit_accounts(&ctx, false)?;
+        MagicIntentBundleBuilder::new(
+            ctx.accounts.payer.to_account_info(),
+            ctx.accounts.magic_context.to_account_info(),
+            ctx.accounts.magic_program.to_account_info(),
+        )
+        .commit(&accounts)
+        .build_and_invoke()?;
+        Ok(())
+    }
+
+    /// Returns this program's build fingerprint.
+    ///
+    /// Touches no account and changes no state, so it is safe to simulate anywhere. Run it
+    /// against base and against the ER before collecting any proof artifact: if the two
+    /// answers differ, the ER is serving a cached clone and nothing it produces is evidence
+    /// about the current build.
+    pub fn build_info(_ctx: Context<BuildInfo>) -> Result<()> {
+        msg!("VINCT_BUILD_FINGERPRINT={}", BUILD_FINGERPRINT);
+        anchor_lang::solana_program::program::set_return_data(BUILD_FINGERPRINT.as_bytes());
         Ok(())
     }
 
@@ -369,6 +922,436 @@ pub struct ScheduleCohortArgs {
     /// Compute budget for the final settlement action.
     pub settlement_compute_units: u32,
 }
+
+/// Moves enough lamports into a soon-to-be-delegated account to pay for its own ER-local
+/// permission.
+///
+/// A delegated account pays that rent itself once it is inside the rollup, and there is no
+/// way to top it up from base afterwards, so the funding has to happen before delegation.
+fn fund_for_permission<'info>(
+    system_program: &Program<'info, System>,
+    from: &Signer<'info>,
+    to: &AccountInfo<'info>,
+    permission_members: usize,
+) -> Result<()> {
+    anchor_lang::system_program::transfer(
+        CpiContext::new(
+            system_program.key(),
+            anchor_lang::system_program::Transfer {
+                from: from.to_account_info(),
+                to: to.clone(),
+            },
+        ),
+        ephemeral_rollups_sdk::ephemeral_accounts::rent(EphemeralPermission::size_of(
+            permission_members,
+        ) as u32),
+    )
+}
+
+/// Reads a core account held untyped, checking its owner before its bytes.
+fn read_core(account: &UncheckedAccount) -> Result<incident::IncidentCore> {
+    require_keys_eq!(*account.owner, crate::ID, CoreError::IncidentWrongOwner);
+    let data = account.try_borrow_data()?;
+    incident::IncidentCore::try_deserialize(&mut &data[..])
+        .map_err(|_| error!(CoreError::IncidentAccountMalformed))
+}
+
+/// Reads every attestation supplied in `remaining_accounts`, checked against the incident.
+///
+/// Owner before bytes, then the incident it claims to belong to, then its own PDA derivation
+/// from that incident and the member it names. A duplicate would let one approval be counted
+/// twice, so the list is checked for repeats as it is read.
+fn read_supplied_attestations(
+    core_key: Pubkey,
+    supplied: &[AccountInfo],
+    expected: usize,
+) -> Result<Vec<incident::MemberAttestation>> {
+    require!(
+        supplied.len() == expected,
+        CoreError::AttestationCountMismatch
+    );
+    let mut attestations = Vec::with_capacity(expected);
+    for (index, info) in supplied.iter().enumerate() {
+        require_keys_eq!(*info.owner, crate::ID, CoreError::IncidentWrongOwner);
+        let attestation =
+            incident::MemberAttestation::try_deserialize(&mut &info.try_borrow_data()?[..])
+                .map_err(|_| error!(CoreError::IncidentAccountMalformed))?;
+        require_keys_eq!(attestation.incident, core_key, CoreError::OperationMismatch);
+
+        let (expected_address, _) = Pubkey::find_program_address(
+            &[
+                incident::ATTESTATION_SEED,
+                core_key.as_ref(),
+                attestation.member.as_ref(),
+            ],
+            &crate::ID,
+        );
+        require_keys_eq!(info.key(), expected_address, CoreError::OperationMismatch);
+
+        for earlier in supplied.iter().take(index) {
+            require_keys_neq!(info.key(), earlier.key(), CoreError::DuplicateAttestation);
+        }
+        attestations.push(attestation);
+    }
+    Ok(attestations)
+}
+
+/// The account list for an exit, with every private account gated on its own bytes.
+///
+/// One helper for both doors, because a gate applied to one exit and not the other is the
+/// shape this kind of bug takes. `require_terminal` is the only difference: a release ends
+/// the incident's life on the rollup and must not run mid-flight, while a commit is a
+/// checkpoint.
+///
+/// The accounts are held untyped and read by hand for the reason recorded in D-0029:
+/// Anchor's automatic write-back lands after `commit_and_undelegate` has taken the account,
+/// and Devnet rejects that.
+fn gated_exit_accounts<'info>(
+    ctx: &Context<'info, ReleaseIncident<'info>>,
+    require_terminal: bool,
+) -> Result<Vec<AccountInfo<'info>>> {
+    let core = read_core(&ctx.accounts.core)?;
+    if require_terminal {
+        require!(core.status.is_terminal(), CoreError::IncidentNotTerminal);
+    }
+
+    let core_key = ctx.accounts.core.key();
+    require_keys_eq!(
+        *ctx.accounts.claim.owner,
+        crate::ID,
+        CoreError::IncidentWrongOwner
+    );
+    let claim =
+        incident::IncidentClaim::try_deserialize(&mut &ctx.accounts.claim.try_borrow_data()?[..])
+            .map_err(|_| error!(CoreError::IncidentAccountMalformed))?;
+    require_keys_eq!(claim.incident, core_key, CoreError::OperationMismatch);
+    claim.may_leave_the_private_runtime()?;
+
+    let attestations = read_supplied_attestations(
+        core_key,
+        ctx.remaining_accounts,
+        usize::from(core.member_count),
+    )?;
+    for attestation in &attestations {
+        attestation.may_leave_the_private_runtime()?;
+    }
+
+    let mut accounts = vec![
+        ctx.accounts.core.to_account_info(),
+        ctx.accounts.claim.to_account_info(),
+    ];
+    accounts.extend(ctx.remaining_accounts.iter().cloned());
+    Ok(accounts)
+}
+
+/// Checks that a signer is the opener recorded on a core account held untyped.
+fn require_opener_of_core(account: &UncheckedAccount, signer: Pubkey) -> Result<()> {
+    let core = read_core(account)?;
+    require_keys_eq!(core.opener, signer, CoreError::NotTheOpener);
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Private incident contexts
+// ---------------------------------------------------------------------------
+
+#[derive(Accounts)]
+#[instruction(incident_id: u64, covenant: Pubkey)]
+pub struct InitializeIncident<'info> {
+    #[account(
+        init,
+        payer = opener,
+        space = 8 + incident::IncidentCore::SIZE,
+        seeds = [incident::INCIDENT_SEED, covenant.as_ref(), &incident_id.to_le_bytes()],
+        bump
+    )]
+    pub core: Account<'info, incident::IncidentCore>,
+    #[account(mut)]
+    pub opener: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct InitializeClaim<'info> {
+    #[account(has_one = opener @ CoreError::NotTheOpener)]
+    pub core: Account<'info, incident::IncidentCore>,
+    #[account(
+        init,
+        payer = opener,
+        space = 8 + incident::IncidentClaim::SIZE,
+        seeds = [incident::CLAIM_SEED, core.key().as_ref()],
+        bump
+    )]
+    pub claim: Account<'info, incident::IncidentClaim>,
+    #[account(mut)]
+    pub opener: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(member: Pubkey)]
+pub struct InitializeAttestation<'info> {
+    #[account(has_one = opener @ CoreError::NotTheOpener)]
+    pub core: Account<'info, incident::IncidentCore>,
+    #[account(
+        init,
+        payer = opener,
+        space = 8 + incident::MemberAttestation::SIZE,
+        seeds = [incident::ATTESTATION_SEED, core.key().as_ref(), member.as_ref()],
+        bump
+    )]
+    pub attestation: Account<'info, incident::MemberAttestation>,
+    #[account(mut)]
+    pub opener: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[delegate]
+#[derive(Accounts)]
+#[instruction(incident_id: u64, covenant: Pubkey)]
+pub struct DelegateIncident<'info> {
+    pub opener: Signer<'info>,
+    /// CHECK: delegated by the delegation program; seeds are checked here and the opener is
+    /// checked by hand in the handler.
+    #[account(
+        mut,
+        del,
+        seeds = [incident::INCIDENT_SEED, covenant.as_ref(), &incident_id.to_le_bytes()],
+        bump
+    )]
+    pub core: UncheckedAccount<'info>,
+    /// CHECK: optional pinned validator, checked by the delegation program. Pinning is how
+    /// an incident reaches the TEE-backed rollup rather than whichever region the router
+    /// would otherwise pick.
+    pub validator: Option<UncheckedAccount<'info>>,
+}
+
+#[delegate]
+#[derive(Accounts)]
+#[instruction(core: Pubkey)]
+pub struct DelegateClaim<'info> {
+    pub opener: Signer<'info>,
+    /// CHECK: read by hand to check the opener; not mutated here.
+    pub core: UncheckedAccount<'info>,
+    /// CHECK: delegated by the delegation program.
+    #[account(mut, del, seeds = [incident::CLAIM_SEED, core.key().as_ref()], bump)]
+    pub claim: UncheckedAccount<'info>,
+    /// CHECK: optional pinned validator.
+    pub validator: Option<UncheckedAccount<'info>>,
+}
+
+#[delegate]
+#[derive(Accounts)]
+#[instruction(core: Pubkey, member: Pubkey)]
+pub struct DelegateAttestation<'info> {
+    pub opener: Signer<'info>,
+    /// CHECK: read by hand to check the opener; not mutated here.
+    pub core: UncheckedAccount<'info>,
+    /// CHECK: delegated by the delegation program.
+    #[account(
+        mut,
+        del,
+        seeds = [incident::ATTESTATION_SEED, core.key().as_ref(), member.as_ref()],
+        bump
+    )]
+    pub attestation: UncheckedAccount<'info>,
+    /// CHECK: optional pinned validator.
+    pub validator: Option<UncheckedAccount<'info>>,
+}
+
+/// Create and update for the claim's permission.
+///
+/// The opener signs, because these two instructions decide who may read the evidence. The
+/// permission program will only accept the claim PDA as the permission's authority, which
+/// protects the permission from that side and says nothing about who may ask this program to
+/// make the call. See docs/decision-log.md D-0039.
+#[derive(Accounts)]
+pub struct ClaimPermissionAuthority<'info> {
+    #[account(mut, has_one = opener @ CoreError::NotTheOpener)]
+    pub claim: Account<'info, incident::IncidentClaim>,
+    pub opener: Signer<'info>,
+    /// CHECK: the permission PDA, owned and validated by the permission program.
+    #[account(
+        mut,
+        seeds = [PERMISSION_SEED, claim.key().as_ref()],
+        bump,
+        seeds::program = PERMISSION_PROGRAM_ID
+    )]
+    pub permission: UncheckedAccount<'info>,
+    /// CHECK: the ephemeral rent vault, address-checked.
+    #[account(mut, address = EPHEMERAL_VAULT_ID)]
+    pub ephemeral_vault: UncheckedAccount<'info>,
+    /// CHECK: the magic program, address-checked.
+    #[account(address = MAGIC_PROGRAM_ID)]
+    pub magic_program: UncheckedAccount<'info>,
+    /// CHECK: the permission program, address-checked.
+    #[account(address = PERMISSION_PROGRAM_ID)]
+    pub permission_program: UncheckedAccount<'info>,
+}
+
+/// Closing the claim's permission.
+///
+/// No signer, deliberately. It is gated on the scrub, and a scrubbed claim has nothing left
+/// to expose, so requiring a signature would only give a responder a way to strand it.
+#[derive(Accounts)]
+pub struct CloseClaimPermission<'info> {
+    #[account(mut)]
+    pub claim: Account<'info, incident::IncidentClaim>,
+    /// CHECK: the permission PDA.
+    #[account(
+        mut,
+        seeds = [PERMISSION_SEED, claim.key().as_ref()],
+        bump,
+        seeds::program = PERMISSION_PROGRAM_ID
+    )]
+    pub permission: UncheckedAccount<'info>,
+    /// CHECK: address-checked.
+    #[account(mut, address = EPHEMERAL_VAULT_ID)]
+    pub ephemeral_vault: UncheckedAccount<'info>,
+    /// CHECK: address-checked.
+    #[account(address = MAGIC_PROGRAM_ID)]
+    pub magic_program: UncheckedAccount<'info>,
+    /// CHECK: address-checked.
+    #[account(address = PERMISSION_PROGRAM_ID)]
+    pub permission_program: UncheckedAccount<'info>,
+}
+
+/// An attestation's permission, for both create and close.
+///
+/// No signer and no member argument. The single member is read off the account, so there is
+/// nothing a caller could pass that would put a second reader on someone's ballot, and
+/// nothing they could withhold that would leave one unprotected.
+#[derive(Accounts)]
+pub struct AttestationPermission<'info> {
+    #[account(mut)]
+    pub attestation: Account<'info, incident::MemberAttestation>,
+    /// CHECK: the permission PDA.
+    #[account(
+        mut,
+        seeds = [PERMISSION_SEED, attestation.key().as_ref()],
+        bump,
+        seeds::program = PERMISSION_PROGRAM_ID
+    )]
+    pub permission: UncheckedAccount<'info>,
+    /// CHECK: address-checked.
+    #[account(mut, address = EPHEMERAL_VAULT_ID)]
+    pub ephemeral_vault: UncheckedAccount<'info>,
+    /// CHECK: address-checked.
+    #[account(address = MAGIC_PROGRAM_ID)]
+    pub magic_program: UncheckedAccount<'info>,
+    /// CHECK: address-checked.
+    #[account(address = PERMISSION_PROGRAM_ID)]
+    pub permission_program: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct OpenIncident<'info> {
+    #[account(mut, has_one = opener @ CoreError::NotTheOpener)]
+    pub core: Account<'info, incident::IncidentCore>,
+    pub opener: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct SubmitPrivateClaim<'info> {
+    pub core: Account<'info, incident::IncidentCore>,
+    #[account(mut, constraint = claim.incident == core.key() @ CoreError::OperationMismatch)]
+    pub claim: Account<'info, incident::IncidentClaim>,
+    pub responder: Signer<'info>,
+}
+
+/// One member submitting their own decision.
+///
+/// The signer selects the account through the PDA seeds, so there is no member argument to
+/// spoof and no path by which one member's key reaches another member's attestation.
+#[derive(Accounts)]
+pub struct SubmitSealedAttestation<'info> {
+    pub core: Account<'info, incident::IncidentCore>,
+    #[account(
+        mut,
+        seeds = [incident::ATTESTATION_SEED, core.key().as_ref(), member.key().as_ref()],
+        bump = attestation.bump
+    )]
+    pub attestation: Account<'info, incident::MemberAttestation>,
+    pub member: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct QuarantineMember<'info> {
+    #[account(has_one = opener @ CoreError::NotTheOpener)]
+    pub core: Account<'info, incident::IncidentCore>,
+    #[account(
+        mut,
+        constraint = attestation.incident == core.key() @ CoreError::OperationMismatch
+    )]
+    pub attestation: Account<'info, incident::MemberAttestation>,
+    pub opener: Signer<'info>,
+}
+
+/// Certification.
+///
+/// Permissionless on purpose. An incident that has met its threshold, or run out its window,
+/// must be settleable by anyone, or a responder who dislikes the outcome could leave it
+/// hanging. Every attestation account arrives in `remaining_accounts`.
+#[derive(Accounts)]
+pub struct CertifyIncident<'info> {
+    #[account(mut)]
+    pub core: Account<'info, incident::IncidentCore>,
+}
+
+#[derive(Accounts)]
+pub struct ScrubClaim<'info> {
+    pub core: Account<'info, incident::IncidentCore>,
+    #[account(mut, constraint = claim.incident == core.key() @ CoreError::OperationMismatch)]
+    pub claim: Account<'info, incident::IncidentClaim>,
+}
+
+#[derive(Accounts)]
+pub struct ScrubAttestation<'info> {
+    pub core: Account<'info, incident::IncidentCore>,
+    #[account(
+        mut,
+        constraint = attestation.incident == core.key() @ CoreError::OperationMismatch
+    )]
+    pub attestation: Account<'info, incident::MemberAttestation>,
+}
+
+/// The exit, shared by the committing and the releasing path.
+///
+/// `#[commit]` appends `magic_program` and then `magic_context`. Every attestation follows in
+/// `remaining_accounts`.
+#[commit]
+#[derive(Accounts)]
+#[instruction(incident_id: u64, covenant: Pubkey)]
+pub struct ReleaseIncident<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    /// CHECK: read by hand with explicit owner and discriminator checks.
+    ///
+    /// Untyped for the reason recorded in D-0029: Anchor writes a typed `Account` back when
+    /// the instruction ends, which lands after `commit_and_undelegate` has already taken the
+    /// account into the intent, and Devnet rejects that as `ExternalAccountDataModified`.
+    #[account(
+        mut,
+        seeds = [incident::INCIDENT_SEED, covenant.as_ref(), &incident_id.to_le_bytes()],
+        bump
+    )]
+    pub core: UncheckedAccount<'info>,
+    /// CHECK: read by hand; same reason as the core.
+    #[account(mut, seeds = [incident::CLAIM_SEED, core.key().as_ref()], bump)]
+    pub claim: UncheckedAccount<'info>,
+}
+
+#[event]
+pub struct IncidentCertified {
+    pub incident_id: u64,
+    pub status: incident::IncidentStatus,
+    pub approval_count: u8,
+    pub rejection_count: u8,
+}
+/// No accounts. `build_info` must stay callable on any runtime, including one whose state
+/// this program has never touched.
+#[derive(Accounts)]
+pub struct BuildInfo {}
 
 #[derive(Accounts)]
 #[instruction(operation_id: [u8; 32])]
@@ -690,4 +1673,50 @@ pub enum CoreError {
     OperationWrongDiscriminator,
     #[msg("Operation account is malformed")]
     OperationAccountMalformed,
+    #[msg("A protected incident field still holds non-zero bytes")]
+    PrivateFieldsNotZeroized,
+    #[msg("The incident has not been marked zeroized")]
+    ZeroizationFlagNotSet,
+    #[msg("The incident is not accepting attestations")]
+    IncidentNotCollecting,
+    #[msg("The incident's response window has closed")]
+    IncidentExpired,
+    #[msg("A decision must be Approve, Reject, or Abstain")]
+    DecisionRequired,
+    #[msg("This key is not in the incident's frozen member set")]
+    NotAnEligibleMember,
+    #[msg("This member is quarantined for this incident")]
+    MemberQuarantined,
+    #[msg("Submission nonce must exceed the member's previous nonce")]
+    NonceNotIncreasing,
+    #[msg("Permission member list exceeds the incident bound")]
+    TooManyPermissionMembers,
+    #[msg("A permission needs at least one member")]
+    PermissionNeedsAMember,
+    #[msg("Approval threshold must be greater than zero")]
+    ZeroThreshold,
+    #[msg("Approval threshold exceeds the member set")]
+    ThresholdExceedsMembers,
+    #[msg("Response window must be greater than zero")]
+    ZeroResponseWindow,
+    #[msg("The incident has already been opened")]
+    IncidentAlreadyOpened,
+    #[msg("Only the opening responder may submit the private claim")]
+    NotTheOpener,
+    #[msg("Private payload exceeds its bound")]
+    PrivatePayloadTooLong,
+    #[msg("Arithmetic overflow")]
+    ArithmeticOverflow,
+    #[msg("Quarantine changed the approval threshold")]
+    QuarantineChangedThreshold,
+    #[msg("The incident is neither certified nor expired")]
+    IncidentNotTerminal,
+    #[msg("Incident account is not owned by this program")]
+    IncidentWrongOwner,
+    #[msg("Incident account is malformed")]
+    IncidentAccountMalformed,
+    #[msg("The attestation accounts supplied do not match the incident's member count")]
+    AttestationCountMismatch,
+    #[msg("The same attestation account was supplied twice")]
+    DuplicateAttestation,
 }

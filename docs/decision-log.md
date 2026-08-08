@@ -601,3 +601,304 @@ removes the whole cohort. Alpha and beta were well-formed and still did not run.
 Measured on the successful Devnet run: 61,428 CU for the ER scheduling transaction, 848
 serialized bytes, 21 accounts, 280,000 CU declared across the four actions, and 19.2 seconds
 from intent acceptance to every base-layer effect being observable.
+
+### D-0032 A rollup's TEE status is discovered, not configured
+
+Phase 4 needs a TEE-backed rollup, and the obvious way to get one is to write down the
+endpoint that has TEE in its name. Phase 3 already showed where that leads: the Europe
+validator worked once, and hardcoding it would have baked a workaround into the product.
+
+The router advertises four Devnet routes and none of them says which is attested. The status
+API names a `tee` region, but its server FQDN (`devnet-tee-as.magicblock.app`) is not the one
+the router advertises (`devnet-tee.magicblock.app`), so correlating them means matching
+hostname fragments, which is guessing with extra steps.
+
+The discriminator that actually works is the thing itself. `verifyTeeRpcIntegrity` asks an
+endpoint for a TDX quote over a fresh 64-byte challenge and verifies the quote's report data
+is that exact challenge. `scripts/phase4-per.ts` runs it against every route the router
+currently advertises. In the recorded run, one of four answered. No hostname, region name, or
+country code takes part in the decision.
+
+Precise about what this establishes: a genuine quote, bound to this challenge, from hardware
+Intel's chain vouches for. It does not compare MRTD or RTMR against an expected workload, so
+it does not prove which code runs inside the enclave. VINCT does not maintain such an
+allowlist yet and does not claim the check stands in for one.
+
+### D-0033 A build fingerprint turns the stale-clone hazard into a check
+
+D-0030 diagnosed a stale ER program clone from an Anchor line number. That worked once and is
+not a procedure.
+
+`programs/vinct-core/build.rs` hashes every `.rs` file in the crate, sorted, with paths taken
+relative to the source root so a checkout elsewhere produces the same value. The digest is
+compiled in as `VINCT_BUILD_FINGERPRINT` and returned by a `build_info` instruction through
+both `set_return_data` and a log line.
+
+Before any Phase 4 artifact is collected, three values are compared: the fingerprint computed
+from the checkout, what base answers, and what the selected rollup answers. All three must
+agree. A mismatch is classified as `STALE_ER`, `STALE_BASE`, or `UNDETERMINED`, the run moves
+to the next attested endpoint, and if none is fresh it writes `BLOCKED_STALE_RUNTIME` and
+collects nothing.
+
+`UNDETERMINED` is deliberately not a pass. A runtime that fails to answer `build_info` has not
+told us it is current.
+
+The check is a simulation rather than a transaction. A freshness gate that costs SOL is one
+that gets skipped when a run is in a hurry.
+
+### D-0034 Permission members get no visibility flags
+
+The permission program's member flags govern who can see whose transaction logs, messages,
+balances, and signatures. Membership alone is what lets a wallet interact with a private
+account.
+
+The first implementation granted every member `TX_LOGS | TX_MESSAGE | TX_BALANCES`, copying
+the shape of the SDK's examples. That hands each member a view of every other member's
+submissions in exchange for nothing an incident needs.
+
+The instruction now takes flags per member and VINCT's client passes zero. One consequence is
+visible in the Phase 4 run: the rollup withholds transaction logs even from the wallet that
+sent the transaction, so a refused attempt arrives as an error code with no log line. The
+client resolves the code against the IDL instead. That is the permission working, and the
+client adapting to it rather than asking for the privilege back.
+
+### D-0035 A permission member can read a co-member's decision — WITHDRAWN
+
+> Superseded by D-0042 and D-0043. The conclusion below was wrong: it read a property of the
+> chosen storage layout as a property of the platform, without testing whether the platform
+> required that layout. It did not. The record stays because the reasoning is the kind that
+> looks sound and closes off a real design, and because the correction came from an
+> experiment rather than from more reasoning.
+
+An ephemeral permission gates an account, not a field. Every member reads the same bytes.
+
+The Phase 4 run records the opener's read and a member's read of the live incident as having
+identical digests. A member can therefore see every other member's decision and count the
+tally for themselves. VINCT's instructions answer no such query and its client has no decoder
+that reconstructs one, but the raw account is readable.
+
+The fix would be commitments with a separate reveal round. The PRD rules that out in §7.3 for
+a good reason: an all-member reveal turns a k-of-n threshold into an n-of-n liveness
+dependency, and an incident response that stalls because one member is offline is a worse
+failure than co-members seeing each other's votes.
+
+Recorded as a documented limitation rather than an open task. It is in
+`docs/privacy-boundary.md` under the class it belongs to, and VINCT does not claim
+cryptographic sealing between co-members anywhere.
+
+### D-0036 Authentication is not authorization, and the run proves it separately
+
+A private rollup will not talk to an anonymous caller, so every participant completes a
+challenge-sign-login flow and holds its own session token.
+
+The temptation is to authenticate once and reuse the session, which would make the run cheap
+and meaningless: it would never distinguish "this wallet may act" from "some wallet
+authenticated". Every keypair in the Phase 4 run holds its own session, including the
+outsider.
+
+The outsider's session is valid. Its read of the incident account is refused outright, and
+its attestation is rejected with `NotAnEligibleMember`. Those are two different boundaries,
+one enforced by the permission and one by the program, and separating them is what lets the
+artifact say which held.
+
+Tokens are bearer credentials for a wallet's private view. `packages/client/src/per-auth.ts`
+returns a `Connection` that carries one and a redacted URL for everything else; no token
+reaches a log, an artifact, or a console.
+
+### D-0037 A leak scan needs a positive control
+
+The first Phase 4 run reported no canary on any surface, and that result was worth nothing on
+its own. A scan for a marker that was never written passes for the wrong reason, and a
+partial scrub, a mis-encoded argument, or a claim that silently failed to store would all
+look identical to success.
+
+The run now reads the live incident through the opener's session before the scrub and
+requires every private field class to be found there. Six classes, six markers, all present
+(`leakScan.positive_control`). Only then is the absence of those markers elsewhere evidence.
+
+The verdict also refuses to pass on an unreadable surface. "Could not read" is recorded as
+unproven and never counted as clean.
+
+### D-0038 Every refusal is asserted by name
+
+The first run's refusals all read "resulted in an error", which proves only that something
+went wrong. A run can refuse everything for entirely wrong reasons and still look like a
+passing boundary test.
+
+Each attempt now declares the error it expects, and the verdict fails on a mismatch. Two
+findings came out of making the reasons legible. The reasons live in the landed transaction
+rather than in the send error, because ER sends skip preflight. And the reasons are not in
+the logs, because D-0034's zero visibility flags mean the rollup withholds them, so the code
+is resolved against the IDL instead.
+
+### D-0039 The permission's authority is not the same question as who may set it
+
+The ephemeral permission's authority is the incident PDA. The CPI passes
+`authority_is_signer: false` and the permissioned account signs for itself, so no external
+key can be the permission's authority. That reads like the access question is settled.
+
+It is not. It settles who the *permission program* will accept as the authority. It says
+nothing about who may ask `vinct_core` to make that call, and the first implementation asked
+for nothing at all. `create_incident_permission` and `update_incident_permission` had no
+signer in their contexts, so any funded wallet could add itself to a live incident's member
+list and read every private field, or front-run the creation of a permission with a member
+list of its own choosing.
+
+Both now require the opener to sign, and `crates/vinct-program-tests/tests/privacy.rs`
+asserts an intruder gets `NotTheOpener` on each.
+
+`close_incident_permission` deliberately keeps no signer. It is gated on the terminal scrub,
+and a scrubbed account has nothing left to expose, so the risk of leaving it open is nil
+while the risk of closing it is real: requiring the opener would let a responder who dislikes
+an outcome strand the account inside the rollup by never calling it. Same reasoning as the
+permissionless scrub.
+
+The general shape is worth keeping in mind. A CPI whose callee validates an authority makes
+the callee safe. It does not make the caller's entry point safe, and reading the callee's
+guarantee as covering both is how this got written in the first place.
+
+### D-0040 The stale ER clone is an executable cache, not an account sync failure
+
+D-0030 left open how a cached clone is refreshed. Phase 4 narrowed it considerably.
+
+Deploying a new build to Devnet and then reading the program's `ProgramData` account from the
+TEE rollup returns bytes identical to base, including the `last_deployed_slot`. The account
+clone is current. `build_info` on the same rollup still returns the previous build's
+fingerprint. What is stale is the rollup's executable cache, not its view of the account.
+
+Three things do not clear it, all tested on 2026-08-07:
+
+- delegating a new account to that validator
+- sending a real transaction that invokes the program, rather than simulating one
+- waiting through repeated probes over roughly fifteen minutes
+
+Timing was the clue. The first upgrade propagated instantly, because that rollup had never
+cloned the program before. Every upgrade after it did not. The cache is populated once, on
+first use, and nothing VINCT can send appears to evict it.
+
+Two consequences for how work is sequenced. A rollup that has already served a program for
+one run cannot be assumed to serve the next build to the next run, so the freshness gate is
+not a formality on repeat runs; it is most necessary exactly then. And because `cargo fmt`
+changes the fingerprint, every edit has to be finished, formatted, built, and deployed as one
+sequence. Formatting after a deploy costs a full upgrade cycle and then a wait.
+
+Still open: what does evict it, and on what schedule. Routing to a rollup that has never
+served the program remains the only reliable answer, and for a PER run there may be only one
+attested rollup to choose from.
+
+### D-0041 Delegation chooses the rollup, so delegation needs the opener
+
+`delegate_incident` took an `opener: Signer` and never checked it against the account. Any
+funded wallet could delegate someone else's incident.
+
+The account is `Draft` at that point and holds nothing, which is why this reads as harmless
+and is not. The caller passes the validator. A stranger who delegates a responder's incident
+is choosing which rollup that responder's private claim lands on later, and there is no
+second chance: an account is delegated once and everything private happens afterwards.
+
+`#[delegate]` needs the account untyped, so there is no `has_one` to lean on. The check is by
+hand, against the owner first and then the opener, in the same shape as the zeroization gate.
+
+Two adjacent things this cost, both worth remembering. The check sits in the handler rather
+than in a constraint, so it only runs once account validation has passed; the regression test
+has to load a stub at the delegation program's address to get that far. And the first version
+of that test appeared to fail for the wrong reason because `cargo test` runs against
+`target/deploy/*.so`, which `cargo check` does not rebuild. A program test asserting new
+behaviour needs `anchor build` first, or it is testing the previous build.
+
+### D-0042 A PER permission gates reading, not touching
+
+D-0035 concluded that a co-member can read another member's decision because "an ephemeral
+permission gates an account, not a field". That sentence is true and the conclusion drawn
+from it was wrong. The mistake was in the storage boundary, not in the platform.
+
+The question nobody had answered: on a private rollup, must a wallet be inside an account's
+permission to send a transaction that *mutates* it, or only to *read* it? The official
+sealed-auction example does not settle it, because its auctioneer is a member of every bid's
+permission and is the one who calls `end_auction`. No caller there ever touches an account it
+cannot read.
+
+`probes/per-visibility-probe` was built to answer it, and run against the attested Devnet
+rollup by `scripts/per-visibility-experiment.ts`. Three delegated accounts:
+
+- an aggregate whose permission names one member: the aggregate PDA itself. A PDA is off the
+  ed25519 curve, so no key exists that can complete the rollup's challenge-sign-login flow as
+  it. Nobody at all can read that account.
+- one ballot per member, each private to that member alone.
+
+Both members then cast, in transactions that write their own ballot and increment the
+aggregate.
+
+Every observation, from `artifacts/devnet/per-visibility-experiment-latest.json`:
+
+- both casts landed
+- A could read A's ballot; B could read B's
+- A could not read B's ballot, and B could not read A's
+- neither member could read the aggregate
+- the payer that created all three accounts could not read the aggregate or either ballot
+- an anonymous caller could read none of them
+- after the run, opening the aggregate's permission showed 1 approval and 1 rejection: the
+  program had been reading and writing an account no participant could see, and got it right
+
+Execution authorization and query authorization are separate concerns on a PER. A program
+can read and mutate an account that the transaction's sender cannot see.
+
+So the sealed-quorum property VINCT wanted is reachable, and the single permissioned
+`PrivateIncident` account was the wrong shape. D-0035 is withdrawn as a platform constraint
+and reopened as an implementation defect. See D-0043 for the corrected architecture.
+
+One detail worth keeping. A refused read comes back as *no account*, not as an error. An
+observer cannot distinguish "you may not see this" from "this does not exist", which is a
+better answer than a distinguishable refusal would be.
+
+### D-0043 Sealed quorum is a storage boundary, and the first one was wrong
+
+D-0035 recorded that a co-member can read another member's decision, and treated it as a
+platform constraint. D-0042 showed it was not. This is the corrected architecture.
+
+The old shape put everything in one permissioned `PrivateIncident` account: the claim, every
+member's decision, the running counts. A permission gates an account, so every member had to
+be inside that one permission, so every member could read all of it. The account was the
+boundary and the boundary was wrong.
+
+Three account classes now, and the split is the whole design.
+
+`IncidentCore` is public and never permissioned. Covenant, policy, threshold, deadline,
+status, member count, and the aggregate counts that only exist once the outcome is settled.
+Nothing in it is worth hiding, so nothing needs a permission, and an observer gets the view
+the PRD promises them (§24.3) by simply reading it.
+
+`IncidentClaim` is private to the member set. Every member needs the evidence to decide, so
+this is shared context rather than anyone's secret.
+
+`MemberAttestation` is one account per member, private to that member alone. Not to the
+opener, not to the payer, not to the other members. This is what the old shape could not
+express.
+
+And no account holds a live tally. Certification is handed every attestation at once and
+counts them in memory. A running total would have to live somewhere, and anywhere it lived
+would be readable by whoever could read that account. What is never stored cannot leak.
+
+Four consequences worth stating.
+
+Attestation accounts are created for every member when the incident opens, before anyone
+votes. An account that appeared the moment a member submitted would announce that they had.
+
+k-of-n liveness survives, which is why this is not commit-reveal in disguise. Certification
+needs every attestation account *passed*, not every member to have *acted*. A silent member's
+account exists, holds no decision, and contributes nothing.
+`certification_does_not_wait_for_a_silent_member` is the test.
+
+Quarantine now writes a flag into an account the opener cannot read. That is not a loophole,
+it is the property D-0042 established, used on purpose.
+
+Certification refuses uniformly. Before the deadline it succeeds only when the threshold is
+met, and every other caller gets `IncidentNotTerminal` whatever the reason, so nobody can
+distinguish "not enough approvals yet" from "already too many rejections". An incident that
+is going to fail waits for its deadline instead of terminating early, so the moment a
+blocking rejection lands is not observable either. The one bit certification does leak,
+whether the incident has certified, is the public status anyway.
+
+The reference model in `crates/vinct-reference` needed no change. It models transitions, not
+storage, and the transitions are the same ones. That the split left it untouched is a small
+piece of evidence that the model was drawn at the right level.
