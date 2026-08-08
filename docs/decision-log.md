@@ -971,3 +971,35 @@ The one place they are allowed to differ is stated in the test rather than hidde
 deadline the model may already say `RejectedByThreshold` or `Impossible` while the program
 still refuses to settle. The model is a view of the state, the program is a transition on it,
 and they agree about the state.
+
+### D-0046 The covenant is what stops the opener choosing the answer
+
+Phase 4 left one thing unbound. The incident's opener supplied the member set, the threshold,
+the rejection ceiling, and the response window. Certification then proved the ballots matched
+the set that was frozen, which is a real guarantee about consistency and no guarantee at all
+about legitimacy: an opener could freeze whatever set suited them.
+
+Phase 5 puts a ratified covenant underneath. `initialize_incident` copies the snapshot out of
+it, and opening takes no terms at all. The only argument left to `open_incident` is the digest
+of the claim.
+
+Formation is a sequence of separate signatures rather than one authority's decision. The
+steward convenes and adds members and can do nothing else; each protocol ratifies its own
+membership and nobody else's; ratifying the covenant requires every member to have done so;
+each protocol arms its own adapter; and the circle is armed only when every adapter-owning
+member has. The two covenant-level steps take no signer, because by then every signature that
+mattered has been given, and requiring one more would let whoever held it stall a circle that
+had already agreed.
+
+Two details that matter more than they look.
+
+The covenant's frozen member set uses the same commitment an incident's ballot set is checked
+against, over the same canonical ascending order. Two derivations of the same set would be two
+chances to disagree; binding an incident to a covenant is one equality.
+
+Membership cannot change after ratification. A change is a new epoch rather than an edit,
+because incidents already in flight carry the epoch they opened under and would otherwise be
+evaluated against a set that moved under them.
+
+The opener must now hold a ratified membership, which also sharpens the read matrix: the
+principal who cannot read a peer's ballot is a peer, not an outsider.

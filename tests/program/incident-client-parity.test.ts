@@ -148,7 +148,7 @@ function assertMatchesIdl(name: string, instruction: TransactionInstruction): vo
 test("the base-layer creation instructions match the IDL", () => {
   assertMatchesIdl("initialize_incident", initializeIncident(opener, covenant, incidentId));
   assertMatchesIdl("initialize_claim", initializeClaim(core, opener));
-  assertMatchesIdl("initialize_attestation", initializeAttestation(core, opener, member));
+  assertMatchesIdl("initialize_attestation", initializeAttestation(core, covenant, opener, member));
 });
 
 test("every delegation instruction matches the IDL", () => {
@@ -178,21 +178,7 @@ test("every permission instruction matches the IDL", () => {
 });
 
 test("the lifecycle instructions match the IDL", () => {
-  assertMatchesIdl(
-    "open_incident",
-    openIncident(opener, {
-      covenant,
-      incidentId,
-      circleEpoch: 1n,
-      policyId: zero32,
-      clusterGenesisHash: zero32,
-      requiredApprovals: 2,
-      maximumRejections: 1,
-      responseWindowSlots: 100n,
-      members: [member],
-      claimDigest: zero32,
-    }),
-  );
+  assertMatchesIdl("open_incident", openIncident(core, opener, [member], zero32));
   assertMatchesIdl(
     "submit_private_claim",
     submitPrivateClaim(core, opener, {
@@ -241,7 +227,7 @@ test("certification and release carry one account per member, in canonical order
 
   const certify = certifyIncident(core, members);
   assert.equal(certify.keys.length, 1 + members.length);
-  canonical.forEach((each, index) => {
+  canonical.forEach((each: PublicKey, index: number) => {
     assert.equal(
       certify.keys[1 + index]?.pubkey.toBase58(),
       attestationAddress(core, each).toBase58(),
@@ -250,7 +236,7 @@ test("certification and release carry one account per member, in canonical order
 
   const release = releaseIncident(opener, covenant, incidentId, members);
   assert.equal(release.keys.length, 5 + members.length);
-  canonical.forEach((each, index) => {
+  canonical.forEach((each: PublicKey, index: number) => {
     const key = release.keys[5 + index] as AccountMeta;
     assert.equal(key.pubkey.toBase58(), attestationAddress(core, each).toBase58());
     assert.equal(key.isWritable, true, "an attestation has to be writable to be undelegated");
@@ -275,25 +261,14 @@ test("the client puts members in canonical ascending order", () => {
     );
   }
   assert.deepEqual(
-    canonicalMemberOrder(sorted).map((k) => k.toBase58()),
-    sorted.map((k) => k.toBase58()),
+    canonicalMemberOrder(sorted).map((k: PublicKey) => k.toBase58()),
+    sorted.map((k: PublicKey) => k.toBase58()),
     "sorting is not idempotent",
   );
 
   // Opening freezes the set, so its account list has to be canonical too.
-  const opened = openIncident(opener, {
-    covenant,
-    incidentId,
-    circleEpoch: 1n,
-    policyId: zero32,
-    clusterGenesisHash: zero32,
-    requiredApprovals: 2,
-    maximumRejections: 1,
-    responseWindowSlots: 100n,
-    members,
-    claimDigest: zero32,
-  });
-  sorted.forEach((each, index) => {
+  const opened = openIncident(core, opener, members, zero32);
+  sorted.forEach((each: PublicKey, index: number) => {
     assert.equal(
       opened.keys[2 + index]?.pubkey.toBase58(),
       attestationAddress(core, each).toBase58(),

@@ -91,22 +91,8 @@ struct MemberArg {
 }
 
 #[derive(borsh::BorshSerialize)]
-struct OpenIncidentArgs {
-    incident_id: u64,
-    covenant: [u8; 32],
-    circle_epoch: u64,
-    policy_id: [u8; 32],
-    cluster_genesis_hash: [u8; 32],
-    required_approvals: u8,
-    maximum_rejections: u8,
-    response_window_slots: u64,
-    members: Vec<[u8; 32]>,
+struct ClaimDigestArg {
     claim_digest: [u8; 32],
-}
-
-#[derive(borsh::BorshSerialize)]
-struct OpenIncidentIx {
-    args: OpenIncidentArgs,
 }
 
 #[derive(borsh::BorshSerialize)]
@@ -141,6 +127,7 @@ const REJECT: u8 = 2;
 /// A three-member incident: one public core, one private claim, three private ballots.
 struct Incident {
     world: World,
+    covenant: Address,
     core: Address,
     claim: Address,
     incident_id: u64,
@@ -179,18 +166,21 @@ impl Incident {
     }
 
     fn with_members(count: usize) -> Self {
+        Self::with_terms(count, 2, 1, 5_000)
+    }
+
+    /// Builds an incident under a freshly formed covenant.
+    ///
+    /// Threshold, ceiling, and window come from the covenant now rather than from opening,
+    /// so a fixture that wants different terms has to form a different circle.
+    fn with_terms(
+        count: usize,
+        required_approvals: u8,
+        maximum_rejections: u8,
+        response_window_slots: u64,
+    ) -> Self {
         let mut world = World::new();
         let incident_id = 77u64;
-        let (core, _) = Address::find_program_address(
-            &[
-                INCIDENT_SEED,
-                world.covenant.as_ref(),
-                &incident_id.to_le_bytes(),
-            ],
-            &core_program(),
-        );
-        let (claim, _) =
-            Address::find_program_address(&[CLAIM_SEED, core.as_ref()], &core_program());
 
         // Canonical ascending order, because the program commits to the member set in that
         // order and refuses any other. Generating and then sorting means the tests exercise
@@ -200,16 +190,30 @@ impl Incident {
                 let member = Keypair::new();
                 world
                     .svm
-                    .airdrop(&member.pubkey(), 1_000_000_000)
+                    .airdrop(&member.pubkey(), 10_000_000_000)
                     .expect("member funded");
                 member
             })
             .collect();
         members.sort_by_key(|a| a.pubkey().to_bytes());
 
+        let covenant = world.form_covenant(
+            &members,
+            required_approvals,
+            maximum_rejections,
+            response_window_slots,
+        );
+        let (incident_core, _) = Address::find_program_address(
+            &[INCIDENT_SEED, covenant.as_ref(), &incident_id.to_le_bytes()],
+            &core_program(),
+        );
+        let (claim, _) =
+            Address::find_program_address(&[CLAIM_SEED, incident_core.as_ref()], &core_program());
+
         let mut incident = Self {
             world,
-            core,
+            covenant,
+            core: incident_core,
             claim,
             incident_id,
             members,
@@ -218,15 +222,16 @@ impl Incident {
         incident
     }
 
-    /// Creates a second, fully independent incident in the same SVM.
+    /// Creates a second incident under the same covenant, for substitution tests.
     ///
-    /// Loading three programs into a fresh SVM dominates the cost of a case, so a
-    /// substitution test builds its decoy here rather than in a second world.
-    fn add_sibling(&mut self, incident_id: u64, count: usize) -> Sibling {
+    /// Same members, same frozen commitment, different incident. That is the sharper decoy:
+    /// its ballots pass every check that looks at a ballot in isolation, and are still
+    /// refused, because each one names the core it belongs to.
+    fn add_sibling(&mut self, incident_id: u64) -> Sibling {
         let (core, _) = Address::find_program_address(
             &[
                 INCIDENT_SEED,
-                self.world.covenant.as_ref(),
+                self.covenant.as_ref(),
                 &incident_id.to_le_bytes(),
             ],
             &core_program(),
@@ -240,6 +245,11 @@ impl Incident {
                     program_id: core_program(),
                     accounts: vec![
                         AccountMeta::new(core, false),
+                        AccountMeta::new_readonly(self.covenant, false),
+                        AccountMeta::new_readonly(
+                            covenant_membership(&self.covenant, &opener.pubkey()),
+                            false,
+                        ),
                         AccountMeta::new(opener.pubkey(), true),
                         AccountMeta::new_readonly(system, false),
                     ],
@@ -247,7 +257,7 @@ impl Incident {
                         "initialize_incident",
                         &InitializeIncidentArgs {
                             incident_id,
-                            covenant: self.world.covenant.to_bytes(),
+                            covenant: self.covenant.to_bytes(),
                         },
                     ),
                 },
@@ -255,8 +265,7 @@ impl Incident {
             )
             .expect("sibling core initializes");
 
-        let mut members: Vec<Keypair> = (0..count).map(|_| Keypair::new()).collect();
-        members.sort_by_key(|a| a.pubkey().to_bytes());
+        let members: Vec<Keypair> = self.members.iter().map(|m| m.insecure_clone()).collect();
         for member in &members {
             let (attestation, _) = Address::find_program_address(
                 &[ATTESTATION_SEED, core.as_ref(), member.pubkey().as_ref()],
@@ -268,6 +277,10 @@ impl Incident {
                         program_id: core_program(),
                         accounts: vec![
                             AccountMeta::new_readonly(core, false),
+                            AccountMeta::new_readonly(
+                                covenant_membership(&self.covenant, &member.pubkey()),
+                                false,
+                            ),
                             AccountMeta::new(attestation, false),
                             AccountMeta::new(opener.pubkey(), true),
                             AccountMeta::new_readonly(system, false),
@@ -286,24 +299,6 @@ impl Incident {
 
         let sibling = Sibling { core, members };
 
-        // Opened, so a test that substitutes this core reaches the ballot checks rather than
-        // stopping at "that incident is not collecting".
-        let args = OpenIncidentArgs {
-            incident_id,
-            covenant: self.world.covenant.to_bytes(),
-            circle_epoch: 1,
-            policy_id: self.world.policy_id,
-            cluster_genesis_hash: CLUSTER,
-            required_approvals: 2,
-            maximum_rejections: 1,
-            response_window_slots: 5_000,
-            members: sibling
-                .members
-                .iter()
-                .map(|m| m.pubkey().to_bytes())
-                .collect(),
-            claim_digest: vinct_program_tests::sha256(CANARY_CLAIM),
-        };
         let mut accounts = vec![
             AccountMeta::new(core, false),
             AccountMeta::new_readonly(opener.pubkey(), true),
@@ -316,7 +311,12 @@ impl Incident {
                 Instruction {
                     program_id: core_program(),
                     accounts,
-                    data: instruction_data("open_incident", &OpenIncidentIx { args }),
+                    data: instruction_data(
+                        "open_incident",
+                        &ClaimDigestArg {
+                            claim_digest: vinct_program_tests::sha256(CANARY_CLAIM),
+                        },
+                    ),
                 },
                 &[&opener],
             )
@@ -325,45 +325,32 @@ impl Incident {
         sibling
     }
 
-    /// Ballots ordered by the member each belongs to, which is the order certification wants.
-    ///
-    /// Not the same as ordering by ballot address: the address is a hash of the member, so
-    /// the two orders are unrelated. Sorting by address is the mistake this helper exists to
-    /// stop a test from making by accident.
-    fn ballots_for(&self, members: &[Address]) -> Vec<Address> {
-        let mut pairs: Vec<(Address, Address)> = members
-            .iter()
-            .map(|member| (*member, self.attestation(member)))
-            .collect();
-        pairs.sort_by_key(|(member, _)| member.to_bytes());
-        pairs.into_iter().map(|(_, ballot)| ballot).collect()
-    }
-
-    /// Creates a ballot for a key that is not in the frozen set.
-    fn add_ballot_for(&mut self, member: &Address) -> Address {
+    /// Tries to create a ballot for a key, returning whatever the program said.
+    fn add_ballot_result(
+        &mut self,
+        member: &Address,
+    ) -> Result<TransactionMetadata, FailedTransactionMetadata> {
         let opener = self.opener();
         let attestation = self.attestation(member);
-        self.world
-            .send(
-                Instruction {
-                    program_id: core_program(),
-                    accounts: vec![
-                        AccountMeta::new_readonly(self.core, false),
-                        AccountMeta::new(attestation, false),
-                        AccountMeta::new(opener.pubkey(), true),
-                        AccountMeta::new_readonly(Address::default(), false),
-                    ],
-                    data: instruction_data(
-                        "initialize_attestation",
-                        &MemberArg {
-                            member: member.to_bytes(),
-                        },
-                    ),
-                },
-                &[&opener],
-            )
-            .expect("spare ballot initializes");
-        attestation
+        self.world.send(
+            Instruction {
+                program_id: core_program(),
+                accounts: vec![
+                    AccountMeta::new_readonly(self.core, false),
+                    AccountMeta::new_readonly(covenant_membership(&self.covenant, member), false),
+                    AccountMeta::new(attestation, false),
+                    AccountMeta::new(opener.pubkey(), true),
+                    AccountMeta::new_readonly(Address::default(), false),
+                ],
+                data: instruction_data(
+                    "initialize_attestation",
+                    &MemberArg {
+                        member: member.to_bytes(),
+                    },
+                ),
+            },
+            &[&opener],
+        )
     }
 
     /// Every ballot in the frozen set, in canonical order.
@@ -373,8 +360,13 @@ impl Incident {
             .collect()
     }
 
+    /// The responder who opens the incident.
+    ///
+    /// A covenant member, because opening now requires a ratified membership. That also
+    /// makes the read tests stronger: the principal who cannot read a peer's ballot is a
+    /// peer, not an outsider.
     fn opener(&self) -> Keypair {
-        self.world.steward.insecure_clone()
+        self.members[0].insecure_clone()
     }
 
     fn attestation(&self, member: &Address) -> Address {
@@ -397,6 +389,11 @@ impl Incident {
             program_id: core_program(),
             accounts: vec![
                 AccountMeta::new(self.core, false),
+                AccountMeta::new_readonly(self.covenant, false),
+                AccountMeta::new_readonly(
+                    covenant_membership(&self.covenant, &opener.pubkey()),
+                    false,
+                ),
                 AccountMeta::new(opener.pubkey(), true),
                 AccountMeta::new_readonly(system, false),
             ],
@@ -404,7 +401,7 @@ impl Incident {
                 "initialize_incident",
                 &InitializeIncidentArgs {
                     incident_id: self.incident_id,
-                    covenant: self.world.covenant.to_bytes(),
+                    covenant: self.covenant.to_bytes(),
                 },
             ),
         };
@@ -433,6 +430,7 @@ impl Incident {
                 program_id: core_program(),
                 accounts: vec![
                     AccountMeta::new_readonly(self.core, false),
+                    AccountMeta::new_readonly(covenant_membership(&self.covenant, &member), false),
                     AccountMeta::new(attestation, false),
                     AccountMeta::new(opener.pubkey(), true),
                     AccountMeta::new_readonly(system, false),
@@ -450,63 +448,33 @@ impl Incident {
         }
     }
 
-    fn open(
-        &mut self,
-        required_approvals: u8,
-    ) -> Result<TransactionMetadata, FailedTransactionMetadata> {
-        self.open_with(required_approvals, 1, 5_000)
+    /// Opens the incident. The terms come from the covenant, so there is nothing to pass.
+    fn open(&mut self) -> Result<TransactionMetadata, FailedTransactionMetadata> {
+        let ballots = self.ballots();
+        self.open_with_ballots(&ballots)
     }
 
-    fn open_with(
+    fn open_with_ballots(
         &mut self,
-        required_approvals: u8,
-        maximum_rejections: u8,
-        response_window_slots: u64,
-    ) -> Result<TransactionMetadata, FailedTransactionMetadata> {
-        let members: Vec<[u8; 32]> = self.members.iter().map(|m| m.pubkey().to_bytes()).collect();
-        self.open_with_members(
-            required_approvals,
-            maximum_rejections,
-            response_window_slots,
-            members,
-            (0..self.members.len())
-                .map(|index| self.attestation_of(index))
-                .collect(),
-        )
-    }
-
-    fn open_with_members(
-        &mut self,
-        required_approvals: u8,
-        maximum_rejections: u8,
-        response_window_slots: u64,
-        members: Vec<[u8; 32]>,
-        ballots: Vec<Address>,
+        ballots: &[Address],
     ) -> Result<TransactionMetadata, FailedTransactionMetadata> {
         let opener = self.opener();
-        let args = OpenIncidentArgs {
-            incident_id: self.incident_id,
-            covenant: self.world.covenant.to_bytes(),
-            circle_epoch: 1,
-            policy_id: self.world.policy_id,
-            cluster_genesis_hash: CLUSTER,
-            required_approvals,
-            maximum_rejections,
-            response_window_slots,
-            members,
-            claim_digest: vinct_program_tests::sha256(CANARY_CLAIM),
-        };
         let mut accounts = vec![
             AccountMeta::new(self.core, false),
             AccountMeta::new_readonly(opener.pubkey(), true),
         ];
         for ballot in ballots {
-            accounts.push(AccountMeta::new_readonly(ballot, false));
+            accounts.push(AccountMeta::new_readonly(*ballot, false));
         }
         let instruction = Instruction {
             program_id: core_program(),
             accounts,
-            data: instruction_data("open_incident", &OpenIncidentIx { args }),
+            data: instruction_data(
+                "open_incident",
+                &ClaimDigestArg {
+                    claim_digest: vinct_program_tests::sha256(CANARY_CLAIM),
+                },
+            ),
         };
         self.world.send(instruction, &[&opener])
     }
@@ -723,7 +691,7 @@ impl Incident {
                 instruction_name,
                 &ExitArgs {
                     incident_id: self.incident_id,
-                    covenant: self.world.covenant.to_bytes(),
+                    covenant: self.covenant.to_bytes(),
                 },
             ),
         };
@@ -763,8 +731,9 @@ impl Incident {
         let body = &data[8..];
         // version(2) covenant(32) epoch(8) incident_id(8) opener(32) status(1) policy(32)
         // member_set(32) cluster(32) required(1) max_rejections(1) opened(8) expires(8)
-        // claim_digest(32) operation_id(32) member_count(1) approvals(1) rejections(1)
-        let offset = 2 + 32 + 8 + 8 + 32 + 1 + 32 + 32 + 32 + 1 + 1 + 8 + 8 + 32 + 32 + 1;
+        // window(8) claim_digest(32) operation_id(32) member_count(1) approvals(1)
+        // rejections(1)
+        let offset = 2 + 32 + 8 + 8 + 32 + 1 + 32 + 32 + 32 + 1 + 1 + 8 + 8 + 8 + 32 + 32 + 1;
         (body[offset], body[offset + 1])
     }
 
@@ -775,7 +744,7 @@ impl Incident {
 
     /// Drives the incident to a certified state with every canary written.
     fn run_to_certified(&mut self) {
-        self.open(2).expect("incident opens");
+        self.open().expect("incident opens");
         self.submit_claim().expect("claim stored");
         for index in 0..ATTESTING_MEMBERS {
             self.attest(index, APPROVE).expect("member attests");
@@ -803,7 +772,7 @@ const STATUS_REJECTED: u8 = 4;
 #[test]
 fn no_account_holds_a_live_tally() {
     let mut incident = Incident::new();
-    incident.open(2).expect("incident opens");
+    incident.open().expect("incident opens");
     incident.submit_claim().expect("claim stored");
 
     assert_eq!(incident.terminal_counts(), (0, 0));
@@ -846,7 +815,7 @@ fn no_account_holds_a_live_tally() {
 #[test]
 fn a_decision_is_written_only_to_its_own_account() {
     let mut incident = Incident::new();
-    incident.open(2).expect("incident opens");
+    incident.open().expect("incident opens");
     incident
         .attest_with_nonce(0, REJECT, CANARY_NONCE_BASE + 1)
         .expect("member 0 attests");
@@ -880,7 +849,7 @@ fn a_decision_is_written_only_to_its_own_account() {
 #[test]
 fn certification_does_not_wait_for_a_silent_member() {
     let mut incident = Incident::new();
-    incident.open(2).expect("incident opens");
+    incident.open().expect("incident opens");
     incident.attest(0, APPROVE).expect("member 0 attests");
     incident.attest(1, APPROVE).expect("member 1 attests");
 
@@ -899,7 +868,7 @@ fn certification_does_not_wait_for_a_silent_member() {
 #[test]
 fn certification_refuses_a_missing_ballot() {
     let mut incident = Incident::new();
-    incident.open(2).expect("incident opens");
+    incident.open().expect("incident opens");
     incident.attest(0, APPROVE).expect("member 0 attests");
     incident.attest(1, APPROVE).expect("member 1 attests");
 
@@ -910,21 +879,6 @@ fn certification_refuses_a_missing_ballot() {
     );
 }
 
-/// An extra ballot is refused on count, even when every account in the list is valid.
-#[test]
-fn certification_refuses_an_extra_ballot() {
-    let mut incident = Incident::with_members(3);
-    let extra = Keypair::new().pubkey();
-    let spare = incident.add_ballot_for(&extra);
-    incident.open(2).expect("incident opens");
-
-    let mut everyone: Vec<Address> = incident.members.iter().map(|m| m.pubkey()).collect();
-    everyone.push(extra);
-    let ballots = incident.ballots_for(&everyone);
-    let _ = spare;
-    assert_failed_with(incident.certify_with(&ballots), "AttestationCountMismatch");
-}
-
 /// A duplicate cannot be strictly ascending, so it is refused as an ordering violation.
 ///
 /// Strict ascent is a stronger rule than "no duplicates" and subsumes it, which is why there
@@ -932,7 +886,7 @@ fn certification_refuses_an_extra_ballot() {
 #[test]
 fn certification_refuses_a_duplicated_ballot() {
     let mut incident = Incident::new();
-    incident.open(2).expect("incident opens");
+    incident.open().expect("incident opens");
     incident.attest(0, APPROVE).expect("member 0 attests");
 
     let ballots = incident.ballots();
@@ -949,7 +903,7 @@ fn certification_refuses_a_duplicated_ballot() {
 #[test]
 fn certification_refuses_a_reordered_ballot_set() {
     let mut incident = Incident::new();
-    incident.open(2).expect("incident opens");
+    incident.open().expect("incident opens");
     incident.attest(0, APPROVE).expect("member 0 attests");
     incident.attest(1, APPROVE).expect("member 1 attests");
 
@@ -969,40 +923,15 @@ fn certification_refuses_a_reordered_ballot_set() {
 #[test]
 fn certification_refuses_a_ballot_from_another_incident() {
     let mut incident = Incident::new();
-    let sibling = incident.add_sibling(78, 3);
+    let sibling = incident.add_sibling(78);
 
-    incident.open(2).expect("incident opens");
+    incident.open().expect("incident opens");
     incident.attest(0, APPROVE).expect("member 0 attests");
     incident.attest(1, APPROVE).expect("member 1 attests");
 
     let mut ballots = incident.ballots();
     ballots[2] = sibling.attestation_of(2);
     assert_failed_with(incident.certify_with(&ballots), "OperationMismatch");
-}
-
-/// A ballot from a member outside the frozen set cannot stand in for one inside it.
-///
-/// Every account here is a real, correctly derived ballot of this incident. Only the set is
-/// wrong, and only the commitment catches it.
-#[test]
-fn certification_refuses_a_ballot_outside_the_frozen_set() {
-    let mut incident = Incident::with_members(3);
-    let outsider = Keypair::new();
-    let spare = incident.add_ballot_for(&outsider.pubkey());
-    incident.open(2).expect("incident opens");
-    incident.attest(0, APPROVE).expect("member 0 attests");
-    incident.attest(1, APPROVE).expect("member 1 attests");
-
-    // Drop the silent member and put the outsider in its place. Same count, same canonical
-    // ordering rule, every account a real ballot of this incident.
-    let mut swapped: Vec<Address> = incident.members[..2].iter().map(|m| m.pubkey()).collect();
-    swapped.push(outsider.pubkey());
-    let ballots = incident.ballots_for(&swapped);
-    let _ = spare;
-    assert_failed_with(
-        incident.certify_with(&ballots),
-        "BallotSetDoesNotMatchSnapshot",
-    );
 }
 
 /// A ballot cannot be relabelled to another member.
@@ -1012,7 +941,7 @@ fn certification_refuses_a_ballot_outside_the_frozen_set() {
 #[test]
 fn certification_refuses_a_relabelled_ballot() {
     let mut incident = Incident::new();
-    incident.open(2).expect("incident opens");
+    incident.open().expect("incident opens");
 
     let ballot = incident.attestation_of(0);
     let other_member = incident.members[1].pubkey();
@@ -1037,7 +966,7 @@ fn certification_refuses_a_relabelled_ballot() {
 #[test]
 fn certification_refuses_a_ballot_this_program_does_not_own() {
     let mut incident = Incident::new();
-    incident.open(2).expect("incident opens");
+    incident.open().expect("incident opens");
 
     let ballot = incident.attestation_of(0);
     let mut account = incident
@@ -1060,7 +989,7 @@ fn certification_refuses_a_ballot_this_program_does_not_own() {
 #[test]
 fn certification_refuses_a_ballot_from_another_schema_version() {
     let mut incident = Incident::new();
-    incident.open(2).expect("incident opens");
+    incident.open().expect("incident opens");
 
     let ballot = incident.attestation_of(0);
     let mut account = incident
@@ -1110,8 +1039,8 @@ fn certification_refuses_a_scrubbed_ballot() {
 #[test]
 fn certification_refuses_a_substituted_core() {
     let mut incident = Incident::new();
-    let sibling = incident.add_sibling(78, 3);
-    incident.open(2).expect("incident opens");
+    let sibling = incident.add_sibling(78);
+    incident.open().expect("incident opens");
     incident.attest(0, APPROVE).expect("member 0 attests");
     incident.attest(1, APPROVE).expect("member 1 attests");
 
@@ -1135,66 +1064,47 @@ fn certification_refuses_a_substituted_core() {
 
 // ------------------------------------------------------- freezing the set
 
-/// Opening refuses a member set that is not strictly ascending.
-#[test]
-fn opening_refuses_an_unsorted_member_set() {
-    let mut incident = Incident::new();
-    let mut members: Vec<[u8; 32]> = incident
-        .members
-        .iter()
-        .map(|m| m.pubkey().to_bytes())
-        .collect();
-    members.reverse();
-    let mut ballots = incident.ballots();
-    ballots.reverse();
-
-    assert_failed_with(
-        incident.open_with_members(2, 1, 5_000, members, ballots),
-        "MemberSetNotAscending",
-    );
-}
-
-/// Opening refuses a repeated member.
-#[test]
-fn opening_refuses_a_repeated_member() {
-    let mut incident = Incident::new();
-    let first = incident.members[0].pubkey().to_bytes();
-    let ballot = incident.attestation_of(0);
-
-    assert_failed_with(
-        incident.open_with_members(1, 1, 5_000, vec![first, first], vec![ballot, ballot]),
-        "MemberSetNotAscending",
-    );
-}
-
-/// Opening refuses a member with no ballot account.
+/// Opening refuses a ballot set that is not the covenant's.
 ///
-/// Freezing a set that named a member without a ballot would make certification impossible
-/// for the incident's whole life: it demands the complete set, and nothing afterwards can
-/// create the missing one.
+/// The member set is no longer an argument to opening: it is copied off the covenant when
+/// the incident is created. What opening still has to check is that the ballots it is handed
+/// are that set.
 #[test]
-fn opening_refuses_a_member_without_a_ballot() {
-    let mut incident = Incident::with_members(3);
-    let stranger = Keypair::new();
-    let mut members: Vec<[u8; 32]> = incident
-        .members
-        .iter()
-        .map(|m| m.pubkey().to_bytes())
-        .collect();
-    members.push(stranger.pubkey().to_bytes());
-    members.sort();
+fn opening_refuses_a_ballot_set_that_is_not_the_covenants() {
+    let mut incident = Incident::new();
+    let ballots = incident.ballots();
 
-    let mut everyone: Vec<Address> = incident.members.iter().map(|m| m.pubkey()).collect();
-    everyone.push(stranger.pubkey());
-    let ballots = incident.ballots_for(&everyone);
-
-    // An account that was never created is owned by the system program, so the owner check
-    // is what refuses it. The name is about ownership rather than existence, which is the
-    // same fact stated from the side the program can actually observe.
     assert_failed_with(
-        incident.open_with_members(2, 1, 5_000, members, ballots),
-        "IncidentWrongOwner",
+        incident.open_with_ballots(&ballots[..2]),
+        "AttestationCountMismatch",
     );
+
+    let mut reversed = ballots.clone();
+    reversed.reverse();
+    assert_failed_with(
+        incident.open_with_ballots(&reversed),
+        "MemberSetNotAscending",
+    );
+
+    incident.open().expect("the covenant's own set opens");
+}
+
+/// A ballot cannot be created for a key the covenant does not know.
+///
+/// Certification would refuse it anyway, because the frozen commitment would not match. This
+/// refuses it where the mistake is made, which is the difference between a confusing failure
+/// at settlement time and a clear one at setup.
+#[test]
+fn a_ballot_cannot_be_created_for_a_non_member() {
+    let mut incident = Incident::new();
+    let stranger = Keypair::new();
+
+    let result = incident.add_ballot_result(&stranger.pubkey());
+    let name = match &result {
+        Ok(_) => panic!("a ballot was created for a key outside the covenant"),
+        Err(failure) => anchor_error_name(failure),
+    };
+    assert_eq!(name.as_deref(), Some("AccountNotInitialized"));
 }
 
 /// The frozen commitment is what certification checks against, and it is computed on chain.
@@ -1204,7 +1114,7 @@ fn opening_refuses_a_member_without_a_ballot() {
 #[test]
 fn the_frozen_commitment_is_derived_from_the_supplied_members() {
     let mut incident = Incident::new();
-    incident.open(2).expect("incident opens");
+    incident.open().expect("incident opens");
 
     let core = incident.raw(&incident.core);
     let body = &core[8..];
@@ -1263,8 +1173,8 @@ fn the_scrub_removes_every_canary() {
 /// before the members finished responding.
 #[test]
 fn a_live_incident_cannot_be_scrubbed() {
-    let mut incident = Incident::new();
-    incident.open(3).expect("incident opens");
+    let mut incident = Incident::with_terms(3, 3, 1, 5_000);
+    incident.open().expect("incident opens");
     incident.submit_claim().expect("claim stored");
     incident.attest(0, APPROVE).expect("member 0 attests");
 
@@ -1279,8 +1189,8 @@ fn a_live_incident_cannot_be_scrubbed() {
 /// deadline rather than staying open forever.
 #[test]
 fn an_unanswered_incident_expires() {
-    let mut incident = Incident::new();
-    incident.open_with(2, 1, 20).expect("incident opens");
+    let mut incident = Incident::with_terms(3, 2, 1, 20);
+    incident.open().expect("incident opens");
     incident.submit_claim().expect("claim stored");
 
     assert_failed_with(incident.certify(), "IncidentNotTerminal");
@@ -1304,8 +1214,8 @@ fn an_unanswered_incident_expires() {
 /// expired. That distinction matches the reference model and reveals no timing.
 #[test]
 fn a_blocked_incident_is_recorded_as_rejected_at_its_deadline() {
-    let mut incident = Incident::new();
-    incident.open_with(2, 0, 20).expect("incident opens");
+    let mut incident = Incident::with_terms(3, 2, 0, 20);
+    incident.open().expect("incident opens");
     incident.submit_claim().expect("claim stored");
     incident.attest(0, REJECT).expect("member 0 rejects");
     incident.attest(1, APPROVE).expect("member 1 approves");
@@ -1420,7 +1330,7 @@ fn a_scrubbed_incident_clears_the_gate_on_both_exits() {
 #[test]
 fn an_unauthorized_wallet_has_no_ballot() {
     let mut incident = Incident::new();
-    incident.open(2).expect("incident opens");
+    incident.open().expect("incident opens");
 
     let outsider = Keypair::new();
     incident
@@ -1445,7 +1355,7 @@ fn an_unauthorized_wallet_has_no_ballot() {
 #[test]
 fn a_member_cannot_attest_into_another_members_ballot() {
     let mut incident = Incident::new();
-    incident.open(2).expect("incident opens");
+    incident.open().expect("incident opens");
 
     let member_zero = incident.members[0].insecure_clone();
     let ballot_one = incident.attestation_of(1);
@@ -1463,9 +1373,9 @@ fn a_member_cannot_attest_into_another_members_ballot() {
 #[test]
 fn only_the_opener_may_submit_the_private_claim() {
     let mut incident = Incident::new();
-    incident.open(2).expect("incident opens");
+    incident.open().expect("incident opens");
 
-    let member = incident.members[0].insecure_clone();
+    let member = incident.members[1].insecure_clone();
     assert_failed_with(incident.submit_claim_as(&member), "NotTheOpener");
 }
 
@@ -1473,7 +1383,7 @@ fn only_the_opener_may_submit_the_private_claim() {
 #[test]
 fn a_duplicate_submission_nonce_is_refused() {
     let mut incident = Incident::new();
-    incident.open(2).expect("incident opens");
+    incident.open().expect("incident opens");
     incident
         .attest_with_nonce(0, APPROVE, 5)
         .expect("first submission accepted");
@@ -1491,8 +1401,8 @@ fn a_duplicate_submission_nonce_is_refused() {
 /// Attestations stop at the deadline.
 #[test]
 fn a_stale_attestation_is_refused_after_the_window() {
-    let mut incident = Incident::new();
-    incident.open_with(2, 1, 10).expect("incident opens");
+    let mut incident = Incident::with_terms(3, 2, 1, 10);
+    incident.open().expect("incident opens");
 
     let target = incident.world.current_slot() + 20;
     incident.world.svm.warp_to_slot(target);
@@ -1504,7 +1414,7 @@ fn a_stale_attestation_is_refused_after_the_window() {
 #[test]
 fn a_quarantined_member_cannot_attest() {
     let mut incident = Incident::new();
-    incident.open(2).expect("incident opens");
+    incident.open().expect("incident opens");
     incident.quarantine(0).expect("member 0 quarantined");
 
     assert_failed_with(incident.attest(0, APPROVE), "MemberQuarantined");
@@ -1514,7 +1424,7 @@ fn a_quarantined_member_cannot_attest() {
 #[test]
 fn a_stranger_cannot_quarantine_a_member() {
     let mut incident = Incident::new();
-    incident.open(2).expect("incident opens");
+    incident.open().expect("incident opens");
 
     let member_one = incident.members[1].insecure_clone();
     let ballot_zero = incident.attestation_of(0);
@@ -1531,15 +1441,15 @@ fn a_stranger_cannot_quarantine_a_member() {
 #[test]
 fn quarantine_discards_an_approval_and_keeps_a_rejection() {
     let mut approving = Incident::new();
-    approving.open_with(2, 1, 5_000).expect("incident opens");
+    approving.open().expect("incident opens");
     approving.attest(0, APPROVE).expect("member 0 approves");
     approving.attest(1, APPROVE).expect("member 1 approves");
     approving.quarantine(0).expect("member 0 quarantined");
     // One approval left against a threshold of two, so this is not terminal.
     assert_failed_with(approving.certify(), "IncidentNotTerminal");
 
-    let mut rejecting = Incident::new();
-    rejecting.open_with(2, 0, 5_000).expect("incident opens");
+    let mut rejecting = Incident::with_terms(3, 2, 0, 5_000);
+    rejecting.open().expect("incident opens");
     rejecting.attest(0, REJECT).expect("member 0 rejects");
     rejecting.attest(1, APPROVE).expect("member 1 approves");
     rejecting.attest(2, APPROVE).expect("member 2 approves");
@@ -1562,7 +1472,7 @@ fn quarantine_discards_an_approval_and_keeps_a_rejection() {
 #[test]
 fn only_the_opener_may_grant_access_to_the_claim() {
     let mut incident = Incident::new();
-    incident.open(2).expect("incident opens");
+    incident.open().expect("incident opens");
     incident.submit_claim().expect("claim stored");
 
     let intruder = Keypair::new();
@@ -1654,7 +1564,7 @@ fn only_the_opener_may_delegate_the_incident() {
 
     let mut data = vinct_program_tests::instruction_discriminator("delegate_incident").to_vec();
     data.extend_from_slice(&incident.incident_id.to_le_bytes());
-    data.extend_from_slice(incident.world.covenant.as_ref());
+    data.extend_from_slice(incident.covenant.as_ref());
 
     let instruction = Instruction {
         program_id: core_program(),
@@ -1687,7 +1597,7 @@ fn only_the_opener_may_delegate_the_incident() {
 #[test]
 fn no_instruction_logs_a_canary() {
     let mut incident = Incident::new();
-    incident.open(2).expect("incident opens");
+    incident.open().expect("incident opens");
 
     let mut logs: Vec<String> = Vec::new();
     logs.extend(incident.submit_claim().expect("claim stored").logs);
@@ -1738,7 +1648,7 @@ fn no_account_length_ever_moves() {
     };
     let initial = sizes(&incident);
 
-    incident.open(2).expect("incident opens");
+    incident.open().expect("incident opens");
     assert_eq!(sizes(&incident), initial, "opening resized an account");
 
     incident.submit_claim().expect("claim stored");
@@ -1760,7 +1670,7 @@ fn no_account_length_ever_moves() {
 #[test]
 fn a_submission_returns_no_data() {
     let mut incident = Incident::new();
-    incident.open(2).expect("incident opens");
+    incident.open().expect("incident opens");
 
     let metadata = incident.attest(0, APPROVE).expect("member 0 attests");
     assert!(
@@ -1780,7 +1690,7 @@ fn a_terminal_incident_refuses_further_submissions() {
     assert_failed_with(incident.submit_claim(), "IncidentNotCollecting");
     assert_failed_with(incident.quarantine(2), "IncidentNotCollecting");
     assert_failed_with(incident.certify(), "IncidentNotCollecting");
-    assert_failed_with(incident.open(2), "IncidentAlreadyOpened");
+    assert_failed_with(incident.open(), "IncidentAlreadyOpened");
 
     assert!(
         incident.surviving_canaries().is_empty(),
@@ -1793,7 +1703,7 @@ fn a_terminal_incident_refuses_further_submissions() {
 #[test]
 fn the_public_core_reveals_only_status_and_deadline() {
     let mut incident = Incident::new();
-    incident.open(2).expect("incident opens");
+    incident.open().expect("incident opens");
     incident.submit_claim().expect("claim stored");
     incident.attest(0, APPROVE).expect("member 0 attests");
 
@@ -1820,7 +1730,7 @@ fn the_public_core_reveals_only_status_and_deadline() {
 /// Builds an incident with a given number of approvals already in.
 fn incident_with_approvals(approvals: usize) -> Incident {
     let mut incident = Incident::new();
-    incident.open(2).expect("incident opens");
+    incident.open().expect("incident opens");
     incident.submit_claim().expect("claim stored");
     for index in 0..approvals {
         incident.attest(index, APPROVE).expect("member attests");
@@ -1846,8 +1756,8 @@ fn a_premature_certification_refuses_identically_whatever_the_tally() {
 
     // Enough rejections to make certification impossible, which the model already calls
     // decided. The program still says only that it is not terminal.
-    let mut blocked = Incident::new();
-    blocked.open_with(2, 0, 5_000).expect("incident opens");
+    let mut blocked = Incident::with_terms(3, 2, 0, 5_000);
+    blocked.open().expect("incident opens");
     blocked.attest(0, REJECT).expect("member 0 rejects");
     blocked.attest(1, APPROVE).expect("member 1 approves");
     blocked.attest(2, APPROVE).expect("member 2 approves");
@@ -1906,8 +1816,8 @@ fn the_public_core_is_identical_whatever_the_tally() {
 /// approval sees exactly what the first member saw.
 #[test]
 fn a_submission_is_acknowledged_identically_however_the_quorum_stands() {
-    let mut incident = Incident::new();
-    incident.open(3).expect("incident opens");
+    let mut incident = Incident::with_terms(3, 3, 1, 5_000);
+    incident.open().expect("incident opens");
 
     let mut acknowledgements = Vec::new();
     for index in 0..3 {
@@ -1938,8 +1848,8 @@ fn a_submission_is_acknowledged_identically_however_the_quorum_stands() {
 /// that the account contents are hiding.
 #[test]
 fn no_account_is_created_or_resized_as_the_tally_moves() {
-    let mut incident = Incident::new();
-    incident.open(3).expect("incident opens");
+    let mut incident = Incident::with_terms(3, 3, 1, 5_000);
+    incident.open().expect("incident opens");
 
     let census = |incident: &Incident| -> Vec<(Address, usize, u64)> {
         let mut all = vec![incident.core, incident.claim];
@@ -1971,7 +1881,7 @@ fn no_account_is_created_or_resized_as_the_tally_moves() {
 #[test]
 fn no_event_is_emitted_while_the_incident_is_collecting() {
     let mut incident = Incident::new();
-    incident.open(2).expect("incident opens");
+    incident.open().expect("incident opens");
 
     // Anchor emits events as base64 `Program data:` log lines.
     let emitted = |metadata: &TransactionMetadata| -> usize {
@@ -2005,8 +1915,8 @@ fn no_event_is_emitted_while_the_incident_is_collecting() {
 /// do reveal something if their cost tracks the tally, stay within a narrow band.
 #[test]
 fn a_submission_costs_the_same_whatever_the_tally() {
-    let mut incident = Incident::new();
-    incident.open(3).expect("incident opens");
+    let mut incident = Incident::with_terms(3, 3, 1, 5_000);
+    incident.open().expect("incident opens");
 
     let mut costs = Vec::new();
     for index in 0..3 {
@@ -2029,12 +1939,12 @@ fn a_submission_costs_the_same_whatever_the_tally() {
 #[test]
 fn quarantine_reveals_nothing_about_whether_the_member_had_voted() {
     let mut voted = Incident::new();
-    voted.open(2).expect("incident opens");
+    voted.open().expect("incident opens");
     voted.attest(0, APPROVE).expect("member 0 attests");
     let with_vote = voted.quarantine(0).expect("quarantined");
 
     let mut silent = Incident::new();
-    silent.open(2).expect("incident opens");
+    silent.open().expect("incident opens");
     let without_vote = silent.quarantine(0).expect("quarantined");
 
     assert_eq!(

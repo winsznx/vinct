@@ -16,6 +16,7 @@
 #![allow(clippy::diverging_sub_expression)]
 #![allow(clippy::result_large_err)]
 
+pub mod covenant;
 pub mod incident;
 
 use anchor_lang::prelude::*;
@@ -127,12 +128,187 @@ pub mod vinct_core {
     }
 
     // ------------------------------------------------------------------------
+    // Covenant formation
+    // ------------------------------------------------------------------------
+
+    /// Base layer. Convenes a covenant.
+    ///
+    /// The steward signs and holds nothing else. It can add members and it cannot ratify for
+    /// them, arm for them, or act on their protocols. Every later step needs the protocol
+    /// authority's own signature.
+    pub fn create_covenant(
+        ctx: Context<CreateCovenant>,
+        args: covenant::CreateCovenantArgs,
+    ) -> Result<()> {
+        covenant::check_terms(&args)?;
+        let clock = Clock::get()?;
+        let account = &mut ctx.accounts.covenant;
+        account.version = incident::INCIDENT_SCHEMA_VERSION;
+        account.steward = ctx.accounts.steward.key();
+        account.covenant_id = args.covenant_id;
+        account.circle_epoch = args.circle_epoch;
+        account.cluster_genesis_hash = args.cluster_genesis_hash;
+        account.status = covenant::CovenantStatus::Draft;
+        account.policy_id = args.policy_id;
+        account.required_approvals = args.required_approvals;
+        account.maximum_rejections = args.maximum_rejections;
+        account.response_window_slots = args.response_window_slots;
+        account.certificate_lifetime_slots = args.certificate_lifetime_slots;
+        account.valid_from_slot = clock.slot;
+        account.expires_at_slot = clock
+            .slot
+            .checked_add(args.epoch_lifetime_slots)
+            .ok_or(CoreError::ArithmeticOverflow)?;
+        account.bump = ctx.bumps.covenant;
+        Ok(())
+    }
+
+    /// Base layer. Adds one protocol to a draft covenant.
+    ///
+    /// Only while the covenant is still a draft. After ratification the member set is frozen,
+    /// and a membership change is a new epoch rather than an edit, because incidents already
+    /// in flight carry the epoch they opened under.
+    pub fn add_covenant_member(
+        ctx: Context<AddCovenantMember>,
+        protocol: Pubkey,
+        role: covenant::MemberRole,
+        adapter_capability: Pubkey,
+    ) -> Result<()> {
+        require!(
+            ctx.accounts.covenant.status == covenant::CovenantStatus::Draft,
+            CoreError::CovenantNotDraft
+        );
+        require!(
+            usize::from(ctx.accounts.covenant.member_count) < incident::MAX_INCIDENT_MEMBERS,
+            CoreError::TooManyPermissionMembers
+        );
+
+        let member = &mut ctx.accounts.member;
+        member.version = incident::INCIDENT_SCHEMA_VERSION;
+        member.covenant = ctx.accounts.covenant.key();
+        member.protocol = protocol;
+        member.role = role;
+        member.adapter_capability = adapter_capability;
+        member.bump = ctx.bumps.member;
+
+        let account = &mut ctx.accounts.covenant;
+        account.member_count = account.member_count.saturating_add(1);
+        Ok(())
+    }
+
+    /// Base layer. One protocol ratifies its own membership.
+    ///
+    /// The protocol authority signs. Nobody can do this for them, which is what makes the
+    /// ratified count mean something.
+    pub fn ratify_covenant_member(ctx: Context<CovenantMemberAction>) -> Result<()> {
+        require!(
+            ctx.accounts.covenant.status == covenant::CovenantStatus::Draft,
+            CoreError::CovenantNotDraft
+        );
+        require!(!ctx.accounts.member.ratified, CoreError::AlreadyRatified);
+        ctx.accounts.member.ratified = true;
+
+        let account = &mut ctx.accounts.covenant;
+        account.ratified_count = account.ratified_count.saturating_add(1);
+        Ok(())
+    }
+
+    /// Base layer. Freezes the member set once every member has ratified.
+    ///
+    /// Every member account is supplied in `remaining_accounts`, strictly ascending by
+    /// protocol authority, and the commitment is computed here rather than accepted. It is
+    /// the same commitment an incident's ballot set is later checked against, so binding an
+    /// incident to a covenant is one equality rather than a second scheme.
+    ///
+    /// Permissionless. Every signature that matters was already collected, and requiring one
+    /// more would let whoever held it stall a circle that had already agreed.
+    pub fn ratify_covenant<'info>(ctx: Context<'info, RatifyCovenant<'info>>) -> Result<()> {
+        require!(
+            ctx.accounts.covenant.status == covenant::CovenantStatus::Draft,
+            CoreError::CovenantNotDraft
+        );
+        require!(
+            ctx.accounts.covenant.member_count > 0,
+            CoreError::PermissionNeedsAMember
+        );
+        require!(
+            ctx.accounts.covenant.ratified_count == ctx.accounts.covenant.member_count,
+            CoreError::MemberHasNotRatified
+        );
+        require!(
+            ctx.accounts.covenant.required_approvals <= ctx.accounts.covenant.member_count,
+            CoreError::ThresholdExceedsMembers
+        );
+
+        let key = ctx.accounts.covenant.key();
+        let (member_set_hash, adapter_count) =
+            covenant::reconstruct_members(&ctx.accounts.covenant, key, ctx.remaining_accounts)?;
+
+        let account = &mut ctx.accounts.covenant;
+        account.member_set_hash = member_set_hash;
+        account.adapter_count = adapter_count;
+        account.status = covenant::CovenantStatus::Ratified;
+        Ok(())
+    }
+
+    /// Base layer. One protocol arms its own adapter at a version.
+    ///
+    /// Separate from ratification because agreeing to a covenant and being ready to act under
+    /// it are different commitments, and a protocol may want the first without the second yet.
+    pub fn arm_covenant_member(
+        ctx: Context<CovenantMemberAction>,
+        adapter_version: u16,
+    ) -> Result<()> {
+        require!(
+            ctx.accounts.covenant.status == covenant::CovenantStatus::Ratified
+                || ctx.accounts.covenant.status == covenant::CovenantStatus::Armed,
+            CoreError::CovenantNotRatified
+        );
+        require!(
+            ctx.accounts.member.role.owns_an_adapter(),
+            CoreError::MemberOwnsNoAdapter
+        );
+        require!(adapter_version > 0, CoreError::ZeroAdapterVersion);
+        require!(!ctx.accounts.member.armed, CoreError::AlreadyArmed);
+
+        ctx.accounts.member.armed = true;
+        ctx.accounts.member.adapter_version = adapter_version;
+
+        let account = &mut ctx.accounts.covenant;
+        account.armed_count = account.armed_count.saturating_add(1);
+        Ok(())
+    }
+
+    /// Base layer. Arms the circle once every adapter-owning member has armed.
+    pub fn arm_covenant(ctx: Context<ArmCovenant>) -> Result<()> {
+        require!(
+            ctx.accounts.covenant.status == covenant::CovenantStatus::Ratified,
+            CoreError::CovenantNotRatified
+        );
+        require!(
+            ctx.accounts.covenant.armed_count == ctx.accounts.covenant.adapter_count,
+            CoreError::AdapterNotArmed
+        );
+        ctx.accounts.covenant.status = covenant::CovenantStatus::Armed;
+        Ok(())
+    }
+
+    // ------------------------------------------------------------------------
     // Private incident lifecycle
     // ------------------------------------------------------------------------
 
-    /// Base layer. Creates the public incident core.
+    /// Base layer. Creates the public incident core, bound to a ratified covenant.
     ///
-    /// Nothing here is private, so nothing here is permissioned. It is the account an
+    /// The snapshot is copied out of the covenant, not supplied. Threshold, rejection
+    /// ceiling, response window, policy, epoch, and the frozen member set all come from an
+    /// armed circle that its members ratified, so the responder who opens an incident cannot
+    /// choose a set or a threshold that suits them.
+    ///
+    /// Freezing happens here, on the base layer, where the covenant is authoritative. The
+    /// ephemeral rollup later checks ballots against the frozen commitment and never has to
+    /// read the covenant at all, which also means it can never read a stale clone of one.
+    ///
+    /// Nothing on this account is private, so nothing here is permissioned. It is what an
     /// observer reads to learn that an incident is open and when it closes, and it is
     /// deliberately incapable of telling them anything else.
     pub fn initialize_incident(
@@ -140,12 +316,36 @@ pub mod vinct_core {
         incident_id: u64,
         covenant: Pubkey,
     ) -> Result<()> {
+        let clock = Clock::get()?;
+        let circle = &ctx.accounts.covenant_account;
+        require_keys_eq!(covenant, circle.key(), CoreError::OperationMismatch);
+        require!(
+            circle.status.may_open_an_incident(),
+            CoreError::CovenantNotArmed
+        );
+        require!(
+            !circle.is_out_of_window(clock.slot),
+            CoreError::CovenantOutOfWindow
+        );
+        require!(
+            ctx.accounts.opener_membership.ratified,
+            CoreError::MemberHasNotRatified
+        );
+
         let core = &mut ctx.accounts.core;
         core.version = incident::INCIDENT_SCHEMA_VERSION;
         core.covenant = covenant;
         core.incident_id = incident_id;
         core.opener = ctx.accounts.opener.key();
         core.status = incident::IncidentStatus::Draft;
+        core.circle_epoch = circle.circle_epoch;
+        core.policy_id = circle.policy_id;
+        core.member_set_hash = circle.member_set_hash;
+        core.cluster_genesis_hash = circle.cluster_genesis_hash;
+        core.required_approvals = circle.required_approvals;
+        core.maximum_rejections = circle.maximum_rejections;
+        core.member_count = circle.member_count;
+        core.response_window_slots = circle.response_window_slots;
         core.bump = ctx.bumps.core;
         Ok(())
     }
@@ -179,6 +379,24 @@ pub mod vinct_core {
         ctx: Context<InitializeAttestation>,
         member: Pubkey,
     ) -> Result<()> {
+        // The membership account proves this key is in the covenant this incident froze. A
+        // ballot for anyone else could never be counted, because the frozen commitment would
+        // not match, but refusing it here says so at the point the mistake is made.
+        require_keys_eq!(
+            ctx.accounts.membership.protocol,
+            member,
+            CoreError::NotAnEligibleMember
+        );
+        require_keys_eq!(
+            ctx.accounts.membership.covenant,
+            ctx.accounts.core.covenant,
+            CoreError::OperationMismatch
+        );
+        require!(
+            ctx.accounts.membership.ratified,
+            CoreError::MemberHasNotRatified
+        );
+
         fund_for_permission(
             &ctx.accounts.system_program,
             &ctx.accounts.opener,
@@ -392,58 +610,34 @@ pub mod vinct_core {
     /// Ephemeral rollup. Opens the incident and freezes its snapshot.
     pub fn open_incident<'info>(
         ctx: Context<'info, OpenIncident<'info>>,
-        args: incident::OpenIncidentArgs,
+        claim_digest: [u8; 32],
     ) -> Result<()> {
-        require!(args.required_approvals > 0, CoreError::ZeroThreshold);
-        require!(
-            args.response_window_slots > 0,
-            CoreError::ZeroResponseWindow
-        );
-
-        // Commits to the member set and checks the order in one place. An out-of-order or
-        // repeating list is rejected here rather than sorted, so the digest is a function of
-        // the set and not of one presentation of it.
-        let member_set_hash = incident::member_set_commitment(&args.members)?;
-        let member_count = args.members.len() as u8;
-        require!(
-            args.required_approvals <= member_count,
-            CoreError::ThresholdExceedsMembers
-        );
-
-        // Every member must already have a ballot account, checked against its canonical
-        // address. Freezing a set that included a member with no ballot would make
-        // certification impossible for the life of the incident, because certification
-        // demands the whole set and nothing later could create the missing one.
+        let clock = Clock::get()?;
         let core_key = ctx.accounts.core.key();
         require!(
-            ctx.remaining_accounts.len() == args.members.len(),
-            CoreError::AttestationCountMismatch
-        );
-        for (member, info) in args.members.iter().zip(ctx.remaining_accounts.iter()) {
-            let attestation = read_ballot(info, core_key)?;
-            require_keys_eq!(attestation.member, *member, CoreError::OperationMismatch);
-        }
-
-        let clock = Clock::get()?;
-        let core = &mut ctx.accounts.core;
-        require!(
-            core.status == incident::IncidentStatus::Draft,
+            ctx.accounts.core.status == incident::IncidentStatus::Draft,
             CoreError::IncidentAlreadyOpened
         );
 
-        core.circle_epoch = args.circle_epoch;
-        core.policy_id = args.policy_id;
-        core.member_set_hash = member_set_hash;
-        core.cluster_genesis_hash = args.cluster_genesis_hash;
-        core.required_approvals = args.required_approvals;
-        core.maximum_rejections = args.maximum_rejections;
+        // The ballots have to be the covenant's frozen set, which was copied onto this core
+        // when it was created. Nothing about the set is an argument to this instruction, so
+        // there is nothing for the opener to choose.
+        let ballots =
+            reconstruct_frozen_ballots(&ctx.accounts.core, core_key, ctx.remaining_accounts)?;
+        for ballot in &ballots {
+            require!(
+                ballot.state == incident::BallotState::Empty,
+                CoreError::BallotNotCountable
+            );
+        }
+
+        let core = &mut ctx.accounts.core;
         core.opened_at_slot = clock.slot;
         core.expires_at_slot = clock
             .slot
-            .checked_add(args.response_window_slots)
+            .checked_add(core.response_window_slots)
             .ok_or(CoreError::ArithmeticOverflow)?;
-        core.claim_digest = args.claim_digest;
-        core.member_count = member_count;
+        core.claim_digest = claim_digest;
         core.status = incident::IncidentStatus::Collecting;
         Ok(())
     }
@@ -1147,6 +1341,107 @@ fn require_opener_of_core(account: &UncheckedAccount, signer: Pubkey) -> Result<
 }
 
 // ---------------------------------------------------------------------------
+// Covenant contexts
+// ---------------------------------------------------------------------------
+
+#[derive(Accounts)]
+#[instruction(args: covenant::CreateCovenantArgs)]
+pub struct CreateCovenant<'info> {
+    #[account(
+        init,
+        payer = steward,
+        space = 8 + covenant::Covenant::SIZE,
+        seeds = [
+            covenant::COVENANT_SEED,
+            steward.key().as_ref(),
+            &args.covenant_id.to_le_bytes()
+        ],
+        bump
+    )]
+    pub covenant: Account<'info, covenant::Covenant>,
+    #[account(mut)]
+    pub steward: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(protocol: Pubkey)]
+pub struct AddCovenantMember<'info> {
+    #[account(mut, has_one = steward @ CoreError::NotTheSteward)]
+    pub covenant: Account<'info, covenant::Covenant>,
+    #[account(
+        init,
+        payer = steward,
+        space = 8 + covenant::CovenantMember::SIZE,
+        seeds = [
+            covenant::COVENANT_MEMBER_SEED,
+            covenant.key().as_ref(),
+            protocol.as_ref()
+        ],
+        bump
+    )]
+    pub member: Account<'info, covenant::CovenantMember>,
+    #[account(mut)]
+    pub steward: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+/// Ratifying or arming one membership.
+///
+/// The protocol authority signs its own account. The steward is not in this context at all,
+/// which is the point: convening a circle is not the same as speaking for it.
+#[derive(Accounts)]
+pub struct CovenantMemberAction<'info> {
+    #[account(mut)]
+    pub covenant: Account<'info, covenant::Covenant>,
+    #[account(
+        mut,
+        has_one = protocol @ CoreError::NotTheProtocolAuthority,
+        constraint = member.covenant == covenant.key() @ CoreError::OperationMismatch,
+        seeds = [
+            covenant::COVENANT_MEMBER_SEED,
+            covenant.key().as_ref(),
+            protocol.key().as_ref()
+        ],
+        bump = member.bump
+    )]
+    pub member: Account<'info, covenant::CovenantMember>,
+    pub protocol: Signer<'info>,
+}
+
+/// Freezing the member set.
+///
+/// Every member account arrives in `remaining_accounts`, strictly ascending by protocol
+/// authority. Permissionless: every signature that matters was collected already.
+#[derive(Accounts)]
+pub struct RatifyCovenant<'info> {
+    #[account(
+        mut,
+        seeds = [
+            covenant::COVENANT_SEED,
+            covenant.steward.as_ref(),
+            &covenant.covenant_id.to_le_bytes()
+        ],
+        bump = covenant.bump
+    )]
+    pub covenant: Account<'info, covenant::Covenant>,
+}
+
+#[derive(Accounts)]
+pub struct ArmCovenant<'info> {
+    #[account(
+        mut,
+        seeds = [
+            covenant::COVENANT_SEED,
+            covenant.steward.as_ref(),
+            &covenant.covenant_id.to_le_bytes()
+        ],
+        bump = covenant.bump
+    )]
+    pub covenant: Account<'info, covenant::Covenant>,
+}
+
+// ---------------------------------------------------------------------------
 // Private incident contexts
 // ---------------------------------------------------------------------------
 
@@ -1161,6 +1456,28 @@ pub struct InitializeIncident<'info> {
         bump
     )]
     pub core: Account<'info, incident::IncidentCore>,
+    #[account(
+        seeds = [
+            crate::covenant::COVENANT_SEED,
+            covenant_account.steward.as_ref(),
+            &covenant_account.covenant_id.to_le_bytes()
+        ],
+        bump = covenant_account.bump
+    )]
+    pub covenant_account: Account<'info, covenant::Covenant>,
+    /// The opener's own membership, which is what makes them a responder rather than a
+    /// passer-by. Seed-derived from the covenant and the signer, so it cannot be someone
+    /// else's.
+    #[account(
+        constraint = opener_membership.covenant == covenant_account.key() @ CoreError::OperationMismatch,
+        seeds = [
+            crate::covenant::COVENANT_MEMBER_SEED,
+            covenant_account.key().as_ref(),
+            opener.key().as_ref()
+        ],
+        bump = opener_membership.bump
+    )]
+    pub opener_membership: Account<'info, covenant::CovenantMember>,
     #[account(mut)]
     pub opener: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -1188,6 +1505,17 @@ pub struct InitializeClaim<'info> {
 pub struct InitializeAttestation<'info> {
     #[account(has_one = opener @ CoreError::NotTheOpener)]
     pub core: Account<'info, incident::IncidentCore>,
+    /// The member's covenant membership. Seed-derived from the covenant this incident froze
+    /// and the member the ballot is for, so a ballot cannot be created for an outsider.
+    #[account(
+        seeds = [
+            crate::covenant::COVENANT_MEMBER_SEED,
+            core.covenant.as_ref(),
+            member.as_ref()
+        ],
+        bump = membership.bump
+    )]
+    pub membership: Account<'info, covenant::CovenantMember>,
     #[account(
         init,
         payer = opener,
@@ -1842,4 +2170,28 @@ pub enum CoreError {
     BallotNotCountable,
     #[msg("Account schema version is not the one this program supports")]
     UnsupportedSchemaVersion,
+    #[msg("The covenant is not a draft")]
+    CovenantNotDraft,
+    #[msg("The covenant has not been ratified")]
+    CovenantNotRatified,
+    #[msg("The covenant is not armed, so no incident may open under it")]
+    CovenantNotArmed,
+    #[msg("The covenant epoch is outside its validity window")]
+    CovenantOutOfWindow,
+    #[msg("Only the convening steward may do this")]
+    NotTheSteward,
+    #[msg("Only this membership's protocol authority may do this")]
+    NotTheProtocolAuthority,
+    #[msg("A member has not ratified its own membership")]
+    MemberHasNotRatified,
+    #[msg("This membership has already ratified")]
+    AlreadyRatified,
+    #[msg("This membership owns no adapter")]
+    MemberOwnsNoAdapter,
+    #[msg("Adapter version must be greater than zero")]
+    ZeroAdapterVersion,
+    #[msg("This membership has already armed")]
+    AlreadyArmed,
+    #[msg("An adapter-owning member has not armed")]
+    AdapterNotArmed,
 }

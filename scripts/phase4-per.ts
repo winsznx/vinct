@@ -47,6 +47,15 @@ import {
   CORE_IDL,
   CORE_PROGRAM_ID,
   Decision,
+  MemberRole,
+  addCovenantMember,
+  armCovenant,
+  armCovenantMember,
+  canonicalMemberOrder,
+  covenantAddress,
+  createCovenant,
+  ratifyCovenant,
+  ratifyCovenantMember,
   IncidentStatus,
   attestationAddress,
   authenticate,
@@ -532,7 +541,9 @@ async function main(): Promise<void> {
   const genesisHash = await base.getGenesisHash();
   const clusterGenesisHash = new PublicKey(genesisHash).toBytes();
 
-  const covenant = derivedKeypair(`${RUN_LABEL}:covenant`).publicKey;
+  const steward = derivedKeypair(`${RUN_LABEL}:steward`);
+  const covenantId = BigInt(Number.parseInt(process.env.VINCT_INCIDENT_ID ?? "1", 10));
+  const covenant = covenantAddress(steward.publicKey, covenantId);
   const policyId = sha256(`${RUN_LABEL}:policy`);
   const incidentId = BigInt(Number.parseInt(process.env.VINCT_INCIDENT_ID ?? "1", 10));
   const core = incidentAddress(covenant, incidentId);
@@ -620,7 +631,7 @@ async function main(): Promise<void> {
   say("\nFunding member keys");
   const fundingAmount = 8_000_000;
   const funding: TransactionInstruction[] = [];
-  for (const member of [...members, outsider]) {
+  for (const member of [...members, outsider, steward]) {
     if ((await base.getBalance(member.publicKey)) < fundingAmount / 2) {
       funding.push(
         SystemProgram.transfer({
@@ -665,19 +676,89 @@ async function main(): Promise<void> {
 
   // ------------------------------------------------- base: create and delegate
 
-  say("\nCreating the incident's accounts on base");
+  // ------------------------------------------------------ covenant formation
+  //
+  // Every step needs a different signature. The steward convenes and adds and can do nothing
+  // else; each protocol ratifies and arms its own membership; the two covenant-level steps
+  // take no signer, because by then every signature that mattered has been given.
+
+  say("\nForming the covenant");
   await sendIdempotent(
     base,
-    [initializeIncident(payer.publicKey, covenant, incidentId)],
-    [payer],
-    "initialize public core",
+    [
+      createCovenant(steward.publicKey, {
+        covenantId,
+        circleEpoch: 1n,
+        clusterGenesisHash,
+        policyId,
+        requiredApprovals: 2,
+        maximumRejections: 1,
+        responseWindowSlots: 200_000n,
+        certificateLifetimeSlots: 100_000n,
+        epochLifetimeSlots: 10_000_000n,
+      }),
+    ],
+    [steward],
+    "convene the covenant",
   );
-  await sendIdempotent(base, [initializeClaim(core, payer.publicKey)], [payer], "initialize claim");
+  for (const member of canonicalMemberOrder(memberKeys)) {
+    await sendIdempotent(
+      base,
+      [
+        addCovenantMember(
+          covenant,
+          steward.publicKey,
+          member,
+          MemberRole.Protocol,
+          PublicKey.default,
+        ),
+      ],
+      [steward],
+      `add ${member.toBase58().slice(0, 8)}`,
+    );
+  }
   for (const [index, member] of members.entries()) {
     await sendIdempotent(
       base,
-      [initializeAttestation(core, payer.publicKey, member.publicKey)],
-      [payer],
+      [ratifyCovenantMember(covenant, member.publicKey)],
+      [member],
+      `${memberNames[index]} ratifies`,
+    );
+  }
+  await sendIdempotent(base, [ratifyCovenant(covenant, memberKeys)], [payer], "covenant ratifies");
+  for (const [index, member] of members.entries()) {
+    await sendIdempotent(
+      base,
+      [armCovenantMember(covenant, member.publicKey, 1)],
+      [member],
+      `${memberNames[index]} arms`,
+    );
+  }
+  await sendIdempotent(base, [armCovenant(covenant)], [payer], "covenant arms");
+
+  // The opener is a covenant member, because opening now needs a ratified membership. That
+  // also sharpens the read matrix below: the principal who cannot read a peer's ballot is a
+  // peer rather than an outsider.
+  const opener = members[0]!;
+
+  say("\nCreating the incident's accounts on base");
+  await sendIdempotent(
+    base,
+    [initializeIncident(opener.publicKey, covenant, incidentId)],
+    [opener],
+    "initialize public core",
+  );
+  await sendIdempotent(
+    base,
+    [initializeClaim(core, opener.publicKey)],
+    [opener],
+    "initialize claim",
+  );
+  for (const [index, member] of members.entries()) {
+    await sendIdempotent(
+      base,
+      [initializeAttestation(core, covenant, opener.publicKey, member.publicKey)],
+      [opener],
       `initialize ${memberNames[index]}'s attestation`,
     );
   }
@@ -695,8 +776,8 @@ async function main(): Promise<void> {
   if (!(await isDelegated(core))) {
     await send(
       base,
-      [delegateIncident(payer.publicKey, covenant, incidentId, validator, delegationFor(core))],
-      [payer],
+      [delegateIncident(opener.publicKey, covenant, incidentId, validator, delegationFor(core))],
+      [opener],
       "delegate the public core",
       "base",
     );
@@ -704,8 +785,8 @@ async function main(): Promise<void> {
   if (!(await isDelegated(claim))) {
     await send(
       base,
-      [delegateClaim(payer.publicKey, core, validator, delegationFor(claim))],
-      [payer],
+      [delegateClaim(opener.publicKey, core, validator, delegationFor(claim))],
+      [opener],
       "delegate the claim",
       "base",
     );
@@ -717,14 +798,14 @@ async function main(): Promise<void> {
         base,
         [
           delegateAttestation(
-            payer.publicKey,
+            opener.publicKey,
             core,
             member.publicKey,
             validator,
             delegationFor(attestation),
           ),
         ],
-        [payer],
+        [opener],
         `delegate ${memberNames[index]}'s attestation`,
         "base",
       );
@@ -762,21 +843,8 @@ async function main(): Promise<void> {
   say("\nOpening the incident and collecting sealed attestations");
   await sendIdempotent(
     er,
-    [
-      openIncident(payer.publicKey, {
-        covenant,
-        incidentId,
-        circleEpoch: 1n,
-        policyId,
-        clusterGenesisHash,
-        requiredApprovals: 2,
-        maximumRejections: 1,
-        responseWindowSlots: 200_000n,
-        members: memberKeys,
-        claimDigest: sha256(CANARY.claim),
-      }),
-    ],
-    [payer],
+    [openIncident(core, opener.publicKey, memberKeys, sha256(CANARY.claim))],
+    [opener],
     "open incident",
     "er",
   );
@@ -784,14 +852,14 @@ async function main(): Promise<void> {
   await send(
     er,
     [
-      submitPrivateClaim(core, payer.publicKey, {
+      submitPrivateClaim(core, opener.publicKey, {
         claim: Buffer.from(CANARY.claim, "utf8"),
         observationStart: CANARY_OBSERVATION_START,
         observationEnd: CANARY_OBSERVATION_END,
         notes: Buffer.from(CANARY.notes, "utf8"),
       }),
     ],
-    [payer],
+    [opener],
     "submit private claim",
     "er",
   );

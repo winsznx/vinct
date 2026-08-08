@@ -24,6 +24,7 @@ import {
   type AccountMeta,
 } from "@solana/web3.js";
 
+import { covenantMemberAddress } from "./covenant.js";
 import { ArgWriter, withDiscriminator } from "./encoding.js";
 import { CORE_IDL, CORE_PROGRAM_ID, discriminator } from "./ids.js";
 
@@ -99,8 +100,27 @@ export function interactionOnly(pubkey: PublicKey): PermissionMember {
   return { pubkey, flags: PERMISSION_FLAGS.none };
 }
 
+/**
+ * Sorts members into the canonical order the program requires.
+ *
+ * Ascending by raw key bytes, strictly. The program rejects an out-of-order list rather than
+ * sorting it, so that the commitment it computes is a function of the set and not of the
+ * caller's arrangement. Sorting here means a caller never has to think about it, and the
+ * program still catches anyone who skips this.
+ */
+export function canonicalMemberOrder(members: PublicKey[]): PublicKey[] {
+  return [...members].sort((a, b) => Buffer.compare(a.toBuffer(), b.toBuffer()));
+}
+
 // --------------------------------------------------------------- base layer
 
+/**
+ * Creates the public core, bound to a ratified covenant.
+ *
+ * The snapshot is copied out of the covenant rather than supplied: threshold, ceiling,
+ * window, policy, epoch, and the frozen member set. The opener chooses none of it, which is
+ * why they have to prove membership to open at all.
+ */
 export function initializeIncident(
   opener: PublicKey,
   covenant: PublicKey,
@@ -111,6 +131,12 @@ export function initializeIncident(
     programId: CORE_PROGRAM_ID,
     keys: [
       { pubkey: incidentAddress(covenant, incidentId), isSigner: false, isWritable: true },
+      { pubkey: covenant, isSigner: false, isWritable: false },
+      {
+        pubkey: covenantMemberAddress(covenant, opener),
+        isSigner: false,
+        isWritable: false,
+      },
       { pubkey: opener, isSigner: true, isWritable: true },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ],
@@ -139,6 +165,7 @@ export function initializeClaim(core: PublicKey, opener: PublicKey): Transaction
  */
 export function initializeAttestation(
   core: PublicKey,
+  covenant: PublicKey,
   opener: PublicKey,
   member: PublicKey,
 ): TransactionInstruction {
@@ -147,6 +174,7 @@ export function initializeAttestation(
     programId: CORE_PROGRAM_ID,
     keys: [
       { pubkey: core, isSigner: false, isWritable: false },
+      { pubkey: covenantMemberAddress(covenant, member), isSigner: false, isWritable: false },
       { pubkey: attestationAddress(core, member), isSigner: false, isWritable: true },
       { pubkey: opener, isSigner: true, isWritable: true },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
@@ -348,68 +376,34 @@ export function closeAttestationPermission(
   });
 }
 
-export interface OpenIncidentArgs {
-  covenant: PublicKey;
-  incidentId: bigint;
-  circleEpoch: bigint;
-  policyId: Uint8Array;
-  clusterGenesisHash: Uint8Array;
-  requiredApprovals: number;
-  maximumRejections: number;
-  responseWindowSlots: bigint;
-  /** Every member eligible to attest. Sorted here; the program refuses an unsorted list. */
-  members: PublicKey[];
-  claimDigest: Uint8Array;
-}
-
 /**
- * Sorts members into the canonical order the program requires.
+ * Opens the incident.
  *
- * Ascending by raw key bytes, strictly. The program rejects an out-of-order list rather than
- * sorting it, so that the commitment it computes is a function of the set and not of the
- * caller's arrangement. Sorting here means a caller never has to think about it, and the
- * program still catches anyone who skips this.
+ * The terms are already frozen on the core, copied there from the covenant, so the only
+ * argument is the digest of the claim. Every ballot account is passed in canonical order and
+ * the program checks they are the covenant's set.
  */
-export function canonicalMemberOrder(members: PublicKey[]): PublicKey[] {
-  return [...members].sort((a, b) => Buffer.compare(a.toBuffer(), b.toBuffer()));
-}
-
-/**
- * Opens the incident and freezes its member set.
- *
- * Every member's ballot account is passed after the declared accounts. The program checks
- * each one exists at its canonical address before committing to the set, because freezing a
- * set with a missing ballot would make certification impossible for the incident's whole life.
- */
-export function openIncident(opener: PublicKey, args: OpenIncidentArgs): TransactionInstruction {
-  const members = canonicalMemberOrder(args.members);
-  const core = incidentAddress(args.covenant, args.incidentId);
-
-  const writer = new ArgWriter()
-    .u64(args.incidentId)
-    .pubkey(args.covenant)
-    .u64(args.circleEpoch)
-    .bytes32(args.policyId)
-    .bytes32(args.clusterGenesisHash)
-    .u8(args.requiredApprovals)
-    .u8(args.maximumRejections)
-    .u64(args.responseWindowSlots)
-    .u32(members.length);
-  for (const member of members) writer.pubkey(member);
-  writer.bytes32(args.claimDigest);
-
+export function openIncident(
+  core: PublicKey,
+  opener: PublicKey,
+  members: PublicKey[],
+  claimDigest: Uint8Array,
+): TransactionInstruction {
   return new TransactionInstruction({
     programId: CORE_PROGRAM_ID,
     keys: [
       { pubkey: core, isSigner: false, isWritable: true },
       { pubkey: opener, isSigner: true, isWritable: false },
-      ...members.map((member) => ({
+      ...canonicalMemberOrder(members).map((member) => ({
         pubkey: attestationAddress(core, member),
         isSigner: false,
         isWritable: false,
       })),
     ],
-    data: withDiscriminator(discriminator(CORE_IDL, "open_incident"), writer.finish()),
+    data: withDiscriminator(
+      discriminator(CORE_IDL, "open_incident"),
+      new ArgWriter().bytes32(claimDigest).finish(),
+    ),
   });
 }
 
@@ -600,6 +594,7 @@ export interface IncidentCoreView {
   maximumRejections: number;
   openedAtSlot: bigint;
   expiresAtSlot: bigint;
+  responseWindowSlots: bigint;
   claimDigest: Uint8Array;
   operationId: Uint8Array;
   memberCount: number;
@@ -646,6 +641,7 @@ export function decodeIncidentCore(data: Buffer): IncidentCoreView {
     maximumRejections: u8(),
     openedAtSlot: u64(),
     expiresAtSlot: u64(),
+    responseWindowSlots: u64(),
     claimDigest: bytes32(),
     operationId: bytes32(),
     memberCount: u8(),

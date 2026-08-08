@@ -107,22 +107,8 @@ struct MemberArg {
 }
 
 #[derive(borsh::BorshSerialize)]
-struct OpenIncidentArgs {
-    incident_id: u64,
-    covenant: [u8; 32],
-    circle_epoch: u64,
-    policy_id: [u8; 32],
-    cluster_genesis_hash: [u8; 32],
-    required_approvals: u8,
-    maximum_rejections: u8,
-    response_window_slots: u64,
-    members: Vec<[u8; 32]>,
+struct ClaimDigestArg {
     claim_digest: [u8; 32],
-}
-
-#[derive(borsh::BorshSerialize)]
-struct OpenIncidentIx {
-    args: OpenIncidentArgs,
 }
 
 #[derive(borsh::BorshSerialize)]
@@ -162,16 +148,12 @@ impl Case {
     }
 }
 
-/// Builds one incident's accounts in the shared world.
-fn create(world: &mut World, incident_id: u64, members: &[Keypair]) -> Case {
-    let opener = world.steward.insecure_clone();
+/// Builds one incident's accounts in the shared world, under an already-formed covenant.
+fn create(world: &mut World, covenant: Address, incident_id: u64, members: &[Keypair]) -> Case {
+    let opener = members[0].insecure_clone();
     let system = Address::default();
     let (core, _) = Address::find_program_address(
-        &[
-            INCIDENT_SEED,
-            world.covenant.as_ref(),
-            &incident_id.to_le_bytes(),
-        ],
+        &[INCIDENT_SEED, covenant.as_ref(), &incident_id.to_le_bytes()],
         &core_program(),
     );
     let (claim, _) = Address::find_program_address(&[CLAIM_SEED, core.as_ref()], &core_program());
@@ -182,6 +164,11 @@ fn create(world: &mut World, incident_id: u64, members: &[Keypair]) -> Case {
                 program_id: core_program(),
                 accounts: vec![
                     AccountMeta::new(core, false),
+                    AccountMeta::new_readonly(covenant, false),
+                    AccountMeta::new_readonly(
+                        covenant_membership(&covenant, &opener.pubkey()),
+                        false,
+                    ),
                     AccountMeta::new(opener.pubkey(), true),
                     AccountMeta::new_readonly(system, false),
                 ],
@@ -189,7 +176,7 @@ fn create(world: &mut World, incident_id: u64, members: &[Keypair]) -> Case {
                     "initialize_incident",
                     &InitializeIncidentArgs {
                         incident_id,
-                        covenant: world.covenant.to_bytes(),
+                        covenant: covenant.to_bytes(),
                     },
                 ),
             },
@@ -224,6 +211,10 @@ fn create(world: &mut World, incident_id: u64, members: &[Keypair]) -> Case {
                     program_id: core_program(),
                     accounts: vec![
                         AccountMeta::new_readonly(core, false),
+                        AccountMeta::new_readonly(
+                            covenant_membership(&covenant, &member.pubkey()),
+                            false,
+                        ),
                         AccountMeta::new(case.attestation(&member.pubkey()), false),
                         AccountMeta::new(opener.pubkey(), true),
                         AccountMeta::new_readonly(system, false),
@@ -242,20 +233,8 @@ fn create(world: &mut World, incident_id: u64, members: &[Keypair]) -> Case {
     case
 }
 
-fn open(world: &mut World, case: &Case, incident_id: u64) {
-    let opener = world.steward.insecure_clone();
-    let args = OpenIncidentArgs {
-        incident_id,
-        covenant: world.covenant.to_bytes(),
-        circle_epoch: 1,
-        policy_id: world.policy_id,
-        cluster_genesis_hash: CLUSTER,
-        required_approvals: REQUIRED_APPROVALS,
-        maximum_rejections: MAXIMUM_REJECTIONS,
-        response_window_slots: RESPONSE_WINDOW,
-        members: case.members.iter().map(|m| m.pubkey().to_bytes()).collect(),
-        claim_digest: [0u8; 32],
-    };
+fn open(world: &mut World, case: &Case) {
+    let opener = case.members[0].insecure_clone();
     let mut accounts = vec![
         AccountMeta::new(case.core, false),
         AccountMeta::new_readonly(opener.pubkey(), true),
@@ -268,7 +247,12 @@ fn open(world: &mut World, case: &Case, incident_id: u64) {
             Instruction {
                 program_id: core_program(),
                 accounts,
-                data: instruction_data("open_incident", &OpenIncidentIx { args }),
+                data: instruction_data(
+                    "open_incident",
+                    &ClaimDigestArg {
+                        claim_digest: [0u8; 32],
+                    },
+                ),
             },
             &[&opener],
         )
@@ -296,7 +280,7 @@ fn attest(world: &mut World, case: &Case, index: usize, decision: u8) {
 }
 
 fn quarantine(world: &mut World, case: &Case, index: usize) {
-    let opener = world.steward.insecure_clone();
+    let opener = case.members[0].insecure_clone();
     let member = case.members[index].pubkey();
     let instruction = Instruction {
         program_id: core_program(),
@@ -337,8 +321,8 @@ fn verdict(world: &World, case: &Case) -> ProgramVerdict {
     let status_offset = 2 + 32 + 8 + 8 + 32;
     // version(2) covenant(32) epoch(8) incident_id(8) opener(32) status(1) policy(32)
     // member_set(32) cluster(32) required(1) max_rejections(1) opened(8) expires(8)
-    // claim_digest(32) operation_id(32) member_count(1) approvals(1) rejections(1)
-    let counts = 2 + 32 + 8 + 8 + 32 + 1 + 32 + 32 + 32 + 1 + 1 + 8 + 8 + 32 + 32 + 1;
+    // window(8) claim_digest(32) operation_id(32) member_count(1) approvals(1) rejections(1)
+    let counts = 2 + 32 + 8 + 8 + 32 + 1 + 32 + 32 + 32 + 1 + 1 + 8 + 8 + 8 + 32 + 32 + 1;
     ProgramVerdict {
         status: Some(body[status_offset]),
         approvals: body[counts],
@@ -421,9 +405,18 @@ fn the_program_certifies_exactly_what_the_reference_model_says() {
     for member in &members {
         world
             .svm
-            .airdrop(&member.pubkey(), 1_000_000_000)
+            .airdrop(&member.pubkey(), 2_000_000_000_000)
             .expect("member funded");
     }
+
+    // One covenant for the whole enumeration. Its terms are what every incident inherits,
+    // which is the point of the composition: the opener supplies none of them.
+    let covenant = world.form_covenant(
+        &members,
+        REQUIRED_APPROVALS,
+        MAXIMUM_REJECTIONS,
+        RESPONSE_WINDOW,
+    );
 
     let mut incident_id = 1u64;
     let mut compared = 0usize;
@@ -432,9 +425,9 @@ fn the_program_certifies_exactly_what_the_reference_model_says() {
     for choices in every_choice_triple() {
         for quarantined in every_quarantine_subset() {
             for after_deadline in [false, true] {
-                let case = create(&mut world, incident_id, &members);
+                let case = create(&mut world, covenant, incident_id, &members);
                 let opened_at = world.current_slot();
-                open(&mut world, &case, incident_id);
+                open(&mut world, &case);
 
                 for (index, choice) in choices.iter().enumerate() {
                     if let Some(decision) = choice.program_decision() {

@@ -145,6 +145,8 @@ pub struct IncidentCore {
     pub opened_at_slot: u64,
     /// Slot the incident expires.
     pub expires_at_slot: u64,
+    /// The response window copied from the covenant, so opening needs no argument for it.
+    pub response_window_slots: u64,
     /// Digest of the private claim. Safe to publish; the claim itself is not.
     pub claim_digest: [u8; 32],
     /// The operation this incident settles under, set at certification.
@@ -166,7 +168,7 @@ pub struct IncidentCore {
 impl IncidentCore {
     /// Serialized size, excluding the 8-byte discriminator.
     pub const SIZE: usize =
-        2 + 32 + 8 + 8 + 32 + 1 + 32 + 32 + 32 + 1 + 1 + 8 + 8 + 32 + 32 + 1 + 1 + 1 + 1;
+        2 + 32 + 8 + 8 + 32 + 1 + 32 + 32 + 32 + 1 + 1 + 8 + 8 + 8 + 32 + 32 + 1 + 1 + 1 + 1;
 
     /// True when `now_slot` is at or past the deadline.
     pub fn is_expired(&self, now_slot: u64) -> bool {
@@ -442,35 +444,6 @@ pub fn tally(attestations: &[MemberAttestation]) -> Tally {
         approvals,
         rejections,
     }
-}
-
-/// Arguments for opening an incident.
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
-pub struct OpenIncidentArgs {
-    /// The incident being opened.
-    pub incident_id: u64,
-    /// The covenant.
-    pub covenant: Pubkey,
-    /// The epoch to freeze.
-    pub circle_epoch: u64,
-    /// The policy to freeze.
-    pub policy_id: [u8; 32],
-    /// The cluster to bind to.
-    pub cluster_genesis_hash: [u8; 32],
-    /// Approvals required.
-    pub required_approvals: u8,
-    /// Rejections that block certification.
-    pub maximum_rejections: u8,
-    /// Slots the incident stays open.
-    pub response_window_slots: u64,
-    /// Every member eligible to attest, strictly ascending.
-    ///
-    /// Passed rather than trusted as a digest: the program commits to this list itself and
-    /// checks that a ballot account exists for each entry before freezing it, so the set it
-    /// later demands at certification is one it knows to be complete.
-    pub members: Vec<Pubkey>,
-    /// Digest of the private claim.
-    pub claim_digest: [u8; 32],
 }
 
 /// Arguments for submitting a private claim.

@@ -23,6 +23,8 @@ pub const CORE_PROGRAM_ID: &str = "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
 pub const ADAPTER_PROGRAM_ID: &str = "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4";
 pub const MOCK_PROTOCOL_PROGRAM_ID: &str = "BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS";
 
+pub const COVENANT_SEED: &[u8] = b"covenant";
+pub const COVENANT_MEMBER_SEED: &[u8] = b"member";
 pub const CAPABILITY_SEED: &[u8] = b"capability";
 pub const ADAPTER_SIGNER_SEED: &[u8] = b"adapter-signer";
 pub const ADAPTER_RECEIPT_SEED: &[u8] = b"adapter-receipt";
@@ -55,6 +57,37 @@ fn artifact(name: &str) -> std::path::PathBuf {
 }
 
 // ------------------------------------------------------------------ arguments
+
+#[derive(borsh::BorshSerialize)]
+pub struct CreateCovenantArgs {
+    pub covenant_id: u64,
+    pub circle_epoch: u64,
+    pub cluster_genesis_hash: [u8; 32],
+    pub policy_id: [u8; 32],
+    pub required_approvals: u8,
+    pub maximum_rejections: u8,
+    pub response_window_slots: u64,
+    pub certificate_lifetime_slots: u64,
+    pub epoch_lifetime_slots: u64,
+}
+
+#[derive(borsh::BorshSerialize)]
+pub struct CreateCovenantIx {
+    pub args: CreateCovenantArgs,
+}
+
+#[derive(borsh::BorshSerialize)]
+pub struct AddCovenantMemberArgs {
+    pub protocol: [u8; 32],
+    /// Borsh enum index: 0 Protocol, 1 Responder, 2 Steward.
+    pub role: u8,
+    pub adapter_capability: [u8; 32],
+}
+
+#[derive(borsh::BorshSerialize)]
+pub struct ArmMemberArgs {
+    pub adapter_version: u16,
+}
 
 #[derive(borsh::BorshSerialize)]
 pub struct InitializeMarketArgs {
@@ -256,10 +289,22 @@ pub struct World {
     pub svm: LiteSVM,
     pub payer: Keypair,
     pub steward: Keypair,
+    /// The Phase 2 fixture's opaque covenant identity, used by the adapter tests.
     pub covenant: Address,
     pub policy_id: [u8; 32],
     pub member_set_hash: [u8; 32],
     pub protocols: Vec<Protocol>,
+    /// Hands out a fresh covenant id per `form_covenant` call in one world.
+    pub next_covenant_id: u64,
+}
+
+/// One protocol's membership account of one covenant.
+pub fn covenant_membership(covenant: &Address, protocol: &Address) -> Address {
+    Address::find_program_address(
+        &[COVENANT_MEMBER_SEED, covenant.as_ref(), protocol.as_ref()],
+        &core_program(),
+    )
+    .0
 }
 
 impl World {
@@ -329,6 +374,7 @@ impl World {
             policy_id,
             member_set_hash,
             protocols,
+            next_covenant_id: 1,
         }
     }
 
@@ -348,6 +394,156 @@ impl World {
         let message = Message::new(&[instruction], Some(&payer));
         let transaction = Transaction::new(&signers.to_vec(), message, self.svm.latest_blockhash());
         self.svm.send_transaction(transaction)
+    }
+
+    /// Forms, ratifies, and arms a covenant with the given protocol authorities.
+    ///
+    /// The whole sequence, because every step needs a different signature and the point of
+    /// the design is that no one key can do all of it. The steward convenes and adds; each
+    /// protocol ratifies and arms its own membership; the two covenant-level steps are
+    /// permissionless because every signature that mattered was already collected.
+    ///
+    /// Members are added in canonical ascending order, which is the order ratification
+    /// requires them to be supplied in.
+    pub fn form_covenant(
+        &mut self,
+        members: &[Keypair],
+        required_approvals: u8,
+        maximum_rejections: u8,
+        response_window_slots: u64,
+    ) -> Address {
+        let steward = self.steward.insecure_clone();
+        let payer = self.payer.insecure_clone();
+        let covenant_id = self.next_covenant_id;
+        self.next_covenant_id += 1;
+        let (covenant, _) = Address::find_program_address(
+            &[
+                COVENANT_SEED,
+                steward.pubkey().as_ref(),
+                &covenant_id.to_le_bytes(),
+            ],
+            &core_program(),
+        );
+        let system = Address::default();
+
+        self.send(
+            Instruction {
+                program_id: core_program(),
+                accounts: vec![
+                    AccountMeta::new(covenant, false),
+                    AccountMeta::new(steward.pubkey(), true),
+                    AccountMeta::new_readonly(system, false),
+                ],
+                data: instruction_data(
+                    "create_covenant",
+                    &CreateCovenantIx {
+                        args: CreateCovenantArgs {
+                            covenant_id,
+                            circle_epoch: 1,
+                            cluster_genesis_hash: CLUSTER,
+                            policy_id: self.policy_id,
+                            required_approvals,
+                            maximum_rejections,
+                            response_window_slots,
+                            certificate_lifetime_slots: 100_000,
+                            epoch_lifetime_slots: 10_000_000,
+                        },
+                    },
+                ),
+            },
+            &[&steward],
+        )
+        .expect("covenant convenes");
+
+        let mut ordered: Vec<Keypair> = members.iter().map(|m| m.insecure_clone()).collect();
+        ordered.sort_by_key(|m| m.pubkey().to_bytes());
+
+        for member in &ordered {
+            let membership = covenant_membership(&covenant, &member.pubkey());
+            self.send(
+                Instruction {
+                    program_id: core_program(),
+                    accounts: vec![
+                        AccountMeta::new(covenant, false),
+                        AccountMeta::new(membership, false),
+                        AccountMeta::new(steward.pubkey(), true),
+                        AccountMeta::new_readonly(system, false),
+                    ],
+                    data: instruction_data(
+                        "add_covenant_member",
+                        &AddCovenantMemberArgs {
+                            protocol: member.pubkey().to_bytes(),
+                            role: 0,
+                            adapter_capability: Address::default().to_bytes(),
+                        },
+                    ),
+                },
+                &[&steward],
+            )
+            .expect("member added");
+
+            self.send(
+                Instruction {
+                    program_id: core_program(),
+                    accounts: vec![
+                        AccountMeta::new(covenant, false),
+                        AccountMeta::new(membership, false),
+                        AccountMeta::new_readonly(member.pubkey(), true),
+                    ],
+                    data: instruction_data_empty("ratify_covenant_member"),
+                },
+                &[member],
+            )
+            .expect("member ratifies");
+        }
+
+        let mut accounts = vec![AccountMeta::new(covenant, false)];
+        for member in &ordered {
+            accounts.push(AccountMeta::new_readonly(
+                covenant_membership(&covenant, &member.pubkey()),
+                false,
+            ));
+        }
+        self.send(
+            Instruction {
+                program_id: core_program(),
+                accounts,
+                data: instruction_data_empty("ratify_covenant"),
+            },
+            &[&payer],
+        )
+        .expect("covenant ratifies");
+
+        for member in &ordered {
+            self.send(
+                Instruction {
+                    program_id: core_program(),
+                    accounts: vec![
+                        AccountMeta::new(covenant, false),
+                        AccountMeta::new(covenant_membership(&covenant, &member.pubkey()), false),
+                        AccountMeta::new_readonly(member.pubkey(), true),
+                    ],
+                    data: instruction_data(
+                        "arm_covenant_member",
+                        &ArmMemberArgs { adapter_version: 1 },
+                    ),
+                },
+                &[member],
+            )
+            .expect("member arms");
+        }
+
+        self.send(
+            Instruction {
+                program_id: core_program(),
+                accounts: vec![AccountMeta::new(covenant, false)],
+                data: instruction_data_empty("arm_covenant"),
+            },
+            &[&payer],
+        )
+        .expect("covenant arms");
+
+        covenant
     }
 
     /// Sends an instruction whose account list demands a signature the client cannot

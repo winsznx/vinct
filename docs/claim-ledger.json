@@ -845,5 +845,31 @@
       "Resistance to an observer correlating transaction traffic is not claimed.",
       "An incident’s existence, deadline, and member count are public by design."
     ]
+  },
+  {
+    "id": "the-incident-inherits-its-terms-from-a-ratified-covenant",
+    "wording": "An incident’s member set, threshold, rejection ceiling, response window, policy, and epoch are copied from a covenant that every member ratified and every adapter-owning member armed. Opening takes no terms at all; its only argument is the digest of the claim.",
+    "status": "verified",
+    "proof_level": 5,
+    "network": "local-magicblock-stack",
+    "source_commit": "PENDING",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
+    ],
+    "transactions": [],
+    "commands": [
+      "anchor build --ignore-keys",
+      "cargo test -p vinct-program-tests --test covenant",
+      "bash scripts/bootstrap-local.sh start",
+      "pnpm exec tsx scripts/phase4-local-lifecycle.ts"
+    ],
+    "artifacts": [
+      "artifacts/local-stack/phase4-local-lifecycle.json"
+    ],
+    "verified_at": "2026-08-08T03:00:00Z",
+    "limitations": [
+      "The covenant is not yet deployed to Devnet: the program has outgrown its deployed capacity and the deployer balance cannot cover an extend plus the transient upgrade buffer. The Devnet gate for this is pending funding, not pending code.",
+      "The adapter capability recorded on a membership is not yet cross-checked against vinct_adapter’s own capability account. That binding is the next composition step."
+    ]
   }
 ]
