@@ -981,7 +981,7 @@ pub struct SovereignCapability {
     pub action_category: ActionCategory,
     pub target_program: Pubkey,
     pub instruction_discriminator: [u8; 8],
-    pub ordered_account_metas_hash: [u8; 32],
+    pub action_template_hash: [u8; 32],
     pub instruction_data_hash: [u8; 32],
 
     pub max_effect: EffectLimitV1,
@@ -994,6 +994,20 @@ pub struct SovereignCapability {
     pub last_operation_id: [u8; 32],
 }
 ```
+
+> **Corrected in Phase 5. See `docs/decision-log.md` D-0048, D-0049, and D-0050.**
+>
+> The capability committed to `ordered_account_metas_hash`, computed over the concrete account
+> list. That list contains the adapter receipt, whose address is seeded by the operation ID,
+> which is drawn at certification. A capability was therefore armed against exactly one
+> operation and could not be armed before that operation existed, which is the opposite of the
+> product's premise. A protocol authorises the shape and the limits of mutual aid before the
+> crisis; it does not authorise one incident that has already happened.
+>
+> The commitment is now over the template's shape. The four accounts a protocol authority can
+> pin at arm time contribute their addresses; the two that cannot exist yet contribute their
+> role and their flags and no address, and the adapter re-derives them itself. One arming
+> covers every valid incident under the same covenant, policy, and epoch.
 
 Adapter validation order:
 
@@ -1009,13 +1023,18 @@ Adapter validation order:
 10. adapter version
 11. target program
 12. discriminator
-13. exact ordered account metas
-14. exact instruction data hash
-15. effect limit
-16. capability nonce
-17. operation not previously consumed
-18. CPI
-19. durable receipt write
+13. every operation-derived account re-derived and compared, never trusted
+14. the armed template's shape, rebuilt from this instruction's own accounts
+15. exact instruction data hash
+16. effect limit
+17. capability nonce
+18. operation not previously consumed
+19. CPI
+20. durable receipt write
+
+The account classification behind steps 13 and 14, derived from the real instruction context
+rather than from this document, is recorded in D-0049. Four static, two dynamic, two appended
+by the Magic Actions dispatcher.
 
 ---
 

@@ -29,8 +29,19 @@ fn addr(seed: u8) -> Address {
     Address::from_seed(seed)
 }
 
+fn binding() -> TemplateBindingV1 {
+    TemplateBindingV1 {
+        cluster_genesis_hash: CLUSTER,
+        covenant: addr(0xC0),
+        circle_epoch: 1,
+        policy_id: [0x77; 32],
+        action_category: ActionCategoryV1::PauseNewBorrowing,
+    }
+}
+
 fn template(index: u16) -> ActionTemplateV1 {
     ActionTemplateV1::new(
+        binding(),
         index,
         addr(0xAD),
         1,

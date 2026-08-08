@@ -98,10 +98,9 @@ fn the_settlement_receipt_is_separate_from_the_adapter_effects() {
 
 #[test]
 fn the_steward_cannot_arm_another_protocols_capability() {
-    let operation_id = operation(b"op-steward-arm");
     let mut world = World::new();
     world.initialize_market(0, None);
-    let args = world.default_install_args(0, operation_id);
+    let args = world.default_install_args(0);
     world.install_capability(0, args).expect("installs");
 
     // #when the steward tries to arm protocol alpha's capability
@@ -115,10 +114,9 @@ fn the_steward_cannot_arm_another_protocols_capability() {
 
 #[test]
 fn another_protocols_authority_cannot_arm_this_capability() {
-    let operation_id = operation(b"op-cross-arm");
     let mut world = World::new();
     world.initialize_market(0, None);
-    let args = world.default_install_args(0, operation_id);
+    let args = world.default_install_args(0);
     world.install_capability(0, args).expect("installs");
 
     let beta = world.protocols[1].authority.insecure_clone();
@@ -270,7 +268,7 @@ fn an_unarmed_capability_refuses_a_valid_certificate() {
     let mut world = World::new();
     world.publish_certificate(world.default_certificate_args(operation_id));
     world.initialize_market(0, None);
-    let args = world.default_install_args(0, operation_id);
+    let args = world.default_install_args(0);
     world.install_capability(0, args).expect("installs");
     let signer = world.protocols[0].adapter_signer;
     let authority = world.protocols[0].authority.insecure_clone();
@@ -287,15 +285,14 @@ fn an_unarmed_capability_refuses_a_valid_certificate() {
 
 #[test]
 fn install_refuses_to_widen_the_effect_bound() {
-    let operation_id = operation(b"op-widen");
     let mut world = World::new();
     world.initialize_market(0, None);
 
-    let mut args = world.default_install_args(0, operation_id);
+    let mut args = world.default_install_args(0);
     args.max_effect.may_unpause = true;
     assert_failed_with(world.install_capability(0, args), "UnpauseNotPermitted");
 
-    let mut args = world.default_install_args(0, operation_id);
+    let mut args = world.default_install_args(0);
     args.max_effect.max_value_moved = 1;
     assert_failed_with(
         world.install_capability(0, args),
@@ -305,10 +302,9 @@ fn install_refuses_to_widen_the_effect_bound() {
 
 #[test]
 fn renewal_may_only_extend() {
-    let operation_id = operation(b"op-renew");
     let mut world = World::new();
     world.initialize_market(0, None);
-    let args = world.default_install_args(0, operation_id);
+    let args = world.default_install_args(0);
     world.install_capability(0, args).expect("installs");
 
     let authority = world.protocols[0].authority.insecure_clone();
@@ -455,7 +451,7 @@ fn the_demo_reset_works_only_for_the_configured_demo_authority() {
 
     world.publish_certificate(world.default_certificate_args(operation_id));
     world.initialize_market(0, Some(demo.pubkey()));
-    let args = world.default_install_args(0, operation_id);
+    let args = world.default_install_args(0);
     world.install_capability(0, args).expect("installs");
     world.arm(0).expect("arms");
     let signer = world.protocols[0].adapter_signer;
@@ -509,4 +505,117 @@ fn markets_have_genuinely_independent_authorities() {
     assert_ne!(signers[0], signers[1]);
     assert_ne!(signers[1], signers[2]);
     assert_ne!(signers[0], signers[2]);
+}
+
+// ------------------------------------------- a capability is a policy, not a permit
+
+/// One arming serves two operations.
+///
+/// This is the property the whole template correction exists for. A protocol authority signs
+/// the shape and the limits of mutual aid before any crisis, and that one signature covers
+/// every valid incident under the same covenant, policy, and epoch.
+///
+/// The earlier design could not do this. Its commitment covered the receipt's concrete
+/// address, which is seeded by an operation ID drawn at certification, so a capability was
+/// armed against exactly one operation and could not be armed before that operation existed.
+/// See docs/decision-log.md D-0048.
+#[test]
+fn one_armed_capability_serves_two_distinct_operations() {
+    let first = operation(b"reuse-operation-a");
+    let second = operation(b"reuse-operation-b");
+    assert_ne!(first, second);
+
+    let mut world = World::new();
+
+    // Arm once. Nothing here mentions an operation.
+    world.initialize_market(0, None);
+    let args = world.default_install_args(0);
+    world.install_capability(0, args).expect("installs");
+    world.arm(0).expect("arms");
+    let signer = world.protocols[0].adapter_signer;
+    let authority = world.protocols[0].authority.insecure_clone();
+    world
+        .set_adapter(0, Some(signer), &authority)
+        .expect("registers adapter");
+
+    // Then run two operations against it.
+    for operation_id in [first, second] {
+        world.publish_certificate(world.default_certificate_args(operation_id));
+        world
+            .initialize_adapter_receipt(0, operation_id)
+            .expect("receipt initializes");
+        world
+            .execute(0, operation_id)
+            .expect("the armed capability executes this operation");
+    }
+
+    let receipt_a = world.receipt_address(0, first);
+    let receipt_b = world.receipt_address(0, second);
+    assert_ne!(receipt_a, receipt_b, "two operations shared one receipt");
+    assert!(read_receipt(&world.svm, &receipt_a).executed);
+    assert!(read_receipt(&world.svm, &receipt_b).executed);
+}
+
+/// One operation cannot consume another's receipt.
+///
+/// The receipt is where replay protection lives, so the two operations above must not be able
+/// to reach into each other's. Both directions, because a check that only looks one way is
+/// a check that has not been thought through.
+#[test]
+fn one_operation_cannot_consume_another_operations_receipt() {
+    let first = operation(b"cross-receipt-a");
+    let second = operation(b"cross-receipt-b");
+
+    let mut world = World::new();
+    world.initialize_market(0, None);
+    let args = world.default_install_args(0);
+    world.install_capability(0, args).expect("installs");
+    world.arm(0).expect("arms");
+    let signer = world.protocols[0].adapter_signer;
+    let authority = world.protocols[0].authority.insecure_clone();
+    world
+        .set_adapter(0, Some(signer), &authority)
+        .expect("registers adapter");
+
+    for operation_id in [first, second] {
+        world.publish_certificate(world.default_certificate_args(operation_id));
+        world
+            .initialize_adapter_receipt(0, operation_id)
+            .expect("receipt initializes");
+    }
+
+    // Operation A's certificate, operation B's receipt.
+    // The substituted receipt is a real, correctly derived receipt at its own address, so
+    // the seed constraint is satisfied and the operation check is what refuses it.
+    let instruction =
+        world.execute_instruction_with_receipt(0, first, world.receipt_address(0, second));
+    let payer = world.payer.insecure_clone();
+    assert_failed_with(
+        world.send(instruction, &[&payer]),
+        "ReceiptOperationMismatch",
+    );
+
+    // And the other way round.
+    let instruction =
+        world.execute_instruction_with_receipt(0, second, world.receipt_address(0, first));
+    assert_failed_with(
+        world.send(instruction, &[&payer]),
+        "ReceiptOperationMismatch",
+    );
+}
+
+/// A capability suspended after certification still refuses to execute.
+///
+/// The protocol stays sovereign right up to execution. A certificate is the circle saying the
+/// incident happened, not the protocol saying it is still willing to act on it.
+#[test]
+fn a_capability_suspended_after_certification_refuses_to_execute() {
+    let operation_id = operation(b"suspend-after-certificate");
+    let mut world = World::new();
+    world.arm_everything(operation_id);
+
+    let authority = world.protocols[0].authority.insecure_clone();
+    world.suspend(0, &authority).expect("protocol suspends");
+
+    assert_failed_with(world.execute(0, operation_id), "CapabilitySuspended");
 }

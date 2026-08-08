@@ -178,6 +178,19 @@ canonical_commitments:
     - "adapter_receipt"
     - "settlement_receipt"
     - "certificate"
+  capability_commitment: "action_template_hash, over the template's shape. The two operation-derived slots contribute their role and flags and no address, so one arming serves every valid incident under the same covenant, policy, and epoch. See docs/decision-log.md D-0048 and D-0050."
+  capability_lifetime:
+    installed: "before any incident exists"
+    reusable: "for any valid incident under the same covenant, policy, and epoch"
+    bounded_by: ["adapter version", "effect limit", "validity window"]
+    revocable: "by its own protocol authority, at any time, including after a certificate is issued"
+    replay_protection: "per operation, by a receipt seeded from the operation and the capability"
+  execute_bounded_action_accounts:
+    static: ["capability", "protocol_state", "adapter_signer", "target_program"]
+    dynamic: ["certificate", "adapter_receipt"]
+    dispatcher_injected: ["escrow_auth", "escrow"]
+    note: "Derived from the real instruction context, not from a description of it. See D-0049."
+  dynamic_account_derivation: "the adapter re-derives both dynamic accounts itself. The certificate from [CERTIFICATE_SEED, operation_id] under the capability's named core program; the receipt from its own seeds plus its stored operation and capability."
   template_account_roles_note: "Operation-derived slots declare a role instead of an address, because receipt PDAs depend on the operation ID. The adapter re-derives the expected address from the operation ID rather than trusting a supplied one. See docs/decision-log.md D-0015."
 
 quarantine_semantics:

@@ -43,6 +43,8 @@ pub enum VinctTypesError {
     ZeroCertificateLifetime,
     /// A template account meta declared a non-fixed role but carried an address.
     TemplateRoleAddressMismatch,
+    /// A template was written under a layout version this build does not accept.
+    UnsupportedTemplateVersion,
     /// Resolving a template needed an address the caller did not supply.
     UnresolvedTemplateAddress,
     /// A resolved address was all zero.
@@ -75,6 +77,7 @@ impl fmt::Display for VinctTypesError {
             Self::ZeroResponseWindow => "response window is zero slots",
             Self::ZeroCertificateLifetime => "certificate lifetime is zero slots",
             Self::TemplateRoleAddressMismatch => "template account role and address disagree",
+            Self::UnsupportedTemplateVersion => "template layout version is not supported",
             Self::UnresolvedTemplateAddress => "template needed an address the caller omitted",
             Self::ZeroResolvedAddress => "resolved address is all zero",
             Self::ArithmeticOverflow => "arithmetic overflow",

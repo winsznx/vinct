@@ -50,6 +50,17 @@ impl EffectLimitV1 {
     };
 }
 
+/// What one action is permitted to do, as a category.
+///
+/// A closed enum, deliberately. The category selects a hard-coded instruction shape inside
+/// the adapter; it is not a description a caller supplies. Adding a category is a code change
+/// in every implementation, which is the point.
+#[derive(BorshSerialize, BorshDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ActionCategoryV1 {
+    /// Stop accepting new borrows.
+    PauseNewBorrowing,
+}
+
 /// What an account slot in a template resolves to.
 ///
 /// Receipt addresses depend on the operation ID, and the operation ID is drawn at
@@ -130,8 +141,24 @@ impl TemplateAccountMetaV1 {
 pub struct ActionTemplateV1 {
     /// Domain separator for `VINCT_ACTION_TEMPLATE_V1`.
     pub domain: Digest32,
+    /// The template layout version.
+    ///
+    /// Separate from the domain separator. The domain says which kind of thing this is; the
+    /// version says which shape of that kind, so a template written under a later layout is
+    /// refused rather than reinterpreted.
+    pub template_version: u16,
     /// Position in the covenant's registration order. Never reordered.
     pub action_index: u16,
+    /// The cluster this template may execute on.
+    pub cluster_genesis_hash: Digest32,
+    /// The covenant this template belongs to.
+    pub covenant: Address,
+    /// The epoch it was armed under.
+    pub circle_epoch: u64,
+    /// The policy that authorises it.
+    pub policy_id: Digest32,
+    /// What the action is permitted to do.
+    pub action_category: ActionCategoryV1,
     /// The adapter program that will execute this action.
     pub adapter_program_id: Address,
     /// The adapter version this template was armed against.
@@ -154,6 +181,7 @@ impl ActionTemplateV1 {
     /// Builds a template with its domain separator already set.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
+        binding: TemplateBindingV1,
         action_index: u16,
         adapter_program_id: Address,
         adapter_version: u16,
@@ -166,7 +194,13 @@ impl ActionTemplateV1 {
     ) -> Self {
         Self {
             domain: domain(domains::ACTION_TEMPLATE_V1),
+            template_version: TEMPLATE_VERSION_V1,
             action_index,
+            cluster_genesis_hash: binding.cluster_genesis_hash,
+            covenant: binding.covenant,
+            circle_epoch: binding.circle_epoch,
+            policy_id: binding.policy_id,
+            action_category: binding.action_category,
             adapter_program_id,
             adapter_version,
             adapter_capability,
@@ -180,6 +214,9 @@ impl ActionTemplateV1 {
 
     /// Enforces every bound and slot rule on this template.
     pub fn validate(&self) -> Result<(), VinctTypesError> {
+        if self.template_version != TEMPLATE_VERSION_V1 {
+            return Err(VinctTypesError::UnsupportedTemplateVersion);
+        }
         if self.account_metas.is_empty() {
             return Err(VinctTypesError::EmptyAccountMetas);
         }
@@ -212,6 +249,27 @@ impl ActionTemplateV1 {
     pub fn instruction_data_hash(&self) -> Digest32 {
         sha256(&self.instruction_data)
     }
+}
+
+/// The version this crate writes and accepts.
+pub const TEMPLATE_VERSION_V1: u16 = 1;
+
+/// What a template is armed against, gathered so the constructor stays readable.
+///
+/// Every field here is knowable when a protocol authority reviews and signs. None of them
+/// depends on an incident that has not happened.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TemplateBindingV1 {
+    /// The cluster this template may execute on.
+    pub cluster_genesis_hash: Digest32,
+    /// The covenant.
+    pub covenant: Address,
+    /// The epoch.
+    pub circle_epoch: u64,
+    /// The policy.
+    pub policy_id: Digest32,
+    /// What the action is permitted to do.
+    pub action_category: ActionCategoryV1,
 }
 
 /// The registered bundle of templates for one policy, in covenant order.

@@ -47,6 +47,10 @@ declare_id!("2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4");
 pub const CAPABILITY_SEED: &[u8] = b"capability";
 /// Seed for the PDA that signs the bounded CPI. This is the key a protocol registers.
 pub const ADAPTER_SIGNER_SEED: &[u8] = b"adapter-signer";
+/// The core program's certificate seed, so the adapter can re-derive the account rather than
+/// trust the one it is handed. Kept here rather than imported: this program deliberately
+/// takes no build-time dependency on the core.
+pub const CERTIFICATE_SEED: &[u8] = b"certificate";
 /// Seed for a per-operation adapter receipt.
 pub const ADAPTER_RECEIPT_SEED: &[u8] = b"adapter-receipt";
 
@@ -98,7 +102,7 @@ pub mod vinct_adapter {
             AdapterError::ValueMovementNotPermitted
         );
         require!(
-            args.ordered_account_metas_hash != [0u8; 32],
+            args.action_template_hash != [0u8; 32],
             AdapterError::ZeroCommitment
         );
         require!(
@@ -119,7 +123,7 @@ pub mod vinct_adapter {
         capability.action_category = args.action_category;
         capability.target_program = args.target_program;
         capability.instruction_discriminator = args.instruction_discriminator;
-        capability.ordered_account_metas_hash = args.ordered_account_metas_hash;
+        capability.action_template_hash = args.action_template_hash;
         capability.instruction_data_hash = args.instruction_data_hash;
         capability.max_effect = args.max_effect;
         capability.valid_from_slot = args.valid_from_slot;
@@ -235,7 +239,7 @@ pub mod vinct_adapter {
         // docs/decision-log.md D-0026.
         //
         // The property the refusal was reaching for is delivered elsewhere and more
-        // directly: `ordered_account_metas_hash` commits to the declared six, and
+        // directly: the template commitment covers the declared six, and
         // `an_extra_account_is_inert` asserts an appended writable account is left untouched.
 
         let clock = Clock::get()?;
@@ -321,13 +325,37 @@ pub mod vinct_adapter {
             AdapterError::TargetProgramNotExecutable
         );
 
-        // 12-13. The exact ordered account metas. Rebuilt from this instruction's own
-        //        accounts in their real order and compared against the commitment the
-        //        protocol authority signed. A swapped market and receipt, an added writable
-        //        account, or a flipped signer flag all land here.
-        let metas_hash = hash_ordered_account_metas(ctx.accounts);
+        // 12. The two operation-derived accounts, re-derived rather than trusted.
+        //
+        //     A supplied address is a claim. These are the only two accounts in the
+        //     instruction whose addresses could not be known when the authority armed the
+        //     capability, so they are the only two that have to be recomputed here, and the
+        //     operation ID they are recomputed from comes off the certificate this program
+        //     has already authenticated.
+        let (expected_certificate, _) = Pubkey::find_program_address(
+            &[CERTIFICATE_SEED, parsed.operation_id.as_ref()],
+            &capability.core_program,
+        );
+        require_keys_eq!(
+            ctx.accounts.certificate.key(),
+            expected_certificate,
+            AdapterError::CertificateNotDerivedFromOperation
+        );
+
+        // The receipt's own seeds are constrained on the account, and its stored operation
+        // and capability are checked below, so its address is already pinned three ways.
+
+        // 13. The template the protocol authority signed. Rebuilt from this instruction's
+        //     own accounts in their real order, with the two derived slots contributing
+        //     their role rather than an address, and compared against the commitment.
+        //
+        //     Rebuilding from roles is what makes one signature cover every future
+        //     operation under this covenant, policy, and epoch. A swapped market and
+        //     receipt, an added writable account, or a flipped signer flag still land here,
+        //     because the shape is what is committed to.
+        let template_hash = hash_action_template(ctx.accounts);
         require!(
-            metas_hash == capability.ordered_account_metas_hash,
+            template_hash == capability.action_template_hash,
             AdapterError::AccountMetasMismatch
         );
 
@@ -444,19 +472,39 @@ pub mod vinct_adapter {
 ///
 /// The order is the order of the `#[derive(Accounts)]` fields, which is the order they
 /// appear in the transaction. Nothing is sorted.
-fn hash_ordered_account_metas(accounts: &ExecuteBoundedAction) -> [u8; 32] {
-    let metas = [
-        (accounts.certificate.key(), false, false),
-        (accounts.capability.key(), false, true),
-        (accounts.protocol_state.key(), false, true),
-        (accounts.receipt.key(), false, true),
-        (accounts.adapter_signer.key(), false, false),
-        (accounts.target_program.key(), false, false),
+/// The commitment a protocol authority signs when it arms this adapter.
+///
+/// Built over the template's shape rather than one operation's addresses. The four static
+/// slots contribute the addresses the authority pinned; the two derived slots contribute
+/// their role and their flags and no address at all, because an address they could have
+/// pinned would be an address for an operation that had not happened.
+///
+/// The role positions are not configurable. `execute_bounded_action` declares a fixed
+/// account list, so position 0 is the certificate and position 3 is the receipt by
+/// construction, and a caller has nothing to choose. That is deliberate: a template that let
+/// a client say which slots were derived would be a forwarding surface wearing a commitment.
+///
+/// Mirrors `vinct_types::action::ActionTemplateV1::ordered_account_metas_hash`, which the
+/// reference model and the standalone verifier compute the same way from the same slots.
+fn hash_action_template(accounts: &ExecuteBoundedAction) -> [u8; 32] {
+    /// Borsh's discriminant for `AccountRoleV1`, in declaration order.
+    const ROLE_FIXED: u8 = 0;
+    const ROLE_ADAPTER_RECEIPT: u8 = 1;
+    const ROLE_CERTIFICATE: u8 = 3;
+
+    let slots: [(u8, Pubkey, bool, bool); 6] = [
+        (ROLE_CERTIFICATE, Pubkey::default(), false, false),
+        (ROLE_FIXED, accounts.capability.key(), false, true),
+        (ROLE_FIXED, accounts.protocol_state.key(), false, true),
+        (ROLE_ADAPTER_RECEIPT, Pubkey::default(), false, true),
+        (ROLE_FIXED, accounts.adapter_signer.key(), false, false),
+        (ROLE_FIXED, accounts.target_program.key(), false, false),
     ];
 
     let mut hasher = Sha256::new();
-    hasher.update((metas.len() as u32).to_le_bytes());
-    for (key, is_signer, is_writable) in metas {
+    hasher.update((slots.len() as u32).to_le_bytes());
+    for (role, key, is_signer, is_writable) in slots {
+        hasher.update([role]);
         hasher.update(key.as_ref());
         hasher.update([u8::from(is_signer)]);
         hasher.update([u8::from(is_writable)]);
@@ -546,7 +594,7 @@ pub struct InstallCapabilityArgs {
     pub action_category: ActionCategory,
     pub target_program: Pubkey,
     pub instruction_discriminator: [u8; 8],
-    pub ordered_account_metas_hash: [u8; 32],
+    pub action_template_hash: [u8; 32],
     pub instruction_data_hash: [u8; 32],
     pub max_effect: EffectLimit,
     pub valid_from_slot: u64,
@@ -663,8 +711,18 @@ pub struct SovereignCapability {
     pub target_program: Pubkey,
     /// The only instruction it may invoke there.
     pub instruction_discriminator: [u8; 8],
-    /// Commitment to the exact ordered account metas of `execute_bounded_action`.
-    pub ordered_account_metas_hash: [u8; 32],
+    /// Commitment to the action template this protocol authority armed.
+    ///
+    /// A template, not one operation's account list. It pins the target program, the
+    /// instruction, the effect bound, and the account list in exact order, with the two
+    /// operation-derived slots declared as roles rather than addresses. The adapter rebuilds
+    /// the same list at execution and re-derives those slots itself.
+    ///
+    /// The earlier version committed to concrete addresses, which included the receipt PDA,
+    /// which is seeded by the operation ID. That made a capability usable for exactly one
+    /// operation and unarmable before an incident existed, which is the opposite of the
+    /// product's premise. See docs/decision-log.md D-0048 and D-0049.
+    pub action_template_hash: [u8; 32],
     /// Commitment to the exact instruction data of `execute_bounded_action`.
     pub instruction_data_hash: [u8; 32],
     /// The effect bound.
@@ -796,8 +854,10 @@ pub enum AdapterError {
     TargetProgramMismatch,
     #[msg("Target program account is not executable")]
     TargetProgramNotExecutable,
-    #[msg("Ordered account metas do not match the armed commitment")]
+    #[msg("Account metas do not match the armed template")]
     AccountMetasMismatch,
+    #[msg("The certificate account is not the one this operation derives")]
+    CertificateNotDerivedFromOperation,
     #[msg("Instruction data does not match the armed commitment")]
     InstructionDataMismatch,
     #[msg("Action exceeds the capability's effect limit")]

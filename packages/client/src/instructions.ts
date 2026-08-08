@@ -6,6 +6,8 @@
  * or normalises an account list.
  */
 
+import { createHash } from "node:crypto";
+
 import {
   PublicKey,
   SystemProgram,
@@ -304,11 +306,70 @@ export interface InstallCapabilityArgs {
   actionCategory: number;
   targetProgram: PublicKey;
   instructionDiscriminator: Uint8Array;
-  orderedAccountMetasHash: Uint8Array;
+  actionTemplateHash: Uint8Array;
   instructionDataHash: Uint8Array;
   maxEffect: { mayPause: boolean; mayUnpause: boolean; maxValueMoved: bigint };
   validFromSlot: bigint;
   expiresAtSlot: bigint;
+}
+
+/**
+ * One slot in an armed action template.
+ *
+ * Roles are the closed set `vinct_types::action::AccountRoleV1` defines, by Borsh
+ * discriminant. There is no variant a caller can invent and no seed recipe to supply: a
+ * template that let a client describe how to derive an account would be a forwarding surface
+ * wearing a commitment.
+ */
+export type TemplateSlot =
+  | { kind: "fixed"; pubkey: PublicKey; isSigner: boolean; isWritable: boolean }
+  | { kind: "adapterReceipt"; isSigner: boolean; isWritable: boolean }
+  | { kind: "certificate"; isSigner: boolean; isWritable: boolean };
+
+const TEMPLATE_ROLE = { fixed: 0, adapterReceipt: 1, certificate: 3 } as const;
+
+/**
+ * The commitment a protocol authority signs when it arms its adapter.
+ *
+ * Mirrors `hash_action_template` in the adapter byte for byte. Derived slots contribute their
+ * role and their flags and no address, which is what lets one arming serve every future
+ * operation under the same covenant, policy, and epoch.
+ */
+export function actionTemplateHash(slots: TemplateSlot[]): Uint8Array {
+  const hasher = createHash("sha256");
+  const count = Buffer.alloc(4);
+  count.writeUInt32LE(slots.length);
+  hasher.update(count);
+  for (const slot of slots) {
+    const role = TEMPLATE_ROLE[slot.kind === "fixed" ? "fixed" : slot.kind];
+    hasher.update(Buffer.from([role]));
+    hasher.update(slot.kind === "fixed" ? slot.pubkey.toBuffer() : Buffer.alloc(32));
+    hasher.update(Buffer.from([slot.isSigner ? 1 : 0]));
+    hasher.update(Buffer.from([slot.isWritable ? 1 : 0]));
+  }
+  return new Uint8Array(hasher.digest());
+}
+
+/**
+ * The template for `execute_bounded_action` on one protocol.
+ *
+ * Takes no operation ID, which is the property the whole shape exists for: a protocol arms
+ * before any incident, and one arming covers every valid incident afterwards.
+ */
+export function executeBoundedActionTemplate(
+  capability: PublicKey,
+  protocolState: PublicKey,
+  adapterSigner: PublicKey,
+  targetProgram: PublicKey,
+): TemplateSlot[] {
+  return [
+    { kind: "certificate", isSigner: false, isWritable: false },
+    { kind: "fixed", pubkey: capability, isSigner: false, isWritable: true },
+    { kind: "fixed", pubkey: protocolState, isSigner: false, isWritable: true },
+    { kind: "adapterReceipt", isSigner: false, isWritable: true },
+    { kind: "fixed", pubkey: adapterSigner, isSigner: false, isWritable: false },
+    { kind: "fixed", pubkey: targetProgram, isSigner: false, isWritable: false },
+  ];
 }
 
 export function installCapability(
@@ -328,7 +389,7 @@ export function installCapability(
     .u8(args.actionCategory)
     .pubkey(args.targetProgram)
     .bytes8(args.instructionDiscriminator)
-    .bytes32(args.orderedAccountMetasHash)
+    .bytes32(args.actionTemplateHash)
     .bytes32(args.instructionDataHash)
     .bool(args.maxEffect.mayPause)
     .bool(args.maxEffect.mayUnpause)
@@ -410,9 +471,9 @@ export function initializeAdapterReceipt(
 /**
  * The six accounts an adapter action commits to, in the adapter's declared order.
  *
- * This exact list, in this exact order, is what the capability's `ordered_account_metas_hash`
- * commits to and what the scheduler puts in the action's `ShortAccountMeta` list. The escrow
- * pair `#[action]` injects is deliberately absent: the SDK appends it.
+ * This exact list, in this exact order, is what the adapter rebuilds when it checks the
+ * template commitment. Two of the six are operation-derived and the adapter re-derives them
+ * itself; the other four are what a protocol authority pinned when it armed.
  */
 export function executeBoundedActionAccounts(
   operationId: Uint8Array,

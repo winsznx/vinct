@@ -86,7 +86,7 @@ fn measure_and_record_the_action_path() {
         })
         .expect("initializes");
     lifecycle.initialize_market(0, None);
-    let args = lifecycle.default_install_args(0, setup_operation);
+    let args = lifecycle.default_install_args(0);
     lifecycle
         .install_capability(0, args)
         .map(|m| measurements.insert("install_capability".into(), m.compute_units_consumed))

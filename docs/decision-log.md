@@ -1113,3 +1113,49 @@ declares a fixed account list: position 0 is the certificate and position 3 is t
 construction. The capability stores the commitment the authority signed and the adapter
 rebuilds the same list from its own structure and its own pinned addresses. A shape the
 authority did not sign produces a different digest.
+
+### D-0050 A capability commits to a template, not to one operation's accounts
+
+The correction D-0048 called for, implemented. Not a new scheme: `AccountRoleV1`,
+`TemplateAccountMetaV1`, and `ActionTemplateV1` have been in `vinct-types` since D-0015, with
+a closed role enum and no seed DSL. The adapter had simply never adopted them, and kept
+committing to concrete addresses.
+
+`SovereignCapability.ordered_account_metas_hash` is now `action_template_hash`. The adapter
+rebuilds the same commitment at execution from its own accounts, with the two operation-derived
+slots contributing their role and their flags and no address at all. A swapped market and
+receipt, an added writable account, or a flipped signer flag still land there, because what is
+committed to is the shape.
+
+The two derived slots are re-derived rather than trusted. The receipt already was, three ways
+over: its own seed constraint, its stored operation, and its stored capability. The certificate
+was not — only its contents were checked, never its address — so the adapter now derives
+`[CERTIFICATE_SEED, operation_id]` under the core program this capability named and requires
+the supplied account to equal it. That was a genuine gap the audit surfaced, independent of
+the reuse problem.
+
+Role positions are not configurable and are not sent by anyone.
+`execute_bounded_action` declares a fixed account list, so position 0 is the certificate and
+position 3 is the receipt by construction. A template that let a client say which slots were
+derived, or supply seeds for them, would be a forwarding surface wearing a commitment.
+
+`ActionTemplateV1` now also binds what it was armed against: a layout version, the cluster,
+the covenant, the epoch, the policy, and the action category, alongside the adapter program
+and version, the target program, the discriminator, the ordered slots, the instruction bytes,
+and the effect bound. One type, used by the types crate, the reference model, the program, and
+the standalone verifier.
+
+What this changes about what a protocol authority signs, which is the point:
+
+`default_install_args` used to take an operation ID and no longer takes anything of the kind.
+Arming is operation-independent, and the compiler said so — the parameter went unused the
+moment the commitment changed. `one_armed_capability_serves_two_distinct_operations` proves it
+end to end: one arming, two certificates, two receipts, both executed, neither able to consume
+the other's receipt.
+
+The capability's semantics are now explicit. Installed before incidents, reusable for any
+valid incident under the same covenant, policy, and epoch, bounded by version, effect, and
+expiry, suspendable and revocable by its own protocol authority, and replay-protected per
+operation by a receipt. A certificate is the circle saying an incident happened; it is not the
+protocol saying it is still willing to act.
+`a_capability_suspended_after_certification_refuses_to_execute` holds that line.

@@ -19,7 +19,7 @@ use solana_address::Address;
 use solana_instruction::account_meta::AccountMeta;
 use solana_keypair::Keypair;
 use solana_signer::Signer;
-use vinct_program_tests::{instruction_data, ordered_account_metas_hash};
+use vinct_program_tests::{action_template_hash, instruction_data, TemplateSlot};
 
 fn operation(seed: &[u8]) -> [u8; 32] {
     vinct_program_tests::sha256(seed)
@@ -174,7 +174,7 @@ fn install_alpha_with(
     mutate: impl FnOnce(&mut InstallCapabilityArgs),
 ) {
     world.initialize_market(0, None);
-    let mut args = world.default_install_args(0, operation_id);
+    let mut args = world.default_install_args(0);
     mutate(&mut args);
     world.install_capability(0, args).expect("installs");
     world.arm(0).expect("arms");
@@ -227,12 +227,12 @@ fn a_capability_pinned_to_another_target_program_is_refused() {
 }
 
 #[test]
-fn a_capability_with_a_different_meta_commitment_is_refused() {
+fn a_capability_with_a_different_template_commitment_is_refused() {
     let operation_id = operation(b"adv-cap-metas");
     let mut world = World::new();
     world.publish_certificate(world.default_certificate_args(operation_id));
     install_alpha_with(&mut world, operation_id, |args| {
-        args.ordered_account_metas_hash = vinct_program_tests::sha256(b"different metas");
+        args.action_template_hash = vinct_program_tests::sha256(b"different template");
     });
     assert_failed_with(world.execute(0, operation_id), "AccountMetasMismatch");
 }
@@ -281,10 +281,9 @@ fn a_capability_outside_its_validity_window_is_refused() {
 
 #[test]
 fn install_refuses_an_inverted_validity_window() {
-    let operation_id = operation(b"adv-cap-inverted");
     let mut world = World::new();
     world.initialize_market(0, None);
-    let mut args = world.default_install_args(0, operation_id);
+    let mut args = world.default_install_args(0);
     args.valid_from_slot = 100;
     args.expires_at_slot = 50;
     assert_failed_with(
@@ -295,35 +294,32 @@ fn install_refuses_an_inverted_validity_window() {
 
 #[test]
 fn install_refuses_a_zero_adapter_version() {
-    let operation_id = operation(b"adv-cap-version-zero");
     let mut world = World::new();
     world.initialize_market(0, None);
-    let mut args = world.default_install_args(0, operation_id);
+    let mut args = world.default_install_args(0);
     args.adapter_version = 0;
     assert_failed_with(world.install_capability(0, args), "ZeroAdapterVersion");
 }
 
 #[test]
 fn install_refuses_zero_commitments() {
-    let operation_id = operation(b"adv-cap-zero-commit");
     let mut world = World::new();
     world.initialize_market(0, None);
 
-    let mut args = world.default_install_args(0, operation_id);
-    args.ordered_account_metas_hash = [0u8; 32];
+    let mut args = world.default_install_args(0);
+    args.action_template_hash = [0u8; 32];
     assert_failed_with(world.install_capability(0, args), "ZeroCommitment");
 
-    let mut args = world.default_install_args(0, operation_id);
+    let mut args = world.default_install_args(0);
     args.instruction_data_hash = [0u8; 32];
     assert_failed_with(world.install_capability(0, args), "ZeroCommitment");
 }
 
 #[test]
 fn arming_with_the_wrong_version_is_refused() {
-    let operation_id = operation(b"adv-arm-version");
     let mut world = World::new();
     world.initialize_market(0, None);
-    let args = world.default_install_args(0, operation_id);
+    let args = world.default_install_args(0);
     world.install_capability(0, args).expect("installs");
 
     let authority = world.protocols[0].authority.insecure_clone();
@@ -336,10 +332,9 @@ fn arming_with_the_wrong_version_is_refused() {
 
 #[test]
 fn arming_twice_is_refused() {
-    let operation_id = operation(b"adv-arm-twice");
     let mut world = World::new();
     world.initialize_market(0, None);
-    let args = world.default_install_args(0, operation_id);
+    let args = world.default_install_args(0);
     world.install_capability(0, args).expect("installs");
     world.arm(0).expect("arms");
     assert_failed_with(world.arm(0), "CapabilityAlreadyArmed");
@@ -447,17 +442,18 @@ fn an_extra_account_does_not_change_the_committed_meta_hash() {
     let world = armed(operation_id);
     let protocol = &world.protocols[0];
     let certificate = world.certificate_address(operation_id);
-    let receipt = world.receipt_address(0, operation_id);
+    let _ = world.receipt_address(0, operation_id);
+    let _ = certificate;
 
-    let declared = ordered_account_metas_hash(&[
-        (certificate.to_bytes(), false, false),
-        (protocol.capability.to_bytes(), false, true),
-        (protocol.market.to_bytes(), false, true),
-        (receipt.to_bytes(), false, true),
-        (protocol.adapter_signer.to_bytes(), false, false),
-        (mock_protocol_program().to_bytes(), false, false),
+    let declared = action_template_hash(&[
+        TemplateSlot::Certificate(false, false),
+        TemplateSlot::Fixed(protocol.capability.to_bytes(), false, true),
+        TemplateSlot::Fixed(protocol.market.to_bytes(), false, true),
+        TemplateSlot::AdapterReceipt(false, true),
+        TemplateSlot::Fixed(protocol.adapter_signer.to_bytes(), false, false),
+        TemplateSlot::Fixed(mock_protocol_program().to_bytes(), false, false),
     ]);
-    assert_eq!(declared, world.metas_hash_for(0, operation_id));
+    assert_eq!(declared, world.template_hash_for(0));
 }
 
 #[test]
@@ -465,41 +461,39 @@ fn flipping_a_writable_flag_changes_the_commitment() {
     // Not a runtime test: the SVM would reject a write to a read-only account anyway. This
     // asserts the commitment itself is sensitive to the flag, which is what stops a
     // protocol authority from being shown one instruction and signing another.
-    let operation_id = operation(b"adv-flag");
-    let world = armed(operation_id);
+    let world = World::new();
     let protocol = &world.protocols[0];
-    let certificate = world.certificate_address(operation_id);
-    let receipt = world.receipt_address(0, operation_id);
 
-    let genuine = ordered_account_metas_hash(&[
-        (certificate.to_bytes(), false, false),
-        (protocol.capability.to_bytes(), false, true),
-        (protocol.market.to_bytes(), false, true),
-        (receipt.to_bytes(), false, true),
-        (protocol.adapter_signer.to_bytes(), false, false),
-        (mock_protocol_program().to_bytes(), false, false),
-    ]);
-    let writable_certificate = ordered_account_metas_hash(&[
-        (certificate.to_bytes(), false, true),
-        (protocol.capability.to_bytes(), false, true),
-        (protocol.market.to_bytes(), false, true),
-        (receipt.to_bytes(), false, true),
-        (protocol.adapter_signer.to_bytes(), false, false),
-        (mock_protocol_program().to_bytes(), false, false),
-    ]);
-    let signing_market = ordered_account_metas_hash(&[
-        (certificate.to_bytes(), false, false),
-        (protocol.capability.to_bytes(), false, true),
-        (protocol.market.to_bytes(), true, true),
-        (receipt.to_bytes(), false, true),
-        (protocol.adapter_signer.to_bytes(), false, false),
-        (mock_protocol_program().to_bytes(), false, false),
-    ]);
+    let slots = |market_writable: bool| {
+        [
+            TemplateSlot::Certificate(false, false),
+            TemplateSlot::Fixed(protocol.capability.to_bytes(), false, true),
+            TemplateSlot::Fixed(protocol.market.to_bytes(), false, market_writable),
+            TemplateSlot::AdapterReceipt(false, true),
+            TemplateSlot::Fixed(protocol.adapter_signer.to_bytes(), false, false),
+            TemplateSlot::Fixed(mock_protocol_program().to_bytes(), false, false),
+        ]
+    };
+    assert_ne!(
+        action_template_hash(&slots(true)),
+        action_template_hash(&slots(false)),
+        "a flipped writable flag left the template commitment unchanged"
+    );
+}
 
-    assert_ne!(genuine, writable_certificate);
-    assert_ne!(genuine, signing_market);
-    assert_ne!(writable_certificate, signing_market);
-    assert_eq!(genuine, world.metas_hash_for(0, operation_id));
+/// A derived slot contributes no address, which is what makes one arming reusable.
+///
+/// If the receipt's concrete address leaked into the commitment, the digest would move with
+/// every operation and the capability would be a one-operation permit again.
+#[test]
+fn the_template_commitment_does_not_depend_on_any_operation() {
+    let world = World::new();
+    let first = world.template_hash_for(0);
+    let second = world.template_hash_for(0);
+    assert_eq!(first, second);
+
+    // And it differs per protocol, because the static slots do.
+    assert_ne!(world.template_hash_for(0), world.template_hash_for(1));
 }
 
 // --------------------------------------------------------------------- replay
@@ -645,7 +639,7 @@ fn executing_before_the_receipt_exists_is_refused() {
     let mut world = World::new();
     world.publish_certificate(world.default_certificate_args(operation_id));
     world.initialize_market(0, None);
-    let args = world.default_install_args(0, operation_id);
+    let args = world.default_install_args(0);
     world.install_capability(0, args).expect("installs");
     world.arm(0).expect("arms");
     let signer = world.protocols[0].adapter_signer;

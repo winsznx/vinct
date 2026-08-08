@@ -50,18 +50,49 @@ pub fn sha256(bytes: &[u8]) -> [u8; 32] {
     hasher.finalize().into()
 }
 
-/// The commitment the adapter recomputes over its own ordered account metas.
+/// One slot in an armed action template.
 ///
-/// Mirrors `hash_ordered_account_metas` in the adapter, byte for byte. It is reimplemented
-/// here on purpose: if the adapter changes its layout or its hashing, the mismatch surfaces
-/// as a test failure rather than as two implementations quietly agreeing on something new.
-pub fn ordered_account_metas_hash(metas: &[([u8; 32], bool, bool)]) -> [u8; 32] {
+/// Roles are the adapter's Borsh discriminants for `AccountRoleV1`, which is a closed enum in
+/// `vinct_types`. There is no variant a test could invent that the adapter would honour.
+#[derive(Clone, Copy, Debug)]
+pub enum TemplateSlot {
+    /// An address the protocol authority pinned when it armed.
+    Fixed([u8; 32], bool, bool),
+    /// The adapter receipt for whichever operation is executing.
+    AdapterReceipt(bool, bool),
+    /// The certificate for whichever operation is executing.
+    Certificate(bool, bool),
+}
+
+/// The commitment a protocol authority signs when it arms its adapter.
+///
+/// Mirrors `hash_action_template` in the adapter, byte for byte, and is reimplemented here on
+/// purpose: if the adapter changes its layout or its hashing, the mismatch surfaces as a test
+/// failure rather than as two implementations quietly agreeing on something new.
+///
+/// The derived slots contribute their role and their flags and no address, which is what lets
+/// one armed capability serve every future operation under its covenant.
+pub fn action_template_hash(slots: &[TemplateSlot]) -> [u8; 32] {
+    const ROLE_FIXED: u8 = 0;
+    const ROLE_ADAPTER_RECEIPT: u8 = 1;
+    const ROLE_CERTIFICATE: u8 = 3;
+
     let mut hasher = Sha256::new();
-    hasher.update((metas.len() as u32).to_le_bytes());
-    for (key, is_signer, is_writable) in metas {
+    hasher.update((slots.len() as u32).to_le_bytes());
+    for slot in slots {
+        let (role, key, is_signer, is_writable) = match slot {
+            TemplateSlot::Fixed(key, signer, writable) => (ROLE_FIXED, *key, *signer, *writable),
+            TemplateSlot::AdapterReceipt(signer, writable) => {
+                (ROLE_ADAPTER_RECEIPT, [0u8; 32], *signer, *writable)
+            }
+            TemplateSlot::Certificate(signer, writable) => {
+                (ROLE_CERTIFICATE, [0u8; 32], *signer, *writable)
+            }
+        };
+        hasher.update([role]);
         hasher.update(key);
-        hasher.update([u8::from(*is_signer)]);
-        hasher.update([u8::from(*is_writable)]);
+        hasher.update([u8::from(is_signer)]);
+        hasher.update([u8::from(is_writable)]);
     }
     hasher.finalize().into()
 }

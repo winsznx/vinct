@@ -16,7 +16,9 @@ use solana_message::Message;
 use solana_signer::Signer;
 use solana_transaction::Transaction;
 
-use vinct_program_tests::{instruction_data, instruction_data_empty, ordered_account_metas_hash};
+use vinct_program_tests::{
+    action_template_hash, instruction_data, instruction_data_empty, TemplateSlot,
+};
 
 /// Program IDs, read from the built artifacts rather than hardcoded.
 pub const CORE_PROGRAM_ID: &str = "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG";
@@ -128,7 +130,7 @@ pub struct InstallCapabilityArgs {
     pub action_category: u8,
     pub target_program: [u8; 32],
     pub instruction_discriminator: [u8; 8],
-    pub ordered_account_metas_hash: [u8; 32],
+    pub action_template_hash: [u8; 32],
     pub instruction_data_hash: [u8; 32],
     pub max_effect: EffectLimitArgs,
     pub valid_from_slot: u64,
@@ -251,7 +253,7 @@ pub fn read_capability(svm: &LiteSVM, capability: &Address) -> CapabilityState {
     let body = &account.data[8..];
     // protocol_authority(32) protocol_state(32) core_program(32) adapter_version(2)
     // cluster(32) covenant(32) epoch(8) policy(32) member_set(32) category(1)
-    // target(32) discriminator(8) metas_hash(32) data_hash(32) effect(10)
+    // target(32) discriminator(8) template_hash(32) data_hash(32) effect(10)
     // valid_from(8) expires_at(8) armed(1) suspended(1) nonce(8) last_operation(32)
     let mut offset = 32 + 32 + 32 + 2 + 32 + 32 + 8 + 32 + 32 + 1 + 32 + 8 + 32 + 32 + 10 + 8;
     let read64 = |o: usize| -> u64 {
@@ -623,21 +625,21 @@ impl World {
 
     // ------------------------------------------------------------------ adapter
 
-    /// The account-meta commitment for `execute_bounded_action` on one protocol.
+    /// The template commitment a protocol authority signs when it arms this adapter.
     ///
     /// Order and flags mirror the adapter's `ExecuteBoundedAction` context exactly:
-    /// certificate, capability, protocol state, receipt, adapter signer, target program.
-    pub fn metas_hash_for(&self, index: usize, operation_id: [u8; 32]) -> [u8; 32] {
+    /// certificate, capability, protocol state, receipt, adapter signer, target program. Two
+    /// of those are operation-derived and contribute their role rather than an address, which
+    /// is why this takes no operation ID and can be computed before any incident exists.
+    pub fn template_hash_for(&self, index: usize) -> [u8; 32] {
         let protocol = &self.protocols[index];
-        let certificate = self.certificate_address(operation_id);
-        let receipt = self.receipt_address(index, operation_id);
-        ordered_account_metas_hash(&[
-            (certificate.to_bytes(), false, false),
-            (protocol.capability.to_bytes(), false, true),
-            (protocol.market.to_bytes(), false, true),
-            (receipt.to_bytes(), false, true),
-            (protocol.adapter_signer.to_bytes(), false, false),
-            (mock_protocol_program().to_bytes(), false, false),
+        action_template_hash(&[
+            TemplateSlot::Certificate(false, false),
+            TemplateSlot::Fixed(protocol.capability.to_bytes(), false, true),
+            TemplateSlot::Fixed(protocol.market.to_bytes(), false, true),
+            TemplateSlot::AdapterReceipt(false, true),
+            TemplateSlot::Fixed(protocol.adapter_signer.to_bytes(), false, false),
+            TemplateSlot::Fixed(mock_protocol_program().to_bytes(), false, false),
         ])
     }
 
@@ -672,11 +674,12 @@ impl World {
     /// LiteSVM starts at a realistic mainnet-scale slot, so absolute slot constants would
     /// all sit in the past. Windows are computed from the current slot for the same reason
     /// production code will: a slot number is only meaningful relative to now.
-    pub fn default_install_args(
-        &self,
-        index: usize,
-        operation_id: [u8; 32],
-    ) -> InstallCapabilityArgs {
+    /// The arguments a protocol authority signs when it arms its adapter.
+    ///
+    /// Takes no operation. That is the whole point of the template correction: what is armed
+    /// is a bounded reusable policy, and an operation ID would be a future incident this
+    /// authority cannot know about. See docs/decision-log.md D-0048.
+    pub fn default_install_args(&self, index: usize) -> InstallCapabilityArgs {
         let now = self.current_slot();
         let protocol = &self.protocols[index];
         InstallCapabilityArgs {
@@ -693,7 +696,7 @@ impl World {
             instruction_discriminator: vinct_program_tests::instruction_discriminator(
                 "pause_new_borrowing",
             ),
-            ordered_account_metas_hash: self.metas_hash_for(index, operation_id),
+            action_template_hash: self.template_hash_for(index),
             instruction_data_hash: self.execute_data_hash(),
             max_effect: EffectLimitArgs {
                 may_pause: true,
@@ -813,6 +816,39 @@ impl World {
             ],
             data: instruction_data_empty("execute_bounded_action"),
         }
+    }
+
+    /// The same instruction, with the receipt slot replaced.
+    ///
+    /// Used to prove one operation cannot reach into another's receipt. Everything else is
+    /// the canonical list, so the only variable is the account under test.
+    pub fn execute_instruction_with_receipt(
+        &self,
+        index: usize,
+        operation_id: [u8; 32],
+        receipt: Address,
+    ) -> Instruction {
+        let mut instruction = self.execute_instruction(index, operation_id);
+        instruction.accounts[3] = AccountMeta::new(receipt, false);
+        instruction
+    }
+
+    /// One protocol suspends its own capability.
+    pub fn suspend(
+        &mut self,
+        index: usize,
+        authority: &Keypair,
+    ) -> Result<TransactionMetadata, FailedTransactionMetadata> {
+        let capability = self.protocols[index].capability;
+        let instruction = Instruction {
+            program_id: adapter_program(),
+            accounts: vec![
+                AccountMeta::new(capability, false),
+                AccountMeta::new_readonly(authority.pubkey(), true),
+            ],
+            data: instruction_data_empty("suspend_capability"),
+        };
+        self.send(instruction, &[authority])
     }
 
     pub fn execute(
@@ -962,7 +998,7 @@ impl World {
 
         for index in 0..3 {
             self.initialize_market(index, None);
-            let args = self.default_install_args(index, operation_id);
+            let args = self.default_install_args(index);
             self.install_capability(index, args).expect("installs");
             self.arm(index).expect("arms");
             let signer = self.protocols[index].adapter_signer;

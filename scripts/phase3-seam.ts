@@ -52,7 +52,8 @@ import {
   decodeOperation,
   decodeSettlementReceipt,
   delegateOperation,
-  executeBoundedActionAccounts,
+  actionTemplateHash,
+  executeBoundedActionTemplate,
   initializeAdapterReceipt,
   initializeMarket,
   initializeOperation,
@@ -235,21 +236,18 @@ async function main(): Promise<void> {
       `${protocol.name}: initialize market`,
     );
 
-    // The commitment covers the six accounts the adapter declares, in its declared order,
-    // and deliberately excludes the escrow pair the #[action] macro appends.
-    const metas = executeBoundedActionAccounts(operationId, protocol.capability, protocol.market);
-    const metasHash = (() => {
-      const hasher = createHash("sha256");
-      const count = Buffer.alloc(4);
-      count.writeUInt32LE(metas.length);
-      hasher.update(count);
-      for (const meta of metas) {
-        hasher.update(meta.pubkey.toBuffer());
-        hasher.update(Buffer.from([meta.isSigner ? 1 : 0]));
-        hasher.update(Buffer.from([meta.isWritable ? 1 : 0]));
-      }
-      return new Uint8Array(hasher.digest());
-    })();
+    // The commitment covers the shape of the six accounts the adapter declares, in its
+    // declared order, and deliberately excludes the escrow pair the #[action] macro appends.
+    // Two of the six are operation-derived and contribute their role rather than an address,
+    // which is why arming needs no operation and one arming serves every later incident.
+    const templateHash = actionTemplateHash(
+      executeBoundedActionTemplate(
+        protocol.capability,
+        protocol.market,
+        protocol.adapterSigner,
+        MOCK_PROTOCOL_PROGRAM_ID,
+      ),
+    );
 
     await sendIdempotent(
       base,
@@ -266,7 +264,7 @@ async function main(): Promise<void> {
           actionCategory: 0,
           targetProgram: MOCK_PROTOCOL_PROGRAM_ID,
           instructionDiscriminator: sha256("global:pause_new_borrowing").slice(0, 8),
-          orderedAccountMetasHash: metasHash,
+          actionTemplateHash: templateHash,
           instructionDataHash: executeDataHash,
           maxEffect: { mayPause: true, mayUnpause: false, maxValueMoved: 0n },
           validFromSlot: validFrom,

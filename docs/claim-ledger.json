@@ -893,5 +893,27 @@
       "The composition is proven up to the certificate. The Magic Action cohort beyond it still assumes a client-chosen operation ID, which Phase 5 no longer produces. See docs/decision-log.md D-0048.",
       "Not yet run on Devnet: the program has outgrown its deployed capacity and the deployer is 1.76 SOL short of an extend plus the transient upgrade buffer."
     ]
+  },
+  {
+    "id": "a-capability-is-a-reusable-bounded-policy",
+    "wording": "A protocol authority arms a versioned action template before any incident exists, and that one arming executes two distinct operations. Neither operation can consume the other’s receipt, and a capability suspended after a certificate is issued still refuses to execute.",
+    "status": "verified",
+    "proof_level": 4,
+    "network": "litesvm",
+    "source_commit": "PENDING",
+    "program_ids": [
+      "2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4"
+    ],
+    "transactions": [],
+    "commands": [
+      "anchor build --ignore-keys",
+      "cargo test -p vinct-program-tests --test sovereignty"
+    ],
+    "artifacts": [],
+    "verified_at": "2026-08-08T08:30:00Z",
+    "limitations": [
+      "Proven in LiteSVM. The same capability serving two operations through a live Magic Action cohort is the next step and needs the local stack.",
+      "The reference model and the standalone verifier compute the template commitment from ActionTemplateV1; the adapter rebuilds it from its own fixed account list. They agree by construction and by test, not by sharing code, which is deliberate."
+    ]
   }
 ]

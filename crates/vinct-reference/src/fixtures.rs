@@ -8,8 +8,8 @@
 //! none of them is derivable to a signing key, so committing them leaks nothing.
 
 use vinct_types::action::{
-    AccountRoleV1, ActionBundleTemplateV1, ActionTemplateV1, EffectLimitV1, ResolvedAddressesV1,
-    TemplateAccountMetaV1,
+    AccountRoleV1, ActionBundleTemplateV1, ActionCategoryV1, ActionTemplateV1, EffectLimitV1,
+    ResolvedAddressesV1, TemplateAccountMetaV1, TemplateBindingV1,
 };
 use vinct_types::address::Address;
 use vinct_types::covenant::{adapter_set_hash, MemberRole, MemberSetV1, MemberV1};
@@ -29,6 +29,9 @@ pub const OTHER_CLUSTER: Digest32 = [0x22; 32];
 
 /// The covenant account.
 pub const COVENANT: Address = Address::from_seed(0xC0);
+
+/// The epoch every fixture template and snapshot is armed under.
+pub const CIRCLE_EPOCH: u64 = 1;
 /// The steward. Convenes formation, holds no protocol authority.
 pub const STEWARD: Address = Address::from_seed(0x5D);
 
@@ -101,6 +104,20 @@ pub fn member_set() -> MemberSetV1 {
     .expect("fixture member set is well-formed")
 }
 
+/// What every fixture template is armed against.
+///
+/// Gathered once so a template's binding and the covenant snapshot it belongs to cannot
+/// drift apart in the fixtures the vectors are generated from.
+pub fn fixture_binding(action_category: ActionCategoryV1) -> TemplateBindingV1 {
+    TemplateBindingV1 {
+        cluster_genesis_hash: FIXTURE_CLUSTER,
+        covenant: COVENANT,
+        circle_epoch: CIRCLE_EPOCH,
+        policy_id: policy_id(),
+        action_category,
+    }
+}
+
 /// One adapter action template.
 ///
 /// The account order is the adapter instruction's real order and is never sorted:
@@ -113,6 +130,7 @@ pub fn adapter_template(
     market: Address,
 ) -> ActionTemplateV1 {
     ActionTemplateV1::new(
+        fixture_binding(ActionCategoryV1::PauseNewBorrowing),
         action_index,
         ADAPTER_PROGRAM,
         1,
@@ -137,6 +155,7 @@ pub fn adapter_template(
 /// The final settlement-receipt action template.
 pub fn settlement_template(action_index: u16) -> ActionTemplateV1 {
     ActionTemplateV1::new(
+        fixture_binding(ActionCategoryV1::PauseNewBorrowing),
         action_index,
         CORE_PROGRAM,
         1,
@@ -189,7 +208,7 @@ pub fn policy() -> ResponsePolicyV1 {
 pub fn covenant_snapshot() -> CovenantSnapshot {
     CovenantSnapshot {
         covenant: COVENANT,
-        circle_epoch: 1,
+        circle_epoch: CIRCLE_EPOCH,
         cluster_genesis_hash: FIXTURE_CLUSTER,
         steward: STEWARD,
         member_set: member_set(),
