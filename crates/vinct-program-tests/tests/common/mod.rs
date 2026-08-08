@@ -35,6 +35,12 @@ pub const SETTLEMENT_SEED: &[u8] = b"settlement";
 pub const DELEGATION_PROGRAM_ID: &str = "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh";
 pub const ESCROW_SEED: &[u8] = b"balance";
 
+/// The action template a fixture covenant commits to.
+///
+/// Feeds the operation ID rather than the concrete bundle, because receipt addresses in the
+/// concrete bundle depend on the operation ID. See docs/decision-log.md D-0012.
+pub const TEMPLATE_HASH: [u8; 32] = [0x33; 32];
+
 /// A recognisable cluster genesis hash for the fixture.
 pub const CLUSTER: [u8; 32] = [0x11; 32];
 /// A different cluster, for cross-cluster replay attempts.
@@ -64,6 +70,7 @@ pub struct CreateCovenantArgs {
     pub circle_epoch: u64,
     pub cluster_genesis_hash: [u8; 32],
     pub policy_id: [u8; 32],
+    pub action_bundle_template_hash: [u8; 32],
     pub required_approvals: u8,
     pub maximum_rejections: u8,
     pub response_window_slots: u64,
@@ -442,6 +449,7 @@ impl World {
                             circle_epoch: 1,
                             cluster_genesis_hash: CLUSTER,
                             policy_id: self.policy_id,
+                            action_bundle_template_hash: TEMPLATE_HASH,
                             required_approvals,
                             maximum_rejections,
                             response_window_slots,
@@ -838,22 +846,51 @@ impl World {
         }
     }
 
-    pub fn publish_certificate(
-        &mut self,
-        args: PublishCertificateArgs,
-    ) -> Result<TransactionMetadata, FailedTransactionMetadata> {
+    /// Writes a certificate account directly, without asking the program for one.
+    ///
+    /// Since Phase 5 there is no instruction that will publish a certificate with
+    /// caller-supplied contents: every field is derived from a certified incident. The
+    /// adapter still has to refuse a forged certificate, so these tests forge one the way an
+    /// attacker would have to, by putting the bytes in the account.
+    ///
+    /// That makes the adapter tests stronger rather than weaker. They no longer depend on the
+    /// core program having a permissive entry point, and they would keep working if it had
+    /// none at all.
+    pub fn publish_certificate(&mut self, args: PublishCertificateArgs) {
         let certificate = self.certificate_address(args.operation_id);
-        let steward = self.steward.insecure_clone();
-        let instruction = Instruction {
-            program_id: core_program(),
-            accounts: vec![
-                AccountMeta::new(certificate, false),
-                AccountMeta::new(steward.pubkey(), true),
-                AccountMeta::new_readonly(solana_address::Address::default(), false),
-            ],
-            data: instruction_data("publish_certificate", &args),
+        let mut data = vinct_program_tests::account_discriminator("IncidentCertificate").to_vec();
+        // issuing_authority: the incident core a real certificate would name. A forgery has
+        // no incident behind it, so the fixture's steward stands in.
+        data.extend_from_slice(self.steward.pubkey().as_ref());
+        data.extend_from_slice(&args.cluster_genesis_hash);
+        data.extend_from_slice(&args.covenant);
+        data.extend_from_slice(&args.circle_epoch.to_le_bytes());
+        data.extend_from_slice(&args.incident_id.to_le_bytes());
+        data.extend_from_slice(&args.policy_id);
+        data.extend_from_slice(&args.member_set_hash);
+        data.extend_from_slice(&args.action_bundle_hash);
+        data.extend_from_slice(&args.operation_id);
+        data.extend_from_slice(&args.certificate_nonce.to_le_bytes());
+        data.push(args.approval_count);
+        data.push(args.rejection_count);
+        data.extend_from_slice(&args.certified_at_slot.to_le_bytes());
+        data.extend_from_slice(&args.expires_at_slot.to_le_bytes());
+        let (_, bump) = Address::find_program_address(
+            &[CERTIFICATE_SEED, args.operation_id.as_ref()],
+            &core_program(),
+        );
+        data.push(bump);
+
+        let account = solana_account::Account {
+            lamports: 10_000_000,
+            data,
+            owner: core_program(),
+            executable: false,
+            rent_epoch: 0,
         };
-        self.send(instruction, &[&steward])
+        self.svm
+            .set_account(certificate, account)
+            .expect("certificate written");
     }
 
     pub fn initialize_settlement_receipt(
@@ -919,8 +956,7 @@ impl World {
 
     /// Brings all three protocols to armed, with receipts ready for `operation_id`.
     pub fn arm_everything(&mut self, operation_id: [u8; 32]) {
-        self.publish_certificate(self.default_certificate_args(operation_id))
-            .expect("certificate publishes");
+        self.publish_certificate(self.default_certificate_args(operation_id));
         self.initialize_settlement_receipt(operation_id)
             .expect("settlement receipt initializes");
 

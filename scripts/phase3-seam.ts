@@ -60,7 +60,6 @@ import {
   installCapability,
   marketAddress,
   operationAddress,
-  publishCertificate,
   resolveEphemeralEndpoint,
   scheduleSettlementCohort,
   setAdapter,
@@ -305,31 +304,23 @@ async function main(): Promise<void> {
 
   // ------------------------------------------------------------ certificate
 
-  console.log("\nPublishing the certificate and creating every receipt up front");
-  const nowSlot = BigInt(await base.getSlot());
-  await sendIdempotent(
-    base,
-    [
-      publishCertificate(payer.publicKey, {
-        clusterGenesisHash,
-        covenant,
-        circleEpoch: 1n,
-        incidentId: 7n,
-        policyId,
-        memberSetHash,
-        actionBundleHash: sha256(`${runLabel}:bundle`),
-        operationId,
-        certificateNonce: 42n,
-        approvalCount: 2,
-        rejectionCount: 0,
-        certifiedAtSlot: nowSlot,
-        expiresAtSlot: nowSlot + 500_000n,
-      }),
-    ],
-    [payer],
-    "publish certificate",
-  );
+  // Since Phase 5 a certificate can only come from an incident that reached its covenant's
+  // threshold inside the private runtime. This script is the cohort probe: it measures what
+  // Magic Actions does with a certificate that already exists, and it cannot manufacture one.
+  //
+  // `scripts/phase5-lifecycle.ts` runs the whole sequence and produces the certificate this
+  // one consumes.
+  console.log("\nChecking the certificate this cohort settles against");
+  const certificate = certificateAddress(operationId);
+  if ((await base.getAccountInfo(certificate)) === null) {
+    throw new Error(
+      `no certificate at ${certificate.toBase58()} for operation ${Buffer.from(operationId).toString("hex")}. ` +
+        "Certificates are earned by an incident, not published on request. Run scripts/phase5-lifecycle.ts first.",
+    );
+  }
+  record({ step: "certificate present", runtime: "none", detail: certificate.toBase58() });
 
+  console.log("\nCreating every receipt up front");
   await sendIdempotent(
     base,
     [initializeSettlementReceipt(payer.publicKey, operationId)],

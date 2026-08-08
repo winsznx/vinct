@@ -73,10 +73,9 @@ fn measure_and_record_the_action_path() {
     // Lifecycle instructions, for completeness. They never run inside an action.
     let mut lifecycle = World::new();
     let setup_operation = operation(b"bench-setup");
-    lifecycle
-        .publish_certificate(lifecycle.default_certificate_args(setup_operation))
-        .map(|m| measurements.insert("publish_certificate".into(), m.compute_units_consumed))
-        .expect("publishes");
+    // Certificates are no longer published by an instruction that takes their contents, so
+    // there is nothing to measure here. The composition test covers the real path.
+    lifecycle.publish_certificate(lifecycle.default_certificate_args(setup_operation));
     lifecycle
         .initialize_settlement_receipt(setup_operation)
         .map(|m| {

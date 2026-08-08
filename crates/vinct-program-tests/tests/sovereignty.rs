@@ -268,9 +268,7 @@ fn a_revoked_capability_cannot_be_resumed_by_anyone_but_the_protocol() {
 fn an_unarmed_capability_refuses_a_valid_certificate() {
     let operation_id = operation(b"op-unarmed");
     let mut world = World::new();
-    world
-        .publish_certificate(world.default_certificate_args(operation_id))
-        .expect("certificate publishes");
+    world.publish_certificate(world.default_certificate_args(operation_id));
     world.initialize_market(0, None);
     let args = world.default_install_args(0, operation_id);
     world.install_capability(0, args).expect("installs");
@@ -455,9 +453,7 @@ fn the_demo_reset_works_only_for_the_configured_demo_authority() {
         .airdrop(&demo.pubkey(), 1_000_000_000)
         .expect("funded");
 
-    world
-        .publish_certificate(world.default_certificate_args(operation_id))
-        .expect("certificate");
+    world.publish_certificate(world.default_certificate_args(operation_id));
     world.initialize_market(0, Some(demo.pubkey()));
     let args = world.default_install_args(0, operation_id);
     world.install_capability(0, args).expect("installs");

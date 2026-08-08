@@ -1003,3 +1003,37 @@ evaluated against a set that moved under them.
 
 The opener must now hold a ratified membership, which also sharpens the read matrix: the
 principal who cannot read a peer's ballot is a peer, not an outsider.
+
+### D-0047 A certificate is earned, not issued
+
+Phase 2 gave `publish_certificate` every field as an argument and an `issuing_authority`
+signer, with a docstring saying Phase 5 would replace it. Replacing it turned out to matter
+more than the docstring implied: as written, any funded wallet could publish a certificate
+saying anything, and an adapter had no way to tell one earned by a covenant from one typed by
+a stranger. The signer's key was recorded, which localises the blame and prevents nothing.
+
+There are no arguments now. Every field is derived from the released incident core: covenant,
+epoch, policy, member set, template, operation ID, aggregates, and the certification slot.
+The `issuing_authority` field holds the incident's own address, which is a better answer to
+"which authority stood behind this" than a wallet was.
+
+Publishing is permissionless, for the same reason certification and the scrub are. An incident
+that reached its threshold must be able to produce its certificate, and requiring a signature
+would hand whoever held it a veto over an outcome the covenant had already reached. The payer
+funds the account and gains nothing by it.
+
+The operation ID is computed by `vinct_types::action::operation_id`, the same function the
+reference model and the standalone TypeScript verifier use, rather than a fourth
+reimplementation. Its nonce is the certification slot: drawn once, at the only moment that can
+produce a certificate for that incident, and public by the time anyone can read it.
+
+Two consequences worth writing down.
+
+The adapter tests forged certificates through that instruction. They now write the account
+bytes directly, which is both what an attacker would have to do and a stronger test: they no
+longer depend on the core program having a permissive entry point and would keep passing if it
+had none.
+
+`scripts/phase3-seam.ts` could manufacture the certificate its cohort settled against. It
+cannot any more, and it now checks for one and says where to get it. That is the seam between
+the two halves of the product becoming real rather than assumed.

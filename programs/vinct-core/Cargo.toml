@@ -24,6 +24,9 @@ custom-panic = []
 anchor-lang = { version = "=1.0.2", features = ["init-if-needed"] }
 ephemeral-rollups-sdk = { version = "=0.16.2", features = ["anchor", "access-control"] }
 sha2 = "=0.10.9"
+# The canonical digests, shared with the reference model and the standalone verifier rather
+# than reimplemented. An operation ID computed three ways is three chances to disagree.
+vinct-types = { path = "../../crates/vinct-types" }
 
 [build-dependencies]
 sha2 = "=0.10.9"

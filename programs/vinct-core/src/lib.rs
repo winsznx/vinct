@@ -63,45 +63,75 @@ pub const ACCOUNTS_PER_ADAPTER_ACTION: usize = 4;
 pub mod vinct_core {
     use super::*;
 
-    /// Publishes a certificate for one operation.
+    /// Publishes the certificate a certified incident earned.
     ///
-    /// In Phase 5 this becomes the terminal step of the private incident lifecycle, callable
-    /// only by the incident's own scrub-and-certify path. Until then the issuing authority is
-    /// an explicit signer recorded on the account, so an adapter can always tell which key
-    /// stood behind a certificate it is being asked to honour.
-    pub fn publish_certificate(
-        ctx: Context<PublishCertificate>,
-        args: PublishCertificateArgs,
-    ) -> Result<()> {
-        require!(args.operation_id != [0u8; 32], CoreError::ZeroOperationId);
+    /// Every field is derived from the released incident core. Nothing is an argument, and
+    /// there is no issuing authority to hold: the incident's own terminal state is the
+    /// authority, and it reached that state by collecting the covenant's threshold inside
+    /// the private runtime. An adapter asking which key stood behind a certificate gets the
+    /// incident itself, which is a better answer than a wallet.
+    ///
+    /// Permissionless, for the same reason certification and the scrub are. An incident that
+    /// certified must be able to produce its certificate, and requiring a signature would
+    /// hand whoever held it a veto over an outcome the covenant had already reached.
+    ///
+    /// The certificate carries the template hash rather than a concrete bundle hash. The
+    /// concrete bundle's receipt addresses depend on the operation ID, so the bundle cannot
+    /// also be an input to it. The binding runs through the operation ID, which commits to
+    /// the template and to every frozen snapshot field. See docs/decision-log.md D-0012.
+    pub fn publish_certificate(ctx: Context<PublishCertificate>) -> Result<()> {
+        let core = &ctx.accounts.core;
         require!(
-            args.action_bundle_hash != [0u8; 32],
+            core.status == incident::IncidentStatus::CertifiedPendingSettlement,
+            CoreError::IncidentNotCertified
+        );
+        require!(core.operation_id != [0u8; 32], CoreError::ZeroOperationId);
+        require!(
+            core.action_bundle_template_hash != [0u8; 32],
             CoreError::ZeroActionBundleHash
         );
         require!(
-            args.expires_at_slot > args.certified_at_slot,
-            CoreError::CertificateExpiresBeforeIssue
-        );
-        require!(
-            args.approval_count > 0,
+            core.approval_count_after_terminal > 0,
             CoreError::CertificateWithoutApprovals
         );
 
+        let expires_at_slot = core
+            .certified_at_slot
+            .checked_add(core.certificate_lifetime_slots)
+            .ok_or(CoreError::ArithmeticOverflow)?;
+        require!(
+            expires_at_slot > core.certified_at_slot,
+            CoreError::CertificateExpiresBeforeIssue
+        );
+
+        let issuing_authority = core.key();
+        let cluster_genesis_hash = core.cluster_genesis_hash;
+        let covenant = core.covenant;
+        let circle_epoch = core.circle_epoch;
+        let incident_id = core.incident_id;
+        let policy_id = core.policy_id;
+        let member_set_hash = core.member_set_hash;
+        let action_bundle_hash = core.action_bundle_template_hash;
+        let operation_id = core.operation_id;
+        let certified_at_slot = core.certified_at_slot;
+        let approval_count = core.approval_count_after_terminal;
+        let rejection_count = core.rejection_count_after_terminal;
+
         let certificate = &mut ctx.accounts.certificate;
-        certificate.issuing_authority = ctx.accounts.issuing_authority.key();
-        certificate.cluster_genesis_hash = args.cluster_genesis_hash;
-        certificate.covenant = args.covenant;
-        certificate.circle_epoch = args.circle_epoch;
-        certificate.incident_id = args.incident_id;
-        certificate.policy_id = args.policy_id;
-        certificate.member_set_hash = args.member_set_hash;
-        certificate.action_bundle_hash = args.action_bundle_hash;
-        certificate.operation_id = args.operation_id;
-        certificate.certificate_nonce = args.certificate_nonce;
-        certificate.approval_count = args.approval_count;
-        certificate.rejection_count = args.rejection_count;
-        certificate.certified_at_slot = args.certified_at_slot;
-        certificate.expires_at_slot = args.expires_at_slot;
+        certificate.issuing_authority = issuing_authority;
+        certificate.cluster_genesis_hash = cluster_genesis_hash;
+        certificate.covenant = covenant;
+        certificate.circle_epoch = circle_epoch;
+        certificate.incident_id = incident_id;
+        certificate.policy_id = policy_id;
+        certificate.member_set_hash = member_set_hash;
+        certificate.action_bundle_hash = action_bundle_hash;
+        certificate.operation_id = operation_id;
+        certificate.certificate_nonce = certified_at_slot;
+        certificate.approval_count = approval_count;
+        certificate.rejection_count = rejection_count;
+        certificate.certified_at_slot = certified_at_slot;
+        certificate.expires_at_slot = expires_at_slot;
         certificate.bump = ctx.bumps.certificate;
         Ok(())
     }
@@ -150,6 +180,7 @@ pub mod vinct_core {
         account.cluster_genesis_hash = args.cluster_genesis_hash;
         account.status = covenant::CovenantStatus::Draft;
         account.policy_id = args.policy_id;
+        account.action_bundle_template_hash = args.action_bundle_template_hash;
         account.required_approvals = args.required_approvals;
         account.maximum_rejections = args.maximum_rejections;
         account.response_window_slots = args.response_window_slots;
@@ -340,6 +371,8 @@ pub mod vinct_core {
         core.status = incident::IncidentStatus::Draft;
         core.circle_epoch = circle.circle_epoch;
         core.policy_id = circle.policy_id;
+        core.action_bundle_template_hash = circle.action_bundle_template_hash;
+        core.certificate_lifetime_slots = circle.certificate_lifetime_slots;
         core.member_set_hash = circle.member_set_hash;
         core.cluster_genesis_hash = circle.cluster_genesis_hash;
         core.required_approvals = circle.required_approvals;
@@ -760,6 +793,27 @@ pub mod vinct_core {
         let core = &mut ctx.accounts.core;
         core.approval_count_after_terminal = tally.approvals;
         core.rejection_count_after_terminal = tally.rejections;
+        core.certified_at_slot = clock.slot;
+
+        // The operation identity, derived from the frozen snapshot by the same function the
+        // reference model and the standalone verifier use. Three implementations of one
+        // digest would be three chances to disagree about which operation a certificate
+        // authorises.
+        //
+        // The certification slot is the nonce. It is drawn once, at the only moment that can
+        // produce a certificate for this incident, and it is public by the time anyone can
+        // read it.
+        core.operation_id =
+            vinct_types::action::operation_id(&vinct_types::action::OperationInputsV1 {
+                cluster_genesis_hash: core.cluster_genesis_hash,
+                covenant: vinct_types::Address::from(core.covenant.to_bytes()),
+                circle_epoch: core.circle_epoch,
+                incident_id: core.incident_id,
+                policy_id: core.policy_id,
+                member_set_hash: core.member_set_hash,
+                action_bundle_template_hash: core.action_bundle_template_hash,
+                certificate_nonce: clock.slot,
+            });
         // Three terminal outcomes, matching the reference model's. The rejected case is
         // recorded distinctly rather than folded into expiry, so the covenant can tell a
         // blocked incident from one nobody answered. It is only ever reached at or after the
@@ -1934,36 +1988,32 @@ pub struct CohortScheduled {
     pub adapter_action_count: u16,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
-pub struct PublishCertificateArgs {
-    pub cluster_genesis_hash: [u8; 32],
-    pub covenant: Pubkey,
-    pub circle_epoch: u64,
-    pub incident_id: u64,
-    pub policy_id: [u8; 32],
-    pub member_set_hash: [u8; 32],
-    pub action_bundle_hash: [u8; 32],
-    pub operation_id: [u8; 32],
-    pub certificate_nonce: u64,
-    pub approval_count: u8,
-    pub rejection_count: u8,
-    pub certified_at_slot: u64,
-    pub expires_at_slot: u64,
-}
-
+/// Publishing a certificate.
+///
+/// The incident core is the only source, so there are no arguments. It has to be back on the
+/// base layer and owned by this program, which is true only after the release, and its own
+/// seeds are constrained so a caller cannot present someone else's incident.
 #[derive(Accounts)]
-#[instruction(args: PublishCertificateArgs)]
 pub struct PublishCertificate<'info> {
     #[account(
         init,
-        payer = issuing_authority,
+        payer = payer,
         space = 8 + IncidentCertificate::SIZE,
-        seeds = [CERTIFICATE_SEED, args.operation_id.as_ref()],
+        seeds = [CERTIFICATE_SEED, core.operation_id.as_ref()],
         bump
     )]
     pub certificate: Account<'info, IncidentCertificate>,
+    #[account(
+        seeds = [
+            incident::INCIDENT_SEED,
+            core.covenant.as_ref(),
+            &core.incident_id.to_le_bytes()
+        ],
+        bump = core.bump
+    )]
+    pub core: Account<'info, incident::IncidentCore>,
     #[account(mut)]
-    pub issuing_authority: Signer<'info>,
+    pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -2194,4 +2244,6 @@ pub enum CoreError {
     AlreadyArmed,
     #[msg("An adapter-owning member has not armed")]
     AdapterNotArmed,
+    #[msg("The incident has not certified, so it has no certificate to publish")]
+    IncidentNotCertified,
 }

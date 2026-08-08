@@ -93,6 +93,7 @@ impl Formation {
                                 circle_epoch: 1,
                                 cluster_genesis_hash: CLUSTER,
                                 policy_id: self.world.policy_id,
+                                action_bundle_template_hash: TEMPLATE_HASH,
                                 required_approvals: 2,
                                 maximum_rejections: 1,
                                 response_window_slots: 5_000,
@@ -426,9 +427,9 @@ fn the_covenants_commitment_is_the_incidents_commitment() {
         .data;
     let body = &data[8..];
     // version(2) steward(32) covenant_id(8) epoch(8) cluster(32) status(1) policy(32)
-    // required(1) max_rejections(1) window(8) certificate_lifetime(8) member_count(1)
-    // ratified_count(1) armed_count(1) adapter_count(1)
-    let offset = 2 + 32 + 8 + 8 + 32 + 1 + 32 + 1 + 1 + 8 + 8 + 1 + 1 + 1 + 1;
+    // template(32) required(1) max_rejections(1) window(8) certificate_lifetime(8)
+    // member_count(1) ratified_count(1) armed_count(1) adapter_count(1)
+    let offset = 2 + 32 + 8 + 8 + 32 + 1 + 32 + 32 + 1 + 1 + 8 + 8 + 1 + 1 + 1 + 1;
     let frozen = &body[offset..offset + 32];
 
     let mut preimage = b"vinct:incident-member-set:v1".to_vec();

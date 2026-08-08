@@ -99,33 +99,27 @@ export interface CertificateArgs {
   expiresAtSlot: bigint;
 }
 
+/**
+ * Publishes the certificate a certified incident earned.
+ *
+ * No arguments and no issuing authority. Every field is derived from the released incident
+ * core, whose terminal state is the only thing that can produce a certificate. The payer
+ * funds the account and gains nothing by it.
+ */
 export function publishCertificate(
-  issuingAuthority: PublicKey,
-  args: CertificateArgs,
+  payer: PublicKey,
+  core: PublicKey,
+  operationId: Uint8Array,
 ): TransactionInstruction {
-  const encoded = new ArgWriter()
-    .bytes32(args.clusterGenesisHash)
-    .pubkey(args.covenant)
-    .u64(args.circleEpoch)
-    .u64(args.incidentId)
-    .bytes32(args.policyId)
-    .bytes32(args.memberSetHash)
-    .bytes32(args.actionBundleHash)
-    .bytes32(args.operationId)
-    .u64(args.certificateNonce)
-    .u8(args.approvalCount)
-    .u8(args.rejectionCount)
-    .u64(args.certifiedAtSlot)
-    .u64(args.expiresAtSlot)
-    .finish();
   return new TransactionInstruction({
     programId: CORE_PROGRAM_ID,
     keys: [
-      { pubkey: certificateAddress(args.operationId), isSigner: false, isWritable: true },
-      { pubkey: issuingAuthority, isSigner: true, isWritable: true },
+      { pubkey: certificateAddress(operationId), isSigner: false, isWritable: true },
+      { pubkey: core, isSigner: false, isWritable: false },
+      { pubkey: payer, isSigner: true, isWritable: true },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ],
-    data: withDiscriminator(discriminator(CORE_IDL, "publish_certificate"), encoded),
+    data: withDiscriminator(discriminator(CORE_IDL, "publish_certificate")),
   });
 }
 

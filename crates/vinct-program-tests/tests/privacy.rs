@@ -731,9 +731,10 @@ impl Incident {
         let body = &data[8..];
         // version(2) covenant(32) epoch(8) incident_id(8) opener(32) status(1) policy(32)
         // member_set(32) cluster(32) required(1) max_rejections(1) opened(8) expires(8)
-        // window(8) claim_digest(32) operation_id(32) member_count(1) approvals(1)
-        // rejections(1)
-        let offset = 2 + 32 + 8 + 8 + 32 + 1 + 32 + 32 + 32 + 1 + 1 + 8 + 8 + 8 + 32 + 32 + 1;
+        // window(8) template(32) claim_digest(32) operation_id(32) certified_at(8)
+        // certificate_lifetime(8) member_count(1) approvals(1) rejections(1)
+        let offset =
+            2 + 32 + 8 + 8 + 32 + 1 + 32 + 32 + 32 + 1 + 1 + 8 + 8 + 8 + 32 + 32 + 32 + 8 + 8 + 1;
         (body[offset], body[offset + 1])
     }
 

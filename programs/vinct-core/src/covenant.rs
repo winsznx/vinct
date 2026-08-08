@@ -94,6 +94,12 @@ pub struct Covenant {
     pub status: CovenantStatus,
     /// The policy this covenant's incidents run under.
     pub policy_id: [u8; 32],
+    /// The action template the policy commits to.
+    ///
+    /// Feeds the operation ID rather than the concrete bundle, because receipt addresses in
+    /// the concrete bundle depend on the operation ID and cannot also be an input to it. See
+    /// docs/decision-log.md D-0012.
+    pub action_bundle_template_hash: [u8; 32],
     /// Approvals required to certify.
     pub required_approvals: u8,
     /// Rejections that block certification.
@@ -127,7 +133,7 @@ pub struct Covenant {
 impl Covenant {
     /// Serialized size, excluding the 8-byte discriminator.
     pub const SIZE: usize =
-        2 + 32 + 8 + 8 + 32 + 1 + 32 + 1 + 1 + 8 + 8 + 1 + 1 + 1 + 1 + 32 + 8 + 8 + 1;
+        2 + 32 + 8 + 8 + 32 + 1 + 32 + 32 + 1 + 1 + 8 + 8 + 1 + 1 + 1 + 1 + 32 + 8 + 8 + 1;
 
     /// True when `now_slot` is outside the epoch's validity window.
     pub fn is_out_of_window(&self, now_slot: u64) -> bool {
@@ -178,6 +184,12 @@ pub struct CreateCovenantArgs {
     pub cluster_genesis_hash: [u8; 32],
     /// The policy this covenant's incidents run under.
     pub policy_id: [u8; 32],
+    /// The action template the policy commits to.
+    ///
+    /// Feeds the operation ID rather than the concrete bundle, because receipt addresses in
+    /// the concrete bundle depend on the operation ID and cannot also be an input to it. See
+    /// docs/decision-log.md D-0012.
+    pub action_bundle_template_hash: [u8; 32],
     /// Approvals required to certify.
     pub required_approvals: u8,
     /// Rejections that block certification.
@@ -210,6 +222,10 @@ pub fn check_terms(args: &CreateCovenantArgs) -> Result<()> {
         CoreError::ZeroResponseWindow
     );
     require!(args.epoch_lifetime_slots > 0, CoreError::ZeroResponseWindow);
+    require!(
+        args.action_bundle_template_hash != [0u8; 32],
+        CoreError::ZeroActionBundleHash
+    );
     Ok(())
 }
 

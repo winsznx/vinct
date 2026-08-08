@@ -5756,6 +5756,7 @@ dependencies = [
  "anchor-lang",
  "ephemeral-rollups-sdk",
  "sha2 0.10.9",
+ "vinct-types",
 ]
 
 [[package]]

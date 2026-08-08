@@ -147,10 +147,16 @@ pub struct IncidentCore {
     pub expires_at_slot: u64,
     /// The response window copied from the covenant, so opening needs no argument for it.
     pub response_window_slots: u64,
+    /// The action template the covenant's policy commits to, copied at creation.
+    pub action_bundle_template_hash: [u8; 32],
     /// Digest of the private claim. Safe to publish; the claim itself is not.
     pub claim_digest: [u8; 32],
-    /// The operation this incident settles under, set at certification.
+    /// The operation this incident settles under, derived at certification.
     pub operation_id: [u8; 32],
+    /// Slot the outcome was settled. Zero until certification.
+    pub certified_at_slot: u64,
+    /// How long the certificate this incident produces remains usable.
+    pub certificate_lifetime_slots: u64,
     /// How many member attestation accounts exist for this incident.
     ///
     /// Public because certification has to be handed exactly this many accounts, and a
@@ -167,8 +173,29 @@ pub struct IncidentCore {
 
 impl IncidentCore {
     /// Serialized size, excluding the 8-byte discriminator.
-    pub const SIZE: usize =
-        2 + 32 + 8 + 8 + 32 + 1 + 32 + 32 + 32 + 1 + 1 + 8 + 8 + 8 + 32 + 32 + 1 + 1 + 1 + 1;
+    pub const SIZE: usize = 2
+        + 32
+        + 8
+        + 8
+        + 32
+        + 1
+        + 32
+        + 32
+        + 32
+        + 1
+        + 1
+        + 8
+        + 8
+        + 8
+        + 32
+        + 32
+        + 32
+        + 8
+        + 8
+        + 1
+        + 1
+        + 1
+        + 1;
 
     /// True when `now_slot` is at or past the deadline.
     pub fn is_expired(&self, now_slot: u64) -> bool {
