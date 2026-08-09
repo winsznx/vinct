@@ -72,7 +72,7 @@ and `AdapterReceipt` which carry no address at all.
 That indirection is the point. A receipt's address is seeded by an operation ID that does not
 exist until an incident certifies, so a template naming it could only be built after the
 incident it was meant to authorise. Roles let a protocol arm once and stay armed for every
-incident the covenant ever certifies. See `docs/decision-log.md` D-0048 and D-0050.
+incident the covenant ever certifies. See [decision-log.md](decision-log.md) D-0048 and D-0050.
 
 There is no seed recipe a client can supply. A template that let a caller describe how to derive
 an account would be a forwarding surface wearing a commitment.
@@ -229,3 +229,10 @@ wallet-authenticated connection.
 
 If the Worker disappeared the app would still work against any RPC a reader names with `?base=`.
 There is no database.
+
+---
+
+**Next:** [SECURITY_MODEL.md](SECURITY_MODEL.md) for the trust boundaries this shape enforces,
+[PRIVACY_MODEL.md](PRIVACY_MODEL.md) for what each party can read, and
+[decision-log.md](decision-log.md) for why any given piece is the way it is.
+[Back to the README](../README.md).

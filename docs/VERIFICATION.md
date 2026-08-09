@@ -61,8 +61,9 @@ Point them at Devnet with `VINCT_BASE_RPC`, `VINCT_ER_RPC`, and a funded `VINCT_
 
 ## The claim ledger
 
-`docs/claim-ledger.json` records every public claim with its proof level, the network it was
-verified on, the commands that produced it, its artifacts, and its limitations.
+[claim-ledger.json](claim-ledger.json) records every public claim with its proof level, the
+network it was verified on, the commands that produced it, its artifacts, and its limitations.
+Its shape is fixed by [claim-ledger.schema.json](claim-ledger.schema.json).
 
 A claim never outruns the evidence recorded beside it. `pnpm audit-claims` enforces that
 mechanically, and it is a gate because one claim once pointed at a file that had never been
@@ -77,3 +78,11 @@ written.
 | 5 | observed on a local MagicBlock stack |
 | 6 | observed on Solana Devnet |
 | 7 | observed against attested TEE infrastructure |
+
+---
+
+**Next:** [claim-ledger.json](claim-ledger.json) for the claims these levels are attached to,
+[audit-report.md](audit-report.md) for what the gates caught,
+[KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) for what no level covers, and
+[runbooks/devnet-proof-runs.md](runbooks/devnet-proof-runs.md) to reproduce the Devnet runs.
+[Back to the README](../README.md).

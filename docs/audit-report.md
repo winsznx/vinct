@@ -261,3 +261,11 @@ claim it supports is proven on the local stack and by the PER visibility experim
 The condition is not that anything is believed to work and untested. It is that one claim
 already proven on two runtimes has not been proven on a third, and the reason is a cache in
 somebody else's infrastructure.
+
+---
+
+**Next:** [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) for the unproven set stated plainly,
+[claim-ledger.json](claim-ledger.json) for every claim with its evidence,
+[VERIFICATION.md](VERIFICATION.md) to run the gates yourself, and
+[decision-log.md](decision-log.md) for the reasoning behind each correction.
+[Back to the README](../README.md).

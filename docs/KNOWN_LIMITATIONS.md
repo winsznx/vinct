@@ -53,7 +53,8 @@ fired reads as `REQUESTED`, never the reverse.
 
 **A public RPC cannot deploy a program this size,** and paid tiers commonly decline
 `getProgramAccounts`. Both are worked around and both are written up in
-`docs/runbooks/devnet-proof-runs.md` and `docs/DEPLOYMENT.md`.
+[runbooks/devnet-proof-runs.md](runbooks/devnet-proof-runs.md) and
+[DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Claims deliberately not made
 
@@ -77,3 +78,10 @@ specific, but it has not been run on another engine.
 
 The classification sweep is exhaustive at two actions, which is the smallest width where
 `PartialObservation` is reachable. Larger cohorts exercise the same branches.
+
+---
+
+**Next:** [audit-report.md](audit-report.md) for how these were found,
+[claim-ledger.json](claim-ledger.json) for the limitation recorded against each individual claim,
+[PRIVACY_MODEL.md](PRIVACY_MODEL.md) and [SECURITY_MODEL.md](SECURITY_MODEL.md) for the
+boundaries these sit outside. [Back to the README](../README.md).

@@ -137,3 +137,11 @@ an incident's existence. An incident's existence is public by design.
 The threat model does not cover a malicious rollup operator with a fabricated attestation, a
 compromised protocol authority key, or collusion among a threshold of members. A covenant that
 reaches its threshold is by construction a covenant whose members agreed.
+
+---
+
+**Next:** [PRIVACY_MODEL.md](PRIVACY_MODEL.md) for the read boundary in detail,
+[audit-report.md](audit-report.md) for the findings that produced these gates,
+[KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) for what is still unproven, and
+[ARCHITECTURE.md](ARCHITECTURE.md) for the structure being defended.
+[Back to the README](../README.md).

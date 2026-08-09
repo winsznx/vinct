@@ -70,8 +70,10 @@ cannot itself read over RPC.
 
 That was established by experiment, not assumed, and it is what makes the split-account design
 work at all. The claim is deliberately narrow: it describes the tested VINCT account flow on the
-current MagicBlock runtime and should not be generalised further. See `docs/decision-log.md`
-D-0042.
+current MagicBlock runtime and should not be generalised further. See
+[decision-log.md](decision-log.md) D-0042, and
+[per-visibility-experiment-latest.json](../artifacts/devnet/per-visibility-experiment-latest.json)
+for the run itself.
 
 ## In the browser
 
@@ -91,3 +93,10 @@ choose.
 Constant-time behaviour. Traffic-analysis resistance. Concealment of an incident's existence.
 Protection against a member who chooses to publish their own decision. Cryptographic proof of
 which workload runs inside the TEE.
+
+---
+
+**Next:** [SECURITY_MODEL.md](SECURITY_MODEL.md) for the trust boundaries,
+[KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) for what confidentiality is not proven,
+and [claim-ledger.json](claim-ledger.json) for the evidence behind each statement above.
+[Back to the README](../README.md).
