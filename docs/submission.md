@@ -50,7 +50,7 @@ automated recovery outright.
 | Ephemeral Rollup | The delegated incident lifecycle and the certification transaction |
 | Magic Actions | The commit-linked cohort: three protocol-owned adapter actions plus a settlement receipt |
 | Cranks | Incident expiry, so a stale incident cannot stay open indefinitely |
-| Router | Every rollup endpoint, resolved live. No regional endpoint is hardcoded anywhere |
+| Router | Rollup endpoints resolved live, through `getDelegationStatus` in scripts and `getRoutes` in the app. One regional default exists as a first candidate; the endpoint used is whichever answers with the current build fingerprint, never one picked by hostname |
 
 The TEE-backed rollup is chosen by asking every router-advertised endpoint for a TDX quote over
 a fresh challenge, and taking the one that answers with a quote bound to it. No hostname or
@@ -100,10 +100,10 @@ concealed. Its existence is public by design. Its contents are not.
 | --- | --- |
 | Every public claim, with commands and limitations | `docs/claim-ledger.json` |
 | What we got wrong and the gate each mistake left | `docs/audit-report.md` |
-| 72 decisions, with the evidence behind each | `docs/decision-log.md` |
-| Exactly what is and is not private | `docs/privacy-boundary.md` |
+| 83 decisions, with the evidence behind each | `docs/decision-log.md` |
+| Exactly what is and is not private | `docs/PRIVACY_MODEL.md` |
 | Run records from every proof | `artifacts/` |
 
-61 claims. Every one verified, stamped with a commit, reproducible by a named command,
+64 claims. Every one verified, stamped with a commit, reproducible by a named command,
 carrying its artifacts, and carrying at least one stated limitation. `pnpm audit-claims` checks
 that, and it is a gate because one claim once pointed at a file that had never been written.

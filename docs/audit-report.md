@@ -178,7 +178,7 @@ somebody is in a hurry.
 
 ## Claims audit
 
-61 claims, every one verified, stamped with a reachable commit, reproducible by a named command,
+64 claims, every one verified, stamped with a reachable commit, reproducible by a named command,
 carrying its artifacts, and carrying at least one stated limitation.
 
 | Network | Claims |

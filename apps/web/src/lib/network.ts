@@ -42,8 +42,9 @@ export interface Network {
  * in it would be visible in the bundle regardless, which is why the deploy uses a proxied or
  * unauthenticated endpoint and never a keyed one.
  *
- * No regional rollup is named. `ephemeral` is only a first candidate; `resolveRuntime` asks the
- * router what actually exists and refuses to guess when the two disagree.
+ * `ephemeral` names a region, but only as a first candidate. `resolveRuntime` adds every route
+ * the router advertises and takes whichever endpoint is executing this build, so the name below
+ * decides nothing on its own and is never trusted for being reachable.
  */
 const DEVNET = {
   /*

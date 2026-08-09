@@ -44,8 +44,10 @@ separate endpoint from `Network.base`, and both are visible in `apps/web/src/lib
 | `VITE_SOLANA_SCAN_RPC` | build time, optional | overrides the scan endpoint |
 | `VITE_MAGICBLOCK_ROUTER` | build time, optional | router for rollup resolution |
 
-No regional rollup is ever hardcoded. `resolveRuntime` asks the router what exists and refuses
-to guess when the router and the chain disagree.
+No rollup is selected by its hostname. `network.ts` carries one regional default as a first
+candidate, `resolveRuntime` adds every route the router advertises, and the endpoint used is
+whichever one answers with the current build fingerprint. Reachable and current are different
+properties, and only the second makes a write safe.
 
 ### Why the production build leaves `VITE_SOLANA_RPC` unset
 

@@ -393,7 +393,7 @@
   },
   {
     "id": "phase2-compute-measured",
-    "wording": "One adapter action consumes 49,186 compute units and the four-action cohort totals 153,943, measured on real SBF execution rather than estimated.",
+    "wording": "One adapter action consumes 55,936 compute units and the four-action cohort totals 179,275, measured on real SBF execution rather than estimated.",
     "status": "verified",
     "proof_level": 3,
     "network": "localnet",
@@ -414,7 +414,8 @@
     "limitations": [
       "Measured in LiteSVM, which is not an ephemeral rollup and not Devnet. A floor and a regression guard, not the Phase 3 budget.",
       "Excludes commit overhead, committor overhead, and the ER-side scheduling cost, all of which Phase 3 must measure.",
-      "The four actions were executed as separate transactions here, not inside one Magic Action attempt."
+      "The four actions were executed as separate transactions here, not inside one Magic Action attempt.",
+      "The two quoted figures are stable across repeated runs. Two other fields in the same artifact, install_capability and initialize_adapter_receipt, vary run to run because the test generates fresh keypairs and the on-chain PDA derivation cost depends on the bump seed reached. Neither is quoted here, and neither is gated by a ceiling."
     ]
   },
   {
