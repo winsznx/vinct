@@ -19,6 +19,7 @@
 import { Link, useLocation } from "react-router-dom";
 
 import { Mechanism } from "../components/Mechanism";
+import { BrandImage } from "../components/BrandImage";
 import { Card, Pill } from "../components/primitives";
 import { STRIPPED_RUN, SUCCESS_RUN } from "../lib/demo";
 import { useNetwork } from "../lib/network";
@@ -31,71 +32,60 @@ export function Landing() {
   return (
     <>
       {/* ------------------------------------------------------------ hero */}
-      <section
-        style={{
-          // Owns the screen without trapping the reader: tall enough to be the only thing in
-          // view, short enough that the next band's edge is visible on a laptop.
-          minHeight: "min(88vh, 900px)",
-          display: "flex",
-          alignItems: "center",
-          paddingTop: "var(--s8)",
-          paddingBottom: "var(--s8)",
-          background:
-            "radial-gradient(70% 55% at 78% 42%, rgba(175, 80, 255, 0.10), transparent 70%)",
-        }}
-      >
-        <div
-          className="wrap-hero"
-          style={{
-            display: "grid",
-            // design.md: roughly 55/45, text to card.
-            gridTemplateColumns: "minmax(0, 1.15fr) minmax(0, 1fr)",
-            gap: "var(--s8)",
-            alignItems: "center",
-          }}
-        >
-          <div style={{ display: "grid", gap: "var(--s5)", minWidth: 0 }}>
-            <div>
-              <Pill tone="attention">{network.label} · MagicBlock private rollup</Pill>
-            </div>
+      <section className="hero">
+        <BrandImage
+          art="hero"
+          // Decorative. Everything the picture suggests, three stations weathering one storm
+          // together, is said in the headline and the paragraph beside it, so describing the
+          // scene again would slow a screen reader down without telling anybody anything new.
+          alt=""
+          priority
+          className="hero-art"
+          // The artwork is the full bleed on desktop and a band on a phone, so the browser is
+          // told to fetch roughly a viewport's width either way.
+          sizes="100vw"
+        />
 
-            <h1 style={{ maxWidth: "12ch" }}>
-              <span className="m-display">Coordinate</span>
-              <br />
-              <span className="m-heading" style={{ display: "inline-block", marginTop: "0.12em" }}>
-                without sharing keys
-              </span>
+        <div className="wrap hero-content">
+          <div className="hero-copy">
+            <span className="hero-eyebrow">
+              <span className="dot" style={{ color: "var(--violet)" }} aria-hidden="true" />
+              {network.label} · MagicBlock private rollup
+            </span>
+
+            <h1>
+              <span className="hero-display">Coordinate</span>
+              <span className="hero-sub">without sharing keys</span>
             </h1>
 
-            <p className="m-lead" style={{ maxWidth: "46ch" }}>
+            <p className="hero-body">
               Protocols that depend on the same oracle or bridge can agree in advance on exactly
               what each will do in an emergency, decide privately whether it is happening, and act
               together. Nobody hands anybody else authority.
             </p>
 
-            <div
-              className="row"
-              style={{ flexWrap: "wrap", gap: "var(--s3)", marginTop: "var(--s2)" }}
-            >
+            <div className="row" style={{ flexWrap: "wrap", gap: "var(--s3)" }}>
               <Link
                 to={{ pathname: "/demo", search }}
-                className="btn btn-signal btn-lg"
+                className="btn btn-hero btn-hero-primary"
                 data-testid="cta-demo"
               >
                 Explore live demo
               </Link>
-              <Link to={{ pathname: "/app", search }} className="btn btn-lg" data-testid="cta-app">
+              <Link
+                to={{ pathname: "/app", search }}
+                className="btn btn-hero"
+                data-testid="cta-app"
+              >
                 Open VINCT
               </Link>
             </div>
 
-            <p className="t-small muted" style={{ maxWidth: "48ch" }}>
+            <p className="hero-note">
               The demo needs no wallet. It replays a real incident recorded on Devnet, with the
               addresses and signatures it produced.
             </p>
           </div>
-
-          <Mechanism />
         </div>
       </section>
 
@@ -119,6 +109,15 @@ export function Landing() {
             body="Coordinated action across protocols usually reports success when the request was accepted, which is not the same as anything having happened."
           />
         </div>
+      </Band>
+
+      {/* -------------------------------------------------------- mechanism */}
+      <Band stamp="How it works" id="mechanism">
+        <Head
+          title="One dependency, three sovereign responses"
+          lead="Each protocol arms one bounded action against its own contracts, long before anything breaks. When the shared dependency fails, they certify it privately and each adapter acts on its own authority."
+        />
+        <Mechanism />
       </Band>
 
       {/* ------------------------------------------------------- what you keep */}

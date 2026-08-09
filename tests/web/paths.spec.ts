@@ -169,14 +169,17 @@ test.describe("navigation", () => {
 
     await trigger.click();
     await expect(trigger).toHaveAttribute("aria-expanded", "true");
-    await expect(page.getByRole("link", { name: /sealed quorum/i })).toBeVisible();
+    // Scoped to the panel: the footer's Mechanism column carries the same destinations, and an
+    // unscoped match would pass on a menu that rendered nothing.
+    const panel = page.locator(".nav-menu");
+    await expect(panel.getByRole("link", { name: /sealed quorum/i })).toBeVisible();
 
     // A hover-only menu would fail here, which is why these are disclosure widgets.
     await page.keyboard.press("Escape");
     await expect(trigger).toHaveAttribute("aria-expanded", "false");
 
     await trigger.click();
-    await page.getByRole("link", { name: /sealed quorum/i }).click();
+    await panel.getByRole("link", { name: /sealed quorum/i }).click();
     await page.waitForTimeout(900);
     // Landing under the sticky bar would look like a broken link.
     const top = await page.evaluate(

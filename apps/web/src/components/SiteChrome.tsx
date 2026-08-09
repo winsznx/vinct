@@ -21,6 +21,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 
+import { BrandImage } from "./BrandImage";
 import { useNetwork } from "../lib/network";
 
 interface MenuItem {
@@ -52,12 +53,31 @@ export function SiteChrome({ children }: { children: ReactNode }) {
   const location = useLocation();
   const network = useNetwork();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => setMobileOpen(false), [location.pathname]);
 
+  /**
+   * The bar is transparent over the hero artwork and frosted once the page moves.
+   *
+   * A frosted panel sitting on top of the illustration from the first frame cuts a grey strip
+   * across the sky and makes the navigation feel bolted on rather than part of the composition.
+   * Over flat page content the same panel is what keeps the links legible, so the treatment
+   * follows the scroll rather than being chosen once.
+   */
+  useEffect(() => {
+    const onScroll = (): void => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <header className="site-header">
+      <header
+        className={`site-header ${scrolled || mobileOpen ? "site-header-solid" : ""}`}
+        data-testid="site-header"
+      >
         <div className="wrap site-bar">
           <Link
             to={{ pathname: "/", search: location.search }}
@@ -135,46 +155,82 @@ export function SiteChrome({ children }: { children: ReactNode }) {
 
       <main style={{ flex: 1 }}>{children}</main>
 
-      <footer style={{ borderTop: "1px solid var(--line)", marginTop: "var(--s9)" }}>
-        <div
-          className="wrap row-between"
-          style={{ padding: "var(--s6) var(--s5)", alignItems: "flex-start" }}
-        >
-          <div className="stack-sm">
-            <div className="row" style={{ gap: 10 }}>
-              <Mark />
-              <span style={{ fontWeight: 500 }}>VINCT</span>
+      <footer className="site-footer">
+        <BrandImage
+          art="footer"
+          // Decorative: the same ridge at dawn, which the closing line already says in words.
+          alt=""
+          className="footer-art"
+          sizes="100vw"
+        />
+
+        <div className="wrap footer-inner">
+          <div className="footer-top">
+            <div style={{ display: "grid", gap: "var(--s4)" }}>
+              <div className="row" style={{ gap: 10 }}>
+                <Mark size={24} />
+                <span className="footer-word">VINCT</span>
+              </div>
+              <p className="footer-say">
+                Agree before the crisis. Decide privately. Act together, and check that it happened.
+              </p>
             </div>
-            <p className="t-small muted" style={{ maxWidth: "42ch" }}>
-              Binding mutual aid for protocols sharing critical infrastructure.
-            </p>
+
+            <div className="footer-cols">
+              <div className="footer-col">
+                <span className="footer-col-head">Product</span>
+                {PRODUCT.map((item) => (
+                  <Link key={item.to} to={item.to} className="footer-link">
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+
+              <div className="footer-col">
+                <span className="footer-col-head">Verify</span>
+                <Link to="/proof" className="footer-link">
+                  Check a settlement
+                </Link>
+                <Link to="/demo" className="footer-link">
+                  Recorded evidence
+                </Link>
+              </div>
+
+              <div className="footer-col">
+                <span className="footer-col-head">Mechanism</span>
+                {MECHANISM.slice(0, 3).map((item) => (
+                  <Link key={item.to} to={item.to} className="footer-link">
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+
+              <div className="footer-col">
+                <span className="footer-col-head">Network</span>
+                <Link to="/status" className="footer-link">
+                  Service status
+                </Link>
+                <span className="footer-link" style={{ cursor: "default" }}>
+                  {network.label}
+                </span>
+                <span className="footer-link" style={{ cursor: "default" }}>
+                  MagicBlock rollup
+                </span>
+              </div>
+            </div>
           </div>
 
-          <div className="row" style={{ gap: "var(--s7)", alignItems: "flex-start" }}>
-            <div className="stack-sm">
-              <div className="label">Product</div>
-              {PRODUCT.map((item) => (
-                <Link key={item.to} to={item.to} className="t-small muted">
-                  {item.label}
-                </Link>
-              ))}
-            </div>
-            <div className="stack-sm">
-              <div className="label">Verify</div>
-              <Link to="/proof" className="t-small muted">
-                Check a settlement
+          <div className="footer-meta">
+            <span>Binding mutual aid for protocols sharing critical infrastructure.</span>
+            <span className="row" style={{ gap: "var(--s4)" }}>
+              <span>Programs on {network.label}</span>
+              <span aria-hidden="true" style={{ opacity: 0.35 }}>
+                ·
+              </span>
+              <Link to="/proof" style={{ textDecoration: "underline", textUnderlineOffset: 3 }}>
+                Verify any claim
               </Link>
-              <Link to="/demo" className="t-small muted">
-                Recorded evidence
-              </Link>
-            </div>
-            <div className="stack-sm">
-              <div className="label">Network</div>
-              <span className="t-small muted">{network.label}</span>
-              <Link to="/status" className="t-small muted">
-                Service status
-              </Link>
-            </div>
+            </span>
           </div>
         </div>
       </footer>

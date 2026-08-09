@@ -1816,3 +1816,85 @@ Worth stating as a rule rather than a fix: none of those reads ever depended on 
 there was never a reason to serialise them. Sequential reads are the default shape of code
 written against a fast local validator, and they only reveal themselves as a product defect on
 a real endpoint.
+
+### D-0076 The landing page gets a visual world
+
+Two illustrations arrived: a storm over three lit mountain stations, and the same ridge at dawn.
+They turn out to be VINCT's thesis as a landscape. Three sovereign stations, each with its own
+mast, bound by thin signal lines to a summit relay, weathering one storm together. The second is
+the resolution: the same stations calm, the beacon still on.
+
+So the hero is image-led and the footer is the closing chapter, and the page reads as an arc
+rather than a list of sections. The middle stays the engineered black product, which is the
+contrast that makes both ends work.
+
+Composition was decided from the artwork rather than by eye. A luminance map of the hero over a
+12 by 7 grid put the left third between 17 and 45 out of 255, which carries white text at better
+than 7:1 with no scrim, and the key subjects between 58% and 92% across. The copy takes the dark
+left, the story stays opposite it, and the wash is one-directional near-black that releases
+before the subjects. A flat overlay would have dulled the one thing worth looking at.
+
+The dependency diagram was not deleted. It moved into a "How it works" section, where explaining
+the mechanism is the job. Asking a hero to carry the whole architecture is what made the previous
+one a diagram with a headline beside it.
+
+### D-0077 Art direction is per shape, not one object-position
+
+`object-fit: cover` with a single crop is not responsive art direction, it is a hope. As the
+frame narrows, covering a 16:9 image throws away the sides, and the sides are where the stations
+are. Each breakpoint pushes the window right so the summit and at least two stations survive:
+64% at desktop, 68% below 1280, 72% below 1024.
+
+Below 860px the composition changes rather than compressing. The copy leads on flat canvas and
+the artwork becomes a band beneath it, cropped to hold the foreground station and the summit.
+The image is first in the DOM because the desktop layout needs it behind everything, so `order`
+moves it visually without disturbing the reading order.
+
+The footer needed the same thinking and got it wrong twice first. A `vh` height with `cover`
+turned a 3:1 panorama into a tall box cropped to its middle, which is the one thing a panorama
+must not lose, and left a slab of dead black above it. The band keeps the source ratio now, so
+the whole sweep reads. Then the mobile crop was bottom-anchored, which showed only the
+foreground ridge: the part with no dawn in it. It sits at 78% across and 45% down instead,
+holding the relay, a station light, and the horizon.
+
+One contrast failure worth recording. The footer's brightest band is its dawn horizon, and the
+first attempt laid the closing sentence and four link columns straight across it. The fix was
+compositional rather than a scrim: the copy sits in the dark sky above the horizon, and the
+horizon is left clean below it. That is also the more honest layout, because the landscape gets
+to be the closing image instead of a backdrop with words on it.
+
+### D-0078 A background-image cannot have a srcset
+
+The artwork is served as `<picture>` rather than CSS. A `background-image` names one URL, so the
+browser downloads it regardless of viewport or density, and the preload scanner cannot start the
+fetch before the stylesheet parses. Semantic markup gets 8KB to a phone and 52KB to a 1440
+display, chosen by the browser.
+
+`scripts/optimize-art.ts` is committed so future source art regenerates the same way. It refuses
+to upscale, which matters here: the hero source is 1672px wide, so a requested 2560 variant would
+be an interpolated blur at triple the bytes. Requested widths above the source are dropped and
+the native width is always included.
+
+Quality is per artwork. The hero is the brand moment and gets 68, which costs under 20KB more
+than 58 and keeps the fine grain in the fog that lower quality smooths away. The footer is
+lazy-loaded and smoother art, so it stays at 58. AVIF keeps 4:4:4 chroma because this is mostly
+smooth gradient, which is exactly where subsampling bands.
+
+Measured after: 3484KB of source PNG becomes 988KB of variants, of which a desktop visit loads
+52KB and a phone 8KB. LCP is 184ms on desktop and 112ms on mobile, and the footer is not fetched
+before the fold at all.
+
+### D-0079 Typography was sized by range, not by viewport width
+
+The headline needed a different size at 768 than a single fluid curve can give it: the `vw` term
+that makes a tablet 64px makes a wide desktop 140px. Each range gets its own clamp, so the type
+is deliberate at every width rather than correct at two of them and accidental in between.
+
+`Coordinate` runs 50 to 62 on a phone, 64 to 78 on a tablet, 78 to 100 on a laptop, and 100 to
+118 on a wide desktop. The sans continuation stays clearly subordinate throughout rather than the
+headline being one uniform slab.
+
+One measure bug came out of this. The body was limited to `34ch`, and `ch` is the width of a zero
+in the current font, roughly half an em in a proportional face, so at 19px it resolved to about
+320px and broke the paragraph into five stub lines. The target was a pixel target, so it is set
+in pixels now: 560.

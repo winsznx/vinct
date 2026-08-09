@@ -69,7 +69,7 @@ export function Status() {
 
   return (
     <SiteChrome>
-      <div className="wrap" style={{ padding: "var(--s7) var(--s5) var(--s9)" }}>
+      <div className="wrap page-offset" style={{ padding: "var(--s7) var(--s5) var(--s9)" }}>
         <header className="stack" style={{ gap: "var(--s3)", marginBottom: "var(--s6)" }}>
           <Pill>{network.label}</Pill>
           <h1 className="m-heading">Service status</h1>

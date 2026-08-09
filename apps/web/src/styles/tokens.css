@@ -709,14 +709,31 @@ ol {
 
 /* ------------------------------------------------------------ site header */
 
+/**
+ * Transparent over the hero, frosted once the page moves.
+ *
+ * The bar is `fixed` rather than `sticky` so the hero artwork runs underneath it and the
+ * navigation reads as part of the composition instead of a strip above it. The hero adds its own
+ * top padding to compensate.
+ */
 .site-header {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 40;
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  transition:
+    background 220ms ease,
+    border-color 220ms ease,
+    backdrop-filter 220ms ease;
+}
+.site-header-solid {
   background: var(--frosted);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom-color: var(--line);
 }
 
 /**
@@ -731,7 +748,8 @@ ol {
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: var(--s4);
-  min-height: 64px;
+  /* Taller than a default bar so the links have room to breathe against artwork. */
+  min-height: 72px;
 }
 .site-links {
   display: flex;
@@ -748,11 +766,13 @@ ol {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 12px;
+  padding: 11px 14px;
   border-radius: var(--r-sm);
-  font-size: 12px;
+  /* 13px rather than 12: large enough to read as deliberate against an illustration, still
+     quiet enough to recede into the bar. */
+  font-size: 13px;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.08em;
   font-weight: 500;
   color: var(--text-muted);
   white-space: nowrap;
@@ -797,13 +817,13 @@ ol {
 /** The reference's single filled pill on the end of the bar, with its arrow. */
 .btn-pill {
   border-radius: var(--r-pill);
-  padding: 9px 8px 9px 18px;
+  padding: 10px 9px 10px 20px;
   background: var(--almost-white);
   color: var(--near-black);
   border-color: var(--almost-white);
   font-weight: 600;
-  font-size: var(--t-base);
-  gap: 6px;
+  font-size: 14px;
+  gap: 7px;
 }
 .btn-pill:hover:not(:disabled) {
   background: #fff;
@@ -833,6 +853,19 @@ ol {
  * Dropping links outright was the previous approach and it works for three items. It does not
  * work for seven, and hiding a destination is worse than asking for one tap.
  */
+/*
+ * The network indicator goes first, well before the links do.
+ *
+ * At 1024 the centred group and the actions were nearly touching, which reads as a bar that ran
+ * out of room. The indicator is the least important thing in the header: the same fact is in the
+ * footer, on the status page, and in the application shell, so it is the right thing to drop.
+ */
+@media (max-width: 1180px) {
+  .nav-link-status {
+    display: none;
+  }
+}
+
 @media (max-width: 940px) {
   .site-bar {
     grid-template-columns: 1fr auto;
@@ -842,9 +875,6 @@ ol {
   }
   .site-menu-toggle {
     display: inline-flex;
-  }
-  .nav-link-status {
-    display: none;
   }
 }
 @media (max-width: 560px) {
@@ -944,4 +974,571 @@ ol {
  */
 .band[id] {
   scroll-margin-top: 84px;
+}
+
+/* =========================================================== hero artwork */
+
+/**
+ * The image-led hero.
+ *
+ * Composition, from a luminance map of the source rather than by eye. The left third of the
+ * artwork sits between 17 and 45 out of 255, which carries white text at better than 7:1 with
+ * no scrim at all. The key subjects, the storm break and the summit relay, live between 58% and
+ * 92% across and in the top third. So the copy takes the dark left and the story stays visible
+ * opposite it, which is the composition the artwork was drawn for.
+ *
+ * The scrim is near-black and one-directional. It deepens the left where the type sits and
+ * releases entirely before the subjects. A flat overlay across the whole frame would dull the
+ * one thing worth looking at, and a violet wash would fight the artwork's own colour.
+ */
+.hero {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  /* Tall enough to be the only thing in view, short enough that the next band's edge shows. */
+  min-height: min(92vh, 940px);
+  padding-top: calc(var(--header) + var(--s7));
+  padding-bottom: var(--s8);
+  overflow: hidden;
+}
+
+.hero-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Wide desktop: bias right so the summit and the three stations stay in frame while the
+     dark left runs under the type. */
+  object-position: 64% 42%;
+  z-index: -2;
+}
+
+/**
+ * Readability, in two parts.
+ *
+ * A horizontal wash that only touches the text side, and a vertical fade that dissolves the
+ * hero into the band below instead of ending on a hard seam.
+ */
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(
+      100deg,
+      rgba(9, 9, 9, 0.94) 0%,
+      rgba(9, 9, 9, 0.86) 22%,
+      rgba(9, 9, 9, 0.55) 44%,
+      rgba(9, 9, 9, 0.12) 62%,
+      transparent 76%
+    ),
+    linear-gradient(to bottom, rgba(9, 9, 9, 0.55) 0%, transparent 22%),
+    linear-gradient(to top, var(--canvas) 0%, rgba(9, 9, 9, 0.4) 12%, transparent 34%);
+}
+
+.hero-content {
+  position: relative;
+  width: 100%;
+}
+
+.hero-copy {
+  display: grid;
+  gap: var(--s5);
+  /* The type column. Deliberately narrower than the band so it stays inside the dark zone. */
+  max-width: min(46%, 640px);
+}
+
+/* ------------------------------------------------------------ hero type */
+
+/**
+ * Stepped rather than one fluid curve.
+ *
+ * A single `clamp` across every viewport cannot hit a sensible size at both 768 and 1728: the
+ * `vw` term that gives a tablet a 64px headline gives a wide desktop a 140px one. Each range
+ * gets its own so the headline is deliberate at every width instead of correct at two of them.
+ */
+.hero-display {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 300;
+  letter-spacing: -0.035em;
+  line-height: 0.88;
+  font-size: clamp(50px, 13.2vw, 62px);
+  display: block;
+}
+.hero-sub {
+  font-weight: 400;
+  letter-spacing: -0.022em;
+  line-height: 1.02;
+  font-size: clamp(38px, 9.8vw, 46px);
+  display: block;
+  margin-top: 0.1em;
+  color: var(--almost-white);
+}
+.hero-body {
+  font-size: 16px;
+  line-height: 1.6;
+  font-weight: 300;
+  color: rgba(247, 249, 250, 0.84);
+  /*
+   * Measure in pixels rather than `ch`.
+   *
+   * `ch` is the width of a zero in the current font, roughly half an em in a proportional face,
+   * so 34ch at 19px resolved to about 320px and broke the paragraph into five stub lines. The
+   * brief's 500 to 620 is a pixel target, so it is set in pixels.
+   */
+  max-width: min(100%, 560px);
+}
+.hero-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--lavender);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.hero-note {
+  font-size: 13px;
+  color: var(--steel);
+  max-width: 42ch;
+}
+
+@media (min-width: 768px) {
+  .hero-display {
+    font-size: clamp(64px, 8.2vw, 78px);
+  }
+  .hero-sub {
+    font-size: clamp(44px, 5.6vw, 54px);
+  }
+  .hero-body {
+    font-size: 17px;
+  }
+}
+@media (min-width: 1024px) {
+  .hero-display {
+    font-size: clamp(78px, 7.4vw, 100px);
+  }
+  .hero-sub {
+    font-size: clamp(52px, 4.5vw, 62px);
+  }
+  .hero-body {
+    font-size: 18px;
+  }
+}
+@media (min-width: 1440px) {
+  .hero-display {
+    font-size: clamp(100px, 6.6vw, 118px);
+  }
+  .hero-sub {
+    font-size: clamp(58px, 3.85vw, 68px);
+  }
+  .hero-body {
+    font-size: 19px;
+  }
+}
+@media (min-width: 1728px) {
+  .hero-body {
+    font-size: 20px;
+  }
+}
+
+/* ------------------------------------------- responsive art direction */
+
+/**
+ * Crop positions chosen per shape, not one `object-position` reused everywhere.
+ *
+ * As the frame narrows, covering a 16:9 image inside it throws away the sides, and the sides
+ * are where the stations are. Each step pushes the visible window further right so the summit
+ * and at least two stations survive, until the frame is portrait enough that overlaying type on
+ * the artwork stops working at all.
+ */
+@media (max-width: 1279px) {
+  .hero-art {
+    object-position: 68% 40%;
+  }
+  .hero-copy {
+    max-width: min(54%, 560px);
+  }
+}
+
+@media (max-width: 1023px) {
+  .hero-art {
+    object-position: 72% 38%;
+  }
+  .hero-copy {
+    max-width: min(62%, 520px);
+  }
+  .hero::before {
+    background:
+      linear-gradient(
+        100deg,
+        rgba(9, 9, 9, 0.95) 0%,
+        rgba(9, 9, 9, 0.88) 34%,
+        rgba(9, 9, 9, 0.6) 56%,
+        rgba(9, 9, 9, 0.2) 74%,
+        transparent 88%
+      ),
+      linear-gradient(to bottom, rgba(9, 9, 9, 0.55) 0%, transparent 22%),
+      linear-gradient(to top, var(--canvas) 0%, rgba(9, 9, 9, 0.45) 14%, transparent 36%);
+  }
+}
+
+/**
+ * Portrait: the composition changes rather than compressing.
+ *
+ * Squeezing a landscape hero into 390px would leave a letterbox nobody can read. Instead the
+ * copy leads on the flat canvas and the artwork becomes a deliberate tall band beneath it,
+ * cropped to hold the foreground station and the summit rather than a random slice of fog.
+ */
+@media (max-width: 860px) {
+  .hero {
+    /*
+     * Copy leads, artwork follows.
+     *
+     * The image is first in the DOM because the desktop composition needs it behind everything.
+     * On a phone the reading order is the point: headline, sentence, buttons, and only then the
+     * picture, so `order` moves it without moving the markup.
+     */
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding-top: calc(var(--header) + var(--s6));
+    padding-bottom: 0;
+    background: var(--canvas);
+  }
+  .hero::before {
+    display: none;
+  }
+  .hero-content {
+    order: 1;
+  }
+  .hero-copy {
+    max-width: 100%;
+  }
+  .hero-art {
+    order: 2;
+    position: relative;
+    inset: auto;
+    margin-top: var(--s7);
+    height: clamp(340px, 52vh, 460px);
+    /* Holds the foreground station and the lit summit; avoids cropping a tower in half. */
+    object-position: 74% 44%;
+    /* Masks into the page so the band has no hard top or bottom edge. */
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      #000 14%,
+      #000 72%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(to bottom, transparent 0%, #000 14%, #000 72%, transparent 100%);
+  }
+}
+
+/**
+ * A very slight settle on load, and nothing else.
+ *
+ * The artwork carries the atmosphere. Parallax, particles, or a mouse-follow glow would be
+ * three things competing with it. This is one scale step that finishes and stops.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-art {
+    animation: hero-settle 1400ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @keyframes hero-settle {
+    from {
+      transform: scale(1.045);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+}
+
+/* ========================================================= footer artwork */
+
+/**
+ * The closing chapter.
+ *
+ * The hero is a storm at night. This is the same ridge at dawn, the stations lit and calm, the
+ * summit beacon still on. Putting it at the end of the page makes the landing read as an arc
+ * rather than a list of sections, which is what the reference footers actually do: they end on
+ * an image, not on a link strip.
+ *
+ * The artwork is anchored to the bottom so the horizon and peaks sit on the page's bottom edge,
+ * and the type occupies the calm sky above them. That is the negative space the illustration
+ * was drawn with, so no panel or opaque plate is needed behind anything.
+ */
+/**
+ * Height comes from the artwork, not from a viewport fraction.
+ *
+ * A `min-height` in `vh` plus `object-fit: cover` made the footer a tall box that cropped the
+ * panorama's sides away, which is the one thing a 3:1 image must not lose, and left a slab of
+ * dead black above it. The band now keeps the illustration's own ratio, so the whole sweep of
+ * the ridge is always visible, and the footer is exactly as tall as the art plus the copy that
+ * sits over it.
+ */
+.site-footer {
+  position: relative;
+  isolation: isolate;
+  /*
+   * No margin. The band above already ends on 120px of its own padding, and adding another 96
+   * here stacked into a slab of empty black between the last section and the artwork. The
+   * footer's own top wash is what separates them.
+   */
+  margin-top: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding-top: var(--s7);
+}
+
+.footer-art {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: auto;
+  /* The source ratio, so nothing is cropped and the full panorama reads. */
+  aspect-ratio: 2172 / 724;
+  object-fit: cover;
+  object-position: 50% 100%;
+  z-index: -2;
+}
+
+/**
+ * Two washes.
+ *
+ * A deep one at the top so the footer emerges from the page's near-black instead of starting
+ * abruptly, and a light one at the very bottom so the small metadata row keeps its contrast
+ * over the lit ridge.
+ */
+/**
+ * The wash that makes the copy legible without a plate over the art.
+ *
+ * The illustration's brightest band is its dawn horizon, roughly three fifths of the way down,
+ * and white text laid across it fails contrast outright. So the copy sits in the dark sky above
+ * that line and the horizon is left clean below it, which is also the more truthful composition:
+ * the landscape gets to be the closing image rather than a backdrop with words on it.
+ *
+ * The top wash carries the page's near-black down far enough to hold the type. The bottom one
+ * only has to protect a single small metadata row, and the ridge there is already dark.
+ */
+.site-footer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(
+      to bottom,
+      var(--canvas) 0%,
+      rgba(9, 9, 9, 0.9) 14%,
+      rgba(9, 9, 9, 0.7) 34%,
+      rgba(9, 9, 9, 0.3) 54%,
+      transparent 70%
+    ),
+    linear-gradient(to top, rgba(9, 9, 9, 0.62) 0%, rgba(9, 9, 9, 0.22) 15%, transparent 28%);
+}
+
+/**
+ * The top block and the metadata row are pushed apart on purpose.
+ *
+ * The gap is where the horizon lands. Letting the illustration breathe between the links and the
+ * fine print is what makes this read as a closing image rather than a link strip with a
+ * photograph behind it.
+ */
+.footer-inner {
+  position: relative;
+  display: grid;
+  /* The gap is where the horizon lands, so the links and the fine print sit either side of it. */
+  gap: clamp(var(--s7), 13vw, 200px);
+  padding-bottom: var(--s5);
+}
+
+.footer-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+  gap: var(--s8);
+  align-items: start;
+}
+
+.footer-word {
+  /* Calm, per the brief. The image is the dramatic part. */
+  font-size: clamp(22px, 2.2vw, 30px);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.footer-say {
+  font-size: clamp(18px, 1.5vw, 23px);
+  font-weight: 300;
+  line-height: 1.45;
+  color: rgba(247, 249, 250, 0.9);
+  max-width: 30ch;
+}
+
+.footer-cols {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--s6) var(--s5);
+}
+.footer-col {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+.footer-col-head {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  /* Brighter than the app's label colour, which disappeared against the lit sky. */
+  color: rgba(247, 249, 250, 0.6);
+}
+.footer-link {
+  font-size: 15px;
+  color: rgba(247, 249, 250, 0.82);
+  transition: color 120ms ease;
+  width: fit-content;
+}
+.footer-link:hover {
+  color: var(--almost-white);
+}
+
+.footer-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3) var(--s5);
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--s4);
+  border-top: 1px solid rgba(247, 249, 250, 0.14);
+  font-size: 13px;
+  color: rgba(247, 249, 250, 0.72);
+}
+
+@media (max-width: 1023px) {
+  .footer-top {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s7);
+  }
+  .footer-cols {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  /*
+   * The artwork stops sitting behind the copy and becomes a closing band beneath it.
+   *
+   * Overlaying links on the illustration works while there is sky to put them on. On a phone
+   * the band is short enough that the links landed on the ridge itself and became unreadable,
+   * so the composition changes instead of being squeezed: information stacked, then a
+   * deliberate crop as the last thing on the page.
+   *
+   * A 3:1 band at 390px would be 130px of letterbox, so it gets a real height and crops toward
+   * the summit rather than showing a stripe of haze.
+   */
+  .site-footer {
+    padding-top: var(--s7);
+  }
+  .site-footer::before {
+    /* Nothing to protect: the copy is on flat canvas now. Only the band's own edge is softened. */
+    background: none;
+  }
+  .footer-inner {
+    order: 1;
+    gap: var(--s6);
+    padding-bottom: var(--s6);
+  }
+  .footer-art {
+    order: 2;
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    aspect-ratio: auto;
+    height: clamp(300px, 44vh, 400px);
+    /*
+     * 78% across, centred vertically rather than bottom-anchored.
+     *
+     * Bottom-anchoring a tall crop of a panorama shows only the foreground ridge, which here is
+     * the one part with no dawn in it. This window holds the summit relay, the station light
+     * below it, and the horizon: the same closing image the wide band shows, at a phone's shape.
+     */
+    object-position: 78% 45%;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 16%);
+    mask-image: linear-gradient(to bottom, transparent 0%, #000 16%);
+  }
+  .footer-cols {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s5);
+  }
+  .footer-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/**
+ * Hero buttons.
+ *
+ * Larger than the application's controls because they sit against an illustration rather than a
+ * panel, and a 13px button disappears there. 15px with generous padding, per the brief's range.
+ *
+ * The primary is off-white rather than violet. The artwork already supplies the colour and the
+ * one warm light in the frame is the summit break; a violet slab beside it would compete with
+ * the thing the picture is about. Violet stays as the signal in the eyebrow dot, which is
+ * exactly the rationing design.md asks for. The secondary is a glass outline so it reads on
+ * artwork without an opaque plate.
+ */
+.btn-hero {
+  font-size: 15px;
+  padding: 14px 24px;
+  border-radius: var(--r-sm);
+  border-color: rgba(247, 249, 250, 0.28);
+  background: rgba(9, 9, 9, 0.4);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition:
+    transform 140ms cubic-bezier(0.22, 1, 0.36, 1),
+    background 140ms ease,
+    border-color 140ms ease;
+}
+.btn-hero:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: rgba(9, 9, 9, 0.6);
+  border-color: rgba(247, 249, 250, 0.45);
+}
+.btn-hero-primary,
+.btn-hero-primary:hover:not(:disabled) {
+  background: var(--almost-white);
+  color: var(--near-black);
+  border-color: var(--almost-white);
+  font-weight: 600;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.btn-hero-primary:hover:not(:disabled) {
+  background: #fff;
+  border-color: #fff;
+}
+
+/**
+ * Pages without a hero clear the fixed bar themselves.
+ *
+ * The hero pays for its own space with top padding so the artwork can run under the navigation.
+ * Everywhere else needs the offset, or the first heading sits behind the links.
+ */
+.page-offset {
+  padding-top: var(--header);
 }
