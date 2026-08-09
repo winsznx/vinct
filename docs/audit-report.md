@@ -116,7 +116,19 @@ artifacts were regenerated.
 key, incident canary text, and a recorded decision, watching it fail, and watching it pass once
 removed. See D-0071.
 
-### 12. Two controls that stayed visible and stopped working
+### 12. A relative RPC URL that failed with no error at all
+
+The deployment points the app at its own `/rpc` proxy so a paid credential stays server-side.
+Every route rendered, no console error appeared, and nothing worked: zero requests were made.
+
+`Connection` parses its endpoint eagerly and throws `Invalid URL` on a relative path, before any
+request exists. The throw was caught by the caller's own error handling, which then had nothing
+to report, so the page sat in its idle state looking like it had simply not been asked.
+
+Worth recording for the signature rather than the fix: no error, no network activity, and a UI
+that looks like it is waiting for input. See D-0082.
+
+### 13. Two controls that stayed visible and stopped working
 
 A sticky nav that wraps to two rows on a phone and covers what the reader scrolled to, and a
 flex form whose label overflowed and swallowed every click aimed at the button beside it. Worse
@@ -157,6 +169,8 @@ place fails instead of passing.
 | Secrets, keypairs, or tokens in tracked files | none |
 | AI attribution or co-author trailers in commit history | none |
 | Credentials or private material in any committed artifact | none, and `pnpm scan-artifacts` gates it |
+| Key material in the deployed bundle | none: zero 64-byte arrays, zero credential patterns |
+| Secret reachable from the browser | none: the RPC credential is a Worker secret |
 
 `#![forbid(unsafe_code)]` was added to the three programs during this audit. It was already on
 `vinct-types` and `vinct-reference`. A rule the build cannot check is a rule that holds until
@@ -173,9 +187,26 @@ carrying its artifacts, and carrying at least one stated limitation.
 | litesvm (program and authority constraints) | 11 |
 | localnet | 9 |
 | local MagicBlock stack | 13 |
-| devnet | 13 |
+| devnet | 16 |
 
 Run `pnpm audit-claims` to check them.
+
+## The deployed product
+
+Everything the protocol proves is now operable. A member authenticates to the private rollup with
+their own wallet, reads the claim and their own ballot, and submits an answer the wallet signed.
+A steward convenes; each protocol ratifies and arms with its own key.
+
+No secret key exists in the application. `pnpm scan-bundle` fetches what a browser actually
+receives and finds zero 64-byte arrays and zero credential patterns. The upstream RPC credential
+is a Cloudflare Worker secret and never reaches the page.
+
+Writing is gated on runtime freshness rather than warned about. A rollup serving a cached
+executable would accept a signature for logic nobody deployed, so a mismatch disables submission.
+
+The Cloudflare boundary holds by construction: the Worker cannot sign, stores nothing, and never
+sees private incident material, which travels from the browser straight to MagicBlock. If it
+vanished the app still works against any RPC a reader names with `?base=`.
 
 ## What is not proven
 

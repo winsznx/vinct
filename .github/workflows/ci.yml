@@ -35,8 +35,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
+      # rust-toolchain.toml pins 1.89.0. Taking `stable` instead installed 1.91 tooling that then
+      # refused to build the pinned Anchor, which is a version skew CI invented for itself.
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: "1.89.0"
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
@@ -46,11 +49,15 @@ jobs:
           sh -c "$(curl -sSfL https://release.anza.xyz/v${SOLANA_VERSION}/install)"
           echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
 
+      # anchor-cli directly at the pinned tag, rather than through avm. Installing avm from git
+      # HEAD pulled a version requiring rustc 1.91, which is newer than the toolchain this
+      # project pins, so CI failed on a dependency of its own installer. `--locked` keeps the
+      # resolution the tag shipped with.
       - name: Install Anchor
         run: |
-          cargo install --git https://github.com/coral-xyz/anchor avm --force
-          avm install "$ANCHOR_VERSION"
-          avm use "$ANCHOR_VERSION"
+          cargo install --git https://github.com/coral-xyz/anchor \
+            --tag "v${ANCHOR_VERSION}" anchor-cli --locked --force
+          anchor --version
 
       # Produces target/deploy/*.so, which the program tests load, and target/idl/*.json, which
       # the TypeScript client imports. Everything below depends on this having run.
