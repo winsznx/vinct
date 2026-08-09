@@ -1898,3 +1898,85 @@ One measure bug came out of this. The body was limited to `34ch`, and `ch` is th
 in the current font, roughly half an em in a proportional face, so at 19px it resolved to about
 320px and broke the paragraph into five stub lines. The target was a pixel target, so it is set
 in pixels now: 560.
+
+### D-0080 The disabled buttons are wired, and no key entered the browser
+
+Two actions were deliberately left disabled: convening a covenant and submitting a sealed
+attestation. The reasoning was that a browser holding a member's key to authenticate against a
+private rollup would move private material outside the boundary the protocol exists to hold.
+
+That reasoning was right about the danger and wrong about the options. `getAuthToken` takes a
+signing callback, so the challenge can be signed by the wallet: the rollup issues bytes, the
+wallet returns a signature, and a session token comes back. The secret never leaves the wallet
+and the browser never holds one.
+
+So both are live now. A member authenticates, reads the claim and their own ballot, and submits
+an approve or a decline that their wallet signed. A steward convenes and names members. Each
+protocol ratifies and arms with its own key.
+
+Three properties the implementation holds rather than merely intends.
+
+The responder never constructs another member's ballot address. It fetches exactly two accounts,
+the claim and its own ballot, so there is nothing in scope to leak even if the markup were wrong.
+
+The session token lives in a module-level map and nowhere else. Persisting it to `localStorage`
+would leave a bearer credential for a member's private view readable by anything else on the
+origin and alive after the tab closed. Losing it on refresh costs one wallet prompt.
+
+Reading the claim needed a decoder the ordinary one deliberately refuses to be.
+`decodeIncidentClaim` returns the public shell and never the contents, which is correct for the
+base-layer readers that make up almost every caller. `decodeIncidentClaimForMember` exists for
+exactly one caller, is named so a reviewer notices, and only ever runs on bytes the rollup handed
+to an authenticated member. By that point the rollup has already decided whether they may have
+them, and refusing to parse would protect nobody.
+
+`memberHasAnswered` returns a boolean and never the decision. A member re-reading their own
+answer is not a use case worth building, and a UI that displayed it back would put a member's
+decision on a screen somebody could be standing behind.
+
+### D-0081 Writing is gated on runtime freshness, not warned about
+
+A rollup caches a program's executable and a base-layer upgrade does not evict it. A member
+submitting a sealed attestation into that would be signing for logic nobody deployed.
+
+The browser now resolves a rollup through the router, asks it for a build fingerprint, and
+compares that against one compiled into the frontend from `programs/vinct-core/src` at build
+time. Only a match enables submission. A stale rollup disables it and says what is wrong.
+
+That the fingerprint is inlined at build time rather than fetched matters. A server that told the
+frontend which build was current would be a server whose answer determines whether a member signs
+into stale execution, which is authority this deployment deliberately does not have.
+
+### D-0082 A relative RPC URL fails silently, and that is the worst kind
+
+The deployment points the app at its own `/rpc` proxy so a paid endpoint's credential stays
+server-side. Every route rendered, no console error appeared, and nothing worked: zero requests
+were made.
+
+`Connection` parses its endpoint eagerly and throws `Invalid URL` on a relative path, before any
+request exists. The throw was caught by the caller's own error handling, which then had nothing
+to report, so the page sat in its idle state looking like it was waiting for input.
+
+Resolving against `window.location.origin` is the whole fix. Recording it because the failure
+signature is worth recognising: no error, no network activity, and a UI that looks like it simply
+was not asked to do anything.
+
+Two more things the deployment surfaced, both real and neither guessable from a local run. A paid
+RPC tier declines `getProgramAccounts`, which is how covenant membership and capability discovery
+work, and a Worker cannot simply forward that refusal to the public endpoint because the public
+endpoint blocks datacentre addresses. A browser is not blocked, so scans go direct from the page
+and everything else keeps the fast path. `Network.scan` is a separate field for that reason.
+
+### D-0083 The deployment boundary, and what Cloudflare is not
+
+The Worker serves static assets and forwards a fixed allowlist of read methods. It exists for one
+reason: a credential in a public bundle is a credential anyone can spend, and the free
+alternative is slow enough to make the console feel broken.
+
+It cannot sign. It holds no key beyond that one RPC URL. It stores nothing, has no KV, no D1, and
+no database of any kind. It never sees private incident material, which travels from the browser
+straight to MagicBlock over a wallet-authenticated connection.
+
+The test for whether that boundary is real: if the Worker vanished, the app still works against
+any RPC a reader names with `?base=`, which is exactly what the local suite does. Cloudflare is
+never the source of truth about a settlement, and no protocol authority lives there.

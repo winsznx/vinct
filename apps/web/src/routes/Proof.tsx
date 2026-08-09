@@ -72,6 +72,9 @@ export function Proof() {
     setResult(null);
     try {
       const connection = new Connection(network.base, "confirmed");
+      // The adapter lookup is a program scan, which not every endpoint serves. See Network.scan.
+      const scanner =
+        network.scan === network.base ? connection : new Connection(network.scan, "confirmed");
       const certificateAccount = await connection.getAccountInfo(certificateAddress(id));
       if (!certificateAccount) {
         setProblem({
@@ -82,7 +85,7 @@ export function Proof() {
       }
       const certificate = decodeCertificate(certificateAccount.data);
       const core = incidentAddress(certificate.covenant, certificate.incidentId);
-      const capabilities = await findCapabilities(connection, certificate.covenant);
+      const capabilities = await findCapabilities(scanner, certificate.covenant);
 
       setResult(
         await verifyOperation(connection, {

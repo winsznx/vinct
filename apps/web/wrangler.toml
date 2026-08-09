@@ -1,0 +1,20 @@
+# VINCT's web deployment.
+#
+# Static assets plus one narrow RPC proxy. The proxy exists only so a paid Solana endpoint's
+# credential stays out of a public bundle: a key shipped to the browser is a key anyone can
+# spend, and the free alternative is slow enough to make the console feel broken.
+#
+# It holds no protocol authority, signs nothing, stores nothing, and never sees private incident
+# material, which travels from the browser straight to MagicBlock over an authenticated
+# connection. If this Worker vanished the app would still work against any RPC a reader names
+# with ?base=. See CLAUDE.md on the Cloudflare and database policy.
+name = "vinct"
+main = "worker/index.ts"
+compatibility_date = "2026-08-01"
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+# Every route is client-rendered, so an unknown path must reach index.html rather than 404 at the
+# edge. Without this, a hard refresh on /proof/<id> would fail.
+not_found_handling = "single-page-application"

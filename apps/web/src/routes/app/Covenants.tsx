@@ -35,6 +35,7 @@ import {
   type CovenantSummary,
 } from "../../lib/useCovenants";
 import { describeRole, useWallet } from "../../lib/wallet";
+import { MemberAction, RoleCard } from "./Membership";
 import { incidentStatusLabel, incidentStatusMeaning, incidentStatusTone } from "./status";
 
 export function Covenants() {
@@ -225,6 +226,7 @@ export function CovenantWorkspace() {
                   <th>Membership</th>
                   <th>Adapter</th>
                   <th>Address</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
@@ -248,6 +250,14 @@ export function CovenantWorkspace() {
                     </td>
                     <td data-label="Address">
                       <Address value={entry.member.protocol.toBase58()} />
+                    </td>
+                    <td data-label="Your turn">
+                      <MemberAction
+                        covenant={covenant}
+                        protocol={entry.member.protocol}
+                        ratified={entry.member.ratified}
+                        armed={entry.member.armed}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -299,6 +309,13 @@ export function CovenantWorkspace() {
             ))}
           </div>
         )}
+      </Section>
+
+      <Section
+        title="What this wallet can do here"
+        description="Only what the protocol permits. An action nobody can take is not offered."
+      >
+        <RoleCard covenant={covenant} />
       </Section>
 
       <Technical>

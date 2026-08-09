@@ -80,12 +80,15 @@ export function useCovenants(
   return usePolled<CovenantSummary[]>(
     async () => {
       const connection = new Connection(network.base, "confirmed");
+      // Scans go to whichever endpoint serves them; see `Network.scan` for why they differ.
+      const scanner =
+        network.scan === network.base ? connection : new Connection(network.scan, "confirmed");
 
       // 1. Which covenants matter. The demo one always, plus anything this wallet joined.
       const addresses = new Set<string>([DEMO_COVENANT]);
       if (walletKey) {
         try {
-          const memberships = await connection.getProgramAccounts(CORE_PROGRAM_ID, {
+          const memberships = await scanner.getProgramAccounts(CORE_PROGRAM_ID, {
             filters: [{ memcmp: { offset: MEMBERSHIP_PROTOCOL_OFFSET, bytes: walletKey } }],
           });
           for (const { account } of memberships) {
@@ -108,8 +111,8 @@ export function useCovenants(
       // 2, 3. Covenant accounts, memberships, and capabilities, concurrently.
       const [covenantAccounts, allMembers, allCapabilities] = await Promise.all([
         connection.getMultipleAccountsInfo(keys),
-        scanMembers(connection),
-        scanCapabilities(connection),
+        scanMembers(scanner),
+        scanCapabilities(scanner),
       ]);
 
       // 4. Candidate incident addresses for every covenant, in one read.

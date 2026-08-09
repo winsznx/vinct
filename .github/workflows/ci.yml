@@ -1,0 +1,54 @@
+# The local gate, reproduced once.
+#
+# Deliberately small. This is a final check that the repository builds and passes somewhere other
+# than the machine that wrote it, not a debugger: anything that fails here is reproduced and
+# fixed locally first. There is no matrix, because nothing here is OS or version specific and a
+# matrix would multiply the wait without multiplying the information.
+#
+# The browser suite is not run here. It needs a live Solana Devnet and a MagicBlock rollup, and a
+# CI job that fails because somebody else's testnet is busy teaches people to ignore CI.
+name: gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+
+  typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test:ts
+      - run: pnpm verify-vectors
+      # Every claim carries a reachable commit, artifacts that exist, a reproducing command, and
+      # a stated limitation. This is a gate because one claim once pointed at a file that had
+      # never been written.
+      - run: pnpm audit-claims
+      # No credential and no private incident material in anything committed.
+      - run: pnpm scan-artifacts
+      - run: pnpm --filter @vinct/web build

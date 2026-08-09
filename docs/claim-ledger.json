@@ -1452,5 +1452,63 @@
       "Pattern-based. It catches the credential shapes providers actually use and the private-material shapes VINCT's own runs produce; a novel format would need a new rule.",
       "Private-material rules are scoped to artifacts/, because a decision in packages/test-vectors is a generated fixture by construction. See docs/decision-log.md D-0071."
     ]
+  },
+  {
+    "id": "deployed-app-serves-the-judge-path-without-a-wallet",
+    "wording": "The deployed application serves the landing page, the guided demo, the proof page, status, the console, and client-side deep links, and the full browser suite passes against that public URL on desktop and a Pixel 7. No wallet is required for any public route, and the proof page independently re-derives an operation identity from live Devnet state with 17 checks.",
+    "status": "verified",
+    "proof_level": 6,
+    "network": "devnet",
+    "source_commit": "PENDING",
+    "program_ids": [
+      "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
+    ],
+    "transactions": [],
+    "commands": [
+      "VINCT_WEB_URL=https://vinct.timjosh507.workers.dev pnpm exec playwright test"
+    ],
+    "artifacts": [],
+    "verified_at": "2026-08-09T00:00:00Z",
+    "limitations": [
+      "37 passed and 3 skipped by viewport. The skips are the desktop navigation cases on mobile and the mobile disclosure case on desktop.",
+      "Chromium only, in two viewports."
+    ]
+  },
+  {
+    "id": "no-secret-key-material-in-the-deployed-application",
+    "wording": "The deployed bundle contains no 64-byte array, no credential pattern, and no reference to the upstream RPC credential, which is held as a Cloudflare Worker secret and never reaches the browser. Every signature is produced in the user's wallet: transactions through signTransaction and the private-rollup session through signMessage. The session token is held in memory only and is never persisted.",
+    "status": "verified",
+    "proof_level": 6,
+    "network": "devnet",
+    "source_commit": "PENDING",
+    "program_ids": [],
+    "transactions": [],
+    "commands": [
+      "pnpm --filter @vinct/web build",
+      "pnpm exec playwright test tests/web/privacy.spec.ts"
+    ],
+    "artifacts": [],
+    "verified_at": "2026-08-09T00:00:00Z",
+    "limitations": [
+      "Establishes that no key is shipped or persisted. It does not establish anything about the wallet extension the user chooses to install."
+    ]
+  },
+  {
+    "id": "the-browser-refuses-to-write-into-a-stale-runtime",
+    "wording": "Before offering any private write, the application resolves a rollup through the router and compares its build fingerprint against the one compiled into the frontend from the program source. A mismatch disables submission and says why, rather than warning. A router that publishes routes not containing the account's validator resolves nothing at all rather than falling back to a configured endpoint.",
+    "status": "verified",
+    "proof_level": 4,
+    "network": "none",
+    "source_commit": "PENDING",
+    "program_ids": [],
+    "transactions": [],
+    "commands": [
+      "pnpm exec tsx --test tests/program/routing.test.ts"
+    ],
+    "artifacts": [],
+    "verified_at": "2026-08-09T00:00:00Z",
+    "limitations": [
+      "The routing refusal is proven against a stub router. The freshness gate's behaviour against a genuinely stale attested rollup is proven by scripts/probe-runtimes.ts on Devnet rather than in the browser."
+    ]
   }
 ]

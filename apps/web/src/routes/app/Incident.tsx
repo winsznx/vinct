@@ -45,6 +45,7 @@ import { PROTOCOL_NAMES } from "../../lib/demo";
 import { useNetwork } from "../../lib/network";
 import { covenantName, useCovenant } from "../../lib/useCovenants";
 import { useWallet } from "../../lib/wallet";
+import { Respond } from "./Respond";
 import { incidentStatusLabel, incidentStatusMeaning, incidentStatusTone } from "./status";
 
 export function IncidentRoom() {
@@ -98,7 +99,6 @@ export function IncidentRoom() {
     );
   }
 
-  const isMember = covenant.role.kind === "member" || covenant.role.kind === "responder";
   const collecting = incident.core.status === IncidentStatus.Collecting;
   const terminal = !collecting && incident.core.status !== IncidentStatus.Draft;
 
@@ -119,47 +119,12 @@ export function IncidentRoom() {
       />
 
       {/* ------------------------------------------------- the member's view */}
-      {collecting && isMember && (
-        <Card tone="attention" style={{ marginBottom: "var(--s6)" }}>
-          <div className="stack">
-            <div className="row-between">
-              <div className="stack-sm">
-                <div className="label">Your response</div>
-                <div className="t-title">You represent a member of this covenant</div>
-              </div>
-              <Pill tone="attention">Action required</Pill>
-            </div>
-
-            <p className="t-body muted">
-              Your answer goes into an account only you can read. No other member learns what you
-              said, and you will not learn what they said. Certification counts the answers in
-              memory and writes only the final totals, once the incident is over.
-            </p>
-
-            <div className="row" style={{ flexWrap: "wrap", gap: "var(--s3)" }}>
-              <button
-                type="button"
-                className="btn btn-signal"
-                disabled
-                data-testid="respond-approve"
-              >
-                Approve response
-              </button>
-              <button type="button" className="btn" disabled data-testid="respond-reject">
-                Decline
-              </button>
-            </div>
-
-            <Note title="Responding is not wired into this browser, on purpose">
-              Submitting a sealed attestation needs an authenticated connection to the rollup that
-              holds your ballot, signed by your protocol key. A browser that held that key and
-              cached what it read would move private material outside the boundary this design
-              exists to hold. The call is{" "}
-              <span className="mono">submitSealedAttestation(core, member, decision, nonce)</span>,
-              sent to the router-resolved endpoint.
-            </Note>
-          </div>
-        </Card>
+      {collecting && (
+        <Respond
+          network={network}
+          incident={incident.address}
+          members={covenant.members.map((entry) => entry.member.protocol)}
+        />
       )}
 
       {/* -------------------------------------------- what is knowable, and not */}

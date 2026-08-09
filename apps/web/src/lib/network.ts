@@ -15,16 +15,46 @@ export interface Network {
   id: "devnet" | "local" | "custom";
   label: string;
   base: string;
+  /**
+   * Where account scans go, which is not always where everything else goes.
+   *
+   * `getProgramAccounts` is how covenant membership and capability discovery work, and paid RPC
+   * tiers commonly decline it. The deployment's proxy cannot simply forward the refusal to a
+   * public endpoint either, because that endpoint blocks the datacentre addresses a Worker calls
+   * from. A browser is not blocked, so the scan goes straight from the page and everything else
+   * keeps the fast path.
+   *
+   * Equal to `base` when the two are the same, which is the case locally and for any custom
+   * endpoint a reader names.
+   */
+  scan: string;
   ephemeral: string | null;
   router: string | null;
   /** True when the base layer is a validator only this machine can see. */
   isLocal: boolean;
 }
 
+/**
+ * The deployed defaults, injected at build time rather than hardcoded.
+ *
+ * A public RPC is fine for reading and cannot sustain much else, so a deployment sets
+ * `VITE_SOLANA_RPC` to a real endpoint. Nothing here is a secret: an RPC URL with a credential
+ * in it would be visible in the bundle regardless, which is why the deploy uses a proxied or
+ * unauthenticated endpoint and never a keyed one.
+ *
+ * No regional rollup is named. `ephemeral` is only a first candidate; `resolveRuntime` asks the
+ * router what actually exists and refuses to guess when the two disagree.
+ */
 const DEVNET = {
-  base: "https://api.devnet.solana.com",
-  ephemeral: "https://devnet-us.magicblock.app/",
-  router: "https://devnet-router.magicblock.app/",
+  /*
+   * The deployment's own proxy by default, so the upstream credential stays server-side.
+   * A relative path works because the Worker serves the site and the proxy from one origin.
+   * `?base=` still overrides it, which is how the tests point at anything else.
+   */
+  base: absolute(import.meta.env.VITE_SOLANA_RPC ?? "/rpc"),
+  scan: import.meta.env.VITE_SOLANA_SCAN_RPC ?? "https://api.devnet.solana.com",
+  ephemeral: import.meta.env.VITE_MAGICBLOCK_ER ?? "https://devnet-us.magicblock.app/",
+  router: import.meta.env.VITE_MAGICBLOCK_ROUTER ?? "https://devnet-router.magicblock.app/",
 };
 
 const LOCAL = {
@@ -33,9 +63,25 @@ const LOCAL = {
   router: null,
 };
 
+/**
+ * Makes a relative endpoint absolute.
+ *
+ * The deployment points at its own `/rpc` proxy, and `Connection` rejects a relative URL: it
+ * parses the endpoint eagerly and throws `Invalid URL` before any request is attempted. The
+ * failure is silent in the worst way, because nothing is ever sent and there is no network error
+ * to notice. Resolving against the current origin is all it needs.
+ */
+function absolute(endpoint: string): string {
+  if (/^https?:\/\//i.test(endpoint)) return endpoint;
+  if (typeof window === "undefined") return `https://vinct.timjosh507.workers.dev${endpoint}`;
+  return new URL(endpoint, window.location.origin).toString();
+}
+
 export function readNetwork(search: string): Network {
   const params = new URLSearchParams(search);
   const requested = params.get("network");
+  // A deployed build never falls back to a validator only one machine can see. Local is opt-in
+  // through the URL so a hosted page cannot quietly report on something nobody else can reach.
   const base = params.get("base");
   const ephemeral = params.get("er");
   const router = params.get("router");
@@ -45,6 +91,9 @@ export function readNetwork(search: string): Network {
       id: "custom",
       label: "Custom endpoint",
       base: base ?? DEVNET.base,
+      // A named endpoint is used for everything, including scans. Somebody who supplies one is
+      // telling the app where to look, and silently reading elsewhere would ignore that.
+      scan: base ?? DEVNET.scan,
       ephemeral: ephemeral ?? DEVNET.ephemeral,
       router: router ?? DEVNET.router,
       isLocal: (base ?? "").includes("127.0.0.1") || (base ?? "").includes("localhost"),
@@ -52,7 +101,7 @@ export function readNetwork(search: string): Network {
   }
 
   if (requested === "local") {
-    return { id: "local", label: "Local stack", ...LOCAL, isLocal: true };
+    return { id: "local", label: "Local stack", ...LOCAL, scan: LOCAL.base, isLocal: true };
   }
 
   return { id: "devnet", label: "Solana Devnet", ...DEVNET, isLocal: false };

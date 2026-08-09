@@ -2,196 +2,173 @@
 
 Binding mutual aid for protocols.
 
-Protocols that depend on the same oracle, bridge, or library have no way to prepare for
-its failure together. Each one writes a private runbook, and when the dependency breaks
-they find out from Twitter and act alone.
+**Live app** <https://vinct.timjosh507.workers.dev> · **Demo** <https://vinct.timjosh507.workers.dev/demo> · **Verify** <https://vinct.timjosh507.workers.dev/proof>
 
-VINCT lets those protocols ratify a covenant before the crisis, certify an incident
-privately inside a Private Ephemeral Rollup, and coordinate their own bounded emergency
-adapters through MagicBlock. The circle never receives admin authority over anyone.
-Each protocol owns its adapter and the one narrow action it permits.
+Protocols that depend on the same oracle or bridge can agree in advance on exactly what each will
+do in an emergency, decide privately whether it is happening, and act together. Nobody hands
+anybody else authority.
 
-## Status
+## What problem this solves
 
-Phase 8. The whole mechanism runs end to end on a local MagicBlock stack and on Solana Devnet.
+Three lending protocols use the same price feed. It starts printing garbage. Each of them has a
+runbook, each acts alone, they all find out from Twitter, and the slowest one absorbs the damage.
 
-Formation, a private incident, certification, settlement, and expiry all run in one sequence
-with nothing chosen by the runner. Three protocols form a covenant and arm their own adapters
-before any incident exists. An incident opens under it, collects a private claim and sealed
-attestations inside the rollup, certifies in memory, scrubs, and returns to base. The
-certificate is published permissionlessly from the released incident, and the Magic Action
-cohort settles under the operation ID certification derived. Every effect is then read back off
-the base layer.
+They could have agreed months earlier, and there was nothing to agree with.
 
-The failure paths are the interesting half. An unregistered adapter signer and a capability
-suspended after certification both produce `COMMIT_WITHOUT_ACTIONS`, with no market paused,
-because one failing BaseAction removes the whole transaction strategy. Nothing partial was ever
-observed.
+A multisig is the wrong shape: it asks every protocol to hand authority to a group, and no
+serious protocol will. A shared vote leaks, because any account holding a running tally can be
+read by whoever can touch it, and knowing two of three have already approved is a tradeable fact.
 
-An incident nobody answers settles itself. A crank requested on the rollup runs, does nothing
-while the response window is open, and settles the incident at its deadline without anyone
-acting.
+## How it works
 
-Sealed quorum holds. A member learns that their own submission was accepted and nothing else.
-Not another member's decision, not how close the incident is to its threshold. The state is
-split into a public core, a claim private to the member set, and one ballot per member private
-to that member, and no account anywhere holds a live tally.
+Each protocol arms one bounded action against its own contracts, before anything breaks: one
+instruction, one account it may touch, one effect ceiling, one validity window.
 
-That rests on a property of private ephemeral rollups that took an experiment to establish: a
-permission gates reading an account, not touching it. Two members each mutated an account
-neither could read, neither could read the other's ballot, and the program's arithmetic over
-both was correct. See [docs/privacy-boundary.md](docs/privacy-boundary.md), limitations
-included.
+When the dependency fails, a member opens an incident. The claim goes into an account inside a
+private rollup that only the member set can read. Each member gets their own ballot account,
+readable by exactly one key. They answer privately.
 
-The web product reads a chain and holds nothing. Eight surfaces, no server, no session, no
-database. The proof path takes an operation ID and re-derives it from the covenant's frozen
-terms with an implementation that shares no code with the on-chain program, with no wallet and
-no login.
+The program counts the answers in memory. If the threshold is met the incident earns a
+certificate, and each protocol's own adapter reads it, checks it against the bounds that protocol
+set, and acts or refuses.
 
-Everything above runs on Solana Devnet too, against a real MagicBlock ephemeral rollup, with its
-own artifact under `artifacts/devnet/`. The composition, both failure paths, the expiry crank,
-and a cancellation that stopped a running task short of its iteration count.
+Then every effect is read back off the base layer, one at a time, before anything is called
+settled.
 
-One claim has no Devnet evidence for this build. Confidentiality needs an attested rollup, and
-attestation and runtime freshness turn out to be independent: `devnet-us` executes this build and
-answers no TDX quote, while `devnet-tee` answers a valid quote and executes a binary it cached
-before this build existed. `pnpm exec tsx scripts/probe-runtimes.ts` prints the current state.
-The sealed-quorum property therefore rests on the local stack and on the PER visibility
-experiment.
+## What MagicBlock is doing that is load-bearing
 
-## What the design rests on
+| | |
+| --- | --- |
+| **Private Ephemeral Rollup** | Holds the claim and one ballot per member, each with its own permission. This is what makes a sealed quorum possible at all. |
+| **Ephemeral Rollup** | Runs the delegated incident lifecycle and certification. |
+| **Magic Actions** | The commit-linked cohort: three protocol adapters plus a settlement receipt in one intent. |
+| **Cranks** | Expiry, so a stale incident cannot stay open waiting for a quorum that is not coming. |
+| **Router** | Every rollup endpoint, resolved live. No regional endpoint is hardcoded anywhere. |
 
-An ER scheduling signature means the intent was accepted. It does not mean the base-layer
-actions ran. Within one attempted base transaction the commit and its actions are atomic,
-but when a BaseAction fails the committor may strip every BaseAction from that transaction
-strategy and retry the remaining commit work. A later successful commit is therefore not
-evidence that the originally scheduled actions executed.
+The design rests on a property established by experiment rather than assumed: **program execution
+authorization and query visibility are separate**. A member can submit a transaction that makes
+the program read and mutate accounts that member cannot read over RPC. That is what allows the
+split-account model.
 
-So VINCT treats `COMMIT_WITHOUT_ACTIONS` as a first-class state, observes every expected
-base-layer effect independently, and refuses to report `SETTLED` until the adapter
-receipts, the target protocol states, and the final settlement receipt are all seen. A
-missing action is never retried blindly; recovery takes a new operation ID and a new nonce.
+## What is private, and what is not
 
-## Repository
+**Public:** that an incident exists, its threshold and window, its terminal outcome and final
+counts, and all settlement evidence.
 
-```
-docs/          PRD, gates, source lock, decision log, claim ledger, privacy boundary, runbooks
-programs/      vinct-core, vinct-adapter, and a mock protocol to act on
-crates/        pure types, the executable reference model, program tests, layout vectors
-packages/      TypeScript client, settlement monitor, standalone verifier, test vectors
-apps/web       the web product: observer, proof path, incident room, status
-scripts/       toolchain pinning, source lock, and every phase runner
-tests/         cross-language parity, account layouts, and the browser suite
-probes/        compatibility and PER-visibility probes. Experiments, not product code
-artifacts/     evidence: run records, benchmarks, leak scans, browser video
-```
+**Private to the member set:** the claim and its evidence.
 
-Every claim the project makes is in [docs/claim-ledger.json](docs/claim-ledger.json) with the
-transactions, artifacts, and commands behind it, and its limitations written next to it.
+**Private to one member:** that member's decision. Not the decision, not whether they answered,
+not when, and not to the opener, the steward, or the other members either.
 
-## Getting set up
+While an incident collects, **no account anywhere holds a count**. The tally exists only inside
+certification, for the moment it runs.
 
-Requires `rustup`, `avm`, Node 22+, `pnpm`, and a Solana CLI installation to bootstrap
-from. The project pins its own Solana release under `.toolchain/` and leaves whatever is
-installed machine-wide alone.
+Details, including what is deliberately not claimed, in
+[docs/PRIVACY_MODEL.md](docs/PRIVACY_MODEL.md).
+
+## What authority VINCT has
+
+None.
+
+There is no instruction anywhere that gives the circle, the steward, or any VINCT program the
+ability to act on a member's contracts. A certificate is a published fact: it carries no
+authority and grants none. An adapter reads it, revalidates it against bounds its own protocol
+set before any incident existed, and decides.
+
+A protocol can suspend its adapter at any moment, including after a certificate has been issued,
+and the adapter still refuses.
+
+## How settlement is verified
+
+A scheduling signature means an intent was accepted. It does not mean anything happened: when a
+base action fails, the committor can strip **every** action from that transaction and retry the
+commit alone.
+
+So `COMMIT_WITHOUT_ACTIONS` is a first-class state here, every effect is observed independently,
+and a half-applied cohort blocks automated recovery outright.
+
+Check it yourself at <https://vinct.timjosh507.workers.dev/proof>. Seventeen checks, no wallet: it re-derives the operation identity
+from the covenant's own frozen terms with an implementation that shares no code with the on-chain
+program.
+
+| | |
+| --- | --- |
+| A settlement that landed | <https://vinct.timjosh507.workers.dev/proof/b259584f4498acbc356d1940865288b623f4049e155b73c574dad7d4d166af1a> |
+| One that was scheduled and stripped | <https://vinct.timjosh507.workers.dev/proof/91e8cd15e8b57279ed6ce6ab95a9614348dc8d5041ff4d7a7b79e2bfcf4bd9a1> |
+
+## Quick judge path
+
+About 90 seconds, no wallet:
+
+1. <https://vinct.timjosh507.workers.dev> : read the one sentence
+2. **Explore live demo**: three protocols, one dependency, a real recorded incident
+3. Step through the seven stages
+4. Switch to **Nothing executed**: the scheduled cohort that did nothing, and VINCT saying so
+5. **Verify this operation yourself**
+
+Full script with what to say: [docs/DEMO_GUIDE.md](docs/DEMO_GUIDE.md).
+
+## Programs
+
+Solana Devnet.
+
+| Program | Address |
+| --- | --- |
+| `vinct_core` | `9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG` |
+| `vinct_adapter` | `2BoSGgPxcpS2NcKGK9ygJdRfcfL6gYeDgh4QRGrujBM4` |
+| `vinct_mock_protocol` | `BDUybXDdLCCbnCjthbs9NATmYZWTTKxCzqejyqyvzorS` |
+
+## For reviewers
+
+In this order:
+
+1. This file
+2. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), the system without reading the codebase
+3. [docs/SECURITY_MODEL.md](docs/SECURITY_MODEL.md), trust boundaries and the failures that shaped them
+4. [docs/PRIVACY_MODEL.md](docs/PRIVACY_MODEL.md), exactly what is hidden from whom
+5. [docs/claim-ledger.json](docs/claim-ledger.json), every claim with its evidence and limits
+6. [docs/decision-log.md](docs/decision-log.md), why each decision was made, with the evidence
+7. `programs/`, starting with `vinct-core` then `vinct-adapter`
+8. `crates/vinct-reference`, the executable model the programs are checked against
+
+[docs/audit-report.md](docs/audit-report.md) lists what we got wrong and the gate each mistake
+left behind. [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md) is explicit about what is
+still not proven.
+
+## Local development
+
+Needs `rustup`, `avm`, Node 22+, `pnpm`, and a Solana CLI to bootstrap from. The project pins
+its own Solana release under `.toolchain/` and leaves the machine-wide one alone.
 
 ```bash
 bash scripts/bootstrap-toolchain.sh
 pnpm install --frozen-lockfile
+pnpm web                     # the app, against Devnet
 ```
 
-Verify the pinned combination:
-
-```bash
-cargo check --workspace --all-targets
-cargo clippy --workspace --all-targets -- -D warnings
-cargo fmt --all -- --check
-anchor build
-pnpm typecheck
-pnpm lint
-```
-
-Run the local MagicBlock stack through a start-and-stop cycle:
-
-```bash
-pnpm stack:cycle
-```
-
-Capture live service and routing state:
-
-```bash
-pnpm check-magicblock-status
-pnpm exec tsx scripts/probe-router.ts
-pnpm source-lock
-```
-
-## Running the whole thing
-
-Start the local MagicBlock stack, deploy the three programs, and run the sequence:
+The whole mechanism, end to end, on a local MagicBlock stack:
 
 ```bash
 bash scripts/bootstrap-local.sh start
-pnpm exec tsx scripts/phase5-composition.ts                  # the full mechanism
-pnpm exec tsx scripts/phase5-composition.ts --fail-one       # one adapter cannot act
-pnpm exec tsx scripts/phase5-composition.ts --suspend-one    # a protocol pulls out late
-pnpm exec tsx scripts/phase6-expiry.ts                       # nobody answers; the crank settles it
-pnpm exec tsx scripts/phase6-expiry.ts --cancel              # the opener stops the crank
+pnpm exec tsx scripts/phase5-composition.ts                # settles
+pnpm exec tsx scripts/phase5-composition.ts --suspend-one  # a protocol pulls out late
+pnpm exec tsx scripts/phase6-expiry.ts                     # nobody answers; the crank settles it
 ```
 
-Each writes a record under `artifacts/local-stack/`. Verify one independently, trusting the
-run's addresses and none of its claims:
+## Tests
 
 ```bash
-pnpm verify-operation artifacts/local-stack/phase5-composition-success.json
+cargo test --workspace       # 323 Rust tests
+pnpm test:ts                 # 77 TypeScript tests
+pnpm exec playwright test    # browser, desktop and mobile
+pnpm audit-claims            # 61 claims, each stamped and bounded
+pnpm scan-artifacts          # no credential or private material committed
 ```
 
-The web product, with a real chain behind it:
-
-```bash
-pnpm web                # dev server
-pnpm proof:web          # compose an incident, build, then the browser suite with video
-```
-
-## Reproducing the Devnet proofs
-
-Both runners need a funded Devnet deployer at `.toolchain/keys/devnet-deployer.json` and
-resolve their rollup from live routing rather than from a configured endpoint. A public RPC
-will not sustain a program deploy of this size; use a dedicated endpoint through
-`VINCT_BASE_RPC`.
-
-```bash
-pnpm exec tsx scripts/phase3-seam.ts             # Magic Actions cohort
-pnpm exec tsx scripts/phase3-seam.ts --fail-one  # one adapter deliberately fails
-pnpm exec tsx scripts/phase4-per.ts                  # private incident lifecycle
-pnpm exec tsx scripts/per-visibility-experiment.ts  # does a permission gate reads or execution?
-pnpm exec tsx scripts/await-fresh-runtime.ts        # wait for a rollup to pick up this build
-```
-
-The Phase 4 runner refuses to collect anything from a rollup that is not executing the build
-in this checkout, and refuses to pass on a leak scan that had nothing to find. What goes
-wrong on Devnet and what to do about it is in
-[docs/runbooks/devnet-proof-runs.md](docs/runbooks/devnet-proof-runs.md).
-
-## Checking the work
-
-```bash
-pnpm audit-claims     # every ledger claim: stamped, reproducible, bounded, artifacts present
-pnpm scan-artifacts   # no credential and no private material in anything committed
-pnpm check-vectors    # committed vectors are what the Rust would generate today
-pnpm verify-vectors   # the standalone verifier agrees with them, byte for byte
-```
-
-What went wrong and the gate each mistake left behind is in
-[docs/audit-report.md](docs/audit-report.md).
-
-## Versions
-
-Exact versions, upstream commits, and the evidence behind each choice are in
-[docs/source-lock.md](docs/source-lock.md), with the machine-readable companion at
-`artifacts/source-lock/version-report.json`.
+Everything in [docs/VERIFICATION.md](docs/VERIFICATION.md).
 
 ## Claims
 
-[docs/claim-ledger.json](docs/claim-ledger.json) records every public claim with its
-proof level, the commands that produced it, and its limitations. A claim never outruns
-the evidence recorded next to it.
+[docs/claim-ledger.json](docs/claim-ledger.json) records every public claim with its proof level,
+the network it was verified on, the commands that produced it, and its limitations. A claim never
+outruns the evidence recorded beside it, and `pnpm audit-claims` enforces that mechanically.

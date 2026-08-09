@@ -11,10 +11,15 @@
  */
 
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+
+import { Connection, PublicKey } from "@solana/web3.js";
 
 import { AppShell, RequiresWallet } from "../../components/AppShell";
 import { Card, Field, Fields, Note, PageHeader, Pill } from "../../components/primitives";
+import { convene, type CovenantDraft } from "../../lib/formation";
+import { useNetwork } from "../../lib/network";
+import { explainError, parsePublicKey } from "../../lib/sign";
 import { useWallet } from "../../lib/wallet";
 
 const STEPS = ["Dependency", "Members", "Policy", "Review", "Convene"] as const;
@@ -183,6 +188,18 @@ export function CreateCovenant() {
 
           {step === 4 && (
             <div className="stack">
+              <ConveneAction
+                draft={{
+                  dependency,
+                  members: named
+                    .map((m) => parsePublicKey(m))
+                    .filter((k): k is PublicKey => k !== null),
+                  requiredApprovals: threshold,
+                  maximumRejections: Math.max(1, named.length - threshold),
+                  responseWindowSlots: BigInt(windowSlots),
+                }}
+              />
+              <hr className="sep" />
               <div className="row" style={{ gap: "var(--s2)" }}>
                 <Pill tone="attention">Five signatures, not one</Pill>
               </div>
@@ -218,18 +235,73 @@ export function CreateCovenant() {
                   </li>
                 ))}
               </ol>
-              <Note title="Convening is not wired into this browser yet">
-                The covenant instructions are built and signed from your protocol tooling, where
-                your steward key already lives. This screen produces the configuration to convene
-                with rather than asking you to paste a key into a web page.
+              <Note title="You sign only your own step">
+                Convening is one transaction, signed by you. Naming a member grants nothing: each
+                protocol then ratifies and arms with its own key, and no button here can do it for
+                them. That is the property the covenant exists to have.
               </Note>
-              <Link to={{ pathname: "/app/covenants", search: location.search }} className="btn">
-                Back to covenants
-              </Link>
             </div>
           )}
         </Card>
       </RequiresWallet>
     </AppShell>
+  );
+}
+
+/**
+ * The one transaction this screen sends.
+ *
+ * Convening creates a covenant with no members and no authority over anybody. Everything that
+ * follows needs somebody else's signature, which is why this is a single button rather than a
+ * wizard that finishes the job.
+ */
+function ConveneAction({ draft }: { draft: CovenantDraft }) {
+  const wallet = useWallet();
+  const network = useNetwork();
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  const ready = draft.dependency.trim().length > 0 && draft.members.length >= 2;
+
+  return (
+    <div className="stack">
+      <button
+        type="button"
+        className="btn btn-signal"
+        disabled={busy || !ready}
+        data-testid="convene"
+        onClick={() => {
+          setBusy(true);
+          setProblem(null);
+          const connection = new Connection(network.base, "confirmed");
+          void connection
+            .getGenesisHash()
+            .then((genesis) => convene(connection, wallet, draft, new PublicKey(genesis).toBytes()))
+            .then(async ({ covenant }) => {
+              // Naming members is the steward's other step, and it is part of the same intent.
+              const { addMember } = await import("../../lib/formation");
+              for (const protocol of draft.members) {
+                await addMember(connection, wallet, covenant, protocol);
+              }
+              navigate(`/app/covenants/${covenant.toBase58()}`);
+            })
+            .catch((error: unknown) => setProblem(explainError(error)))
+            .finally(() => setBusy(false));
+        }}
+      >
+        {busy ? "Signing…" : `Convene and name ${draft.members.length} members`}
+      </button>
+      {problem !== null && (
+        <p className="t-base" style={{ color: "var(--lavender)" }}>
+          {problem}
+        </p>
+      )}
+      {!ready && (
+        <p className="t-small muted">
+          A dependency and at least two protocol addresses are needed before this can be sent.
+        </p>
+      )}
+    </div>
   );
 }

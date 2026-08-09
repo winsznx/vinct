@@ -13,8 +13,19 @@ const PUBLIC_ROUTES = ["/", "/demo", "/proof", "/status"];
 const APP_ROUTES = ["/app", "/app/covenants", "/app/incidents", "/app/adapters"];
 const ROUTES = [...PUBLIC_ROUTES, ...APP_ROUTES];
 
-/** Its own origin, and RPC endpoints the reader chose. Nothing else. */
-const ALLOWED_HOSTS = ["127.0.0.1", "localhost"];
+/**
+ * Its own origin, and RPC endpoints the reader chose. Nothing else.
+ *
+ * When the suite runs against a deployment, that deployment's host is legitimate too, as is the
+ * public Solana endpoint the app uses for account scans. Both are named rather than wildcarded,
+ * so a request to anywhere else still fails this.
+ */
+const ALLOWED_HOSTS = [
+  "127.0.0.1",
+  "localhost",
+  "api.devnet.solana.com",
+  ...(process.env.VINCT_WEB_URL ? [new URL(process.env.VINCT_WEB_URL).hostname] : []),
+];
 
 /**
  * Storage keys the app is permitted to write.
@@ -104,7 +115,9 @@ test.describe("privacy", () => {
         .filter(Boolean),
     );
     for (const src of scripts) {
-      expect(new URL(src).hostname).toMatch(/127\.0\.0\.1|localhost/);
+      // Same-origin only. A CDN script would be a third party able to see every page a reader
+      // visits, which matters more here than the kilobytes it might save.
+      expect(ALLOWED_HOSTS, `script loaded from ${src}`).toContain(new URL(src).hostname);
     }
     const globals = await page.evaluate(() =>
       ["ga", "gtag", "dataLayer", "analytics", "posthog", "mixpanel", "Sentry", "_paq"].filter(

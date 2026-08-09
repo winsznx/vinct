@@ -866,3 +866,85 @@ export const ATTESTATION_PROTECTED_REGION = {
   offset: 8 + 2 + 32 + 32 + 32 + 1,
   length: 1 + 8 + 8 + 1,
 } as const;
+
+/**
+ * The claim's actual text, for a member entitled to read it.
+ *
+ * Separate from `decodeIncidentClaim` on purpose, and named so a reviewer notices it.
+ *
+ * The ordinary decoder returns the public shell and never the contents, because almost every
+ * caller is a base-layer reader who must not see them and a decoder that returned private bytes
+ * by default would leak them the first time somebody logged a decoded account. See
+ * docs/decision-log.md D-0052.
+ *
+ * This one exists for exactly one caller: a member who has authenticated to the private rollup
+ * with their own wallet and whose `EphemeralPermission` allows them to read this account. The
+ * rollup has already decided whether they may have these bytes. By the time this runs, refusing
+ * to parse what the rollup handed over would protect nobody.
+ *
+ * Never call it on data from a base-layer connection. After a terminal scrub the protected
+ * region is zeroes, and before one the account is delegated and the base-layer copy is stale.
+ */
+export function decodeIncidentClaimForMember(data: Buffer): {
+  incident: PublicKey;
+  opener: PublicKey;
+  claim: string;
+  notes: string;
+  observationStart: bigint;
+  observationEnd: bigint;
+  zeroized: boolean;
+} {
+  const size = 8 + 2 + 32 + 32 + 256 + 2 + 128 + 2 + 8 + 8 + 1 + 1;
+  expectAccount(data, "IncidentClaim", size);
+  const body = data.subarray(8);
+  expectVersion("IncidentClaim", body.readUInt16LE(0));
+
+  let offset = 2;
+  const incident = new PublicKey(body.subarray(offset, offset + 32));
+  offset += 32;
+  const opener = new PublicKey(body.subarray(offset, offset + 32));
+  offset += 32;
+
+  const claimBytes = body.subarray(offset, offset + 256);
+  offset += 256;
+  const claimLength = body.readUInt16LE(offset);
+  offset += 2;
+
+  const notesBytes = body.subarray(offset, offset + 128);
+  offset += 128;
+  const notesLength = body.readUInt16LE(offset);
+  offset += 2;
+
+  const observationStart = body.readBigUInt64LE(offset);
+  offset += 8;
+  const observationEnd = body.readBigUInt64LE(offset);
+  offset += 8;
+  const zeroized = body[offset] === 1;
+
+  return {
+    incident,
+    opener,
+    claim: new TextDecoder().decode(claimBytes.subarray(0, Math.min(claimLength, 256))),
+    notes: new TextDecoder().decode(notesBytes.subarray(0, Math.min(notesLength, 128))),
+    observationStart,
+    observationEnd,
+    zeroized,
+  };
+}
+
+/**
+ * Whether this member has already answered.
+ *
+ * Returns a boolean and never the decision. A member re-reading their own ballot to remember
+ * what they said is not a use case worth building: the account is theirs, the decision is in it,
+ * and a UI that displayed it back would put a member's answer on a screen somebody could be
+ * standing behind. Knowing whether to show the buttons is the only thing the interface needs.
+ */
+export function memberHasAnswered(data: Buffer): boolean {
+  const size = 8 + 2 + 32 + 32 + 32 + 1 + 1 + 8 + 8 + 1 + 1 + 1;
+  expectAccount(data, "MemberAttestation", size);
+  const body = data.subarray(8);
+  expectVersion("MemberAttestation", body.readUInt16LE(0));
+  // version(2) incident(32) member(32) opener(32) state(1) decision(1) nonce(8) slot(8)
+  return body[2 + 32 + 32 + 32 + 1 + 1 + 8 + 8] === 1;
+}

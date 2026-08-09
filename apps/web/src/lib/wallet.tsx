@@ -18,7 +18,7 @@
  * connect surface says so rather than failing silently.
  */
 
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey, type Transaction, type VersionedTransaction } from "@solana/web3.js";
 import {
   createContext,
   useCallback,
@@ -36,6 +36,10 @@ interface InjectedProvider {
   publicKey?: { toBytes(): Uint8Array } | null;
   connect(options?: { onlyIfTrusted?: boolean }): Promise<{ publicKey: { toBytes(): Uint8Array } }>;
   disconnect(): Promise<void>;
+  /** Signs an arbitrary message. Used for the rollup's challenge, never for a transfer. */
+  signMessage?(message: Uint8Array, encoding?: string): Promise<{ signature: Uint8Array }>;
+  signTransaction?<T>(transaction: T): Promise<T>;
+  signAllTransactions?<T>(transactions: T[]): Promise<T[]>;
   on?(event: string, handler: (...args: unknown[]) => void): void;
   off?(event: string, handler: (...args: unknown[]) => void): void;
 }
@@ -74,6 +78,15 @@ export interface WalletState {
   error: string | null;
   connect: (id?: DetectedWallet["id"]) => Promise<void>;
   disconnect: () => Promise<void>;
+  /**
+   * Signs a challenge so a private rollup can learn which key is asking.
+   *
+   * The message goes to the wallet and a signature comes back. The secret never enters this
+   * page, which is the whole reason the private flow can run in a browser at all.
+   */
+  signMessage: (message: Uint8Array) => Promise<Uint8Array>;
+  /** Signs a transaction. The wallet shows the user what they are approving. */
+  signTransaction: <T extends Transaction | VersionedTransaction>(transaction: T) => Promise<T>;
 }
 
 const WalletContext = createContext<WalletState | null>(null);
@@ -151,6 +164,36 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       });
   }, [available.length]);
 
+  /**
+   * Asks the connected wallet to sign a challenge.
+   *
+   * Every wallet worth supporting implements `signMessage`. One that does not cannot take part
+   * in the private flow at all, and saying so beats failing later with something cryptic.
+   */
+  const signMessage = useCallback(async (message: Uint8Array): Promise<Uint8Array> => {
+    const wallets = detectWallets();
+    const active = wallets.find((wallet) => wallet.provider.publicKey) ?? wallets[0];
+    if (!active?.provider.signMessage) {
+      throw new Error(
+        "This wallet cannot sign messages, so it cannot authenticate to a private rollup.",
+      );
+    }
+    const { signature } = await active.provider.signMessage(message, "utf8");
+    return signature;
+  }, []);
+
+  const signTransaction = useCallback(
+    async <T extends Transaction | VersionedTransaction>(transaction: T): Promise<T> => {
+      const wallets = detectWallets();
+      const active = wallets.find((wallet) => wallet.provider.publicKey) ?? wallets[0];
+      if (!active?.provider.signTransaction) {
+        throw new Error("This wallet cannot sign transactions.");
+      }
+      return active.provider.signTransaction(transaction);
+    },
+    [],
+  );
+
   const disconnect = useCallback(async () => {
     const wallets = detectWallets();
     for (const wallet of wallets) {
@@ -170,8 +213,28 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<WalletState>(
-    () => ({ available, connecting, publicKey, walletName, error, connect, disconnect }),
-    [available, connecting, publicKey, walletName, error, connect, disconnect],
+    () => ({
+      available,
+      connecting,
+      publicKey,
+      walletName,
+      error,
+      connect,
+      disconnect,
+      signMessage,
+      signTransaction,
+    }),
+    [
+      available,
+      connecting,
+      publicKey,
+      walletName,
+      error,
+      connect,
+      disconnect,
+      signMessage,
+      signTransaction,
+    ],
   );
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
