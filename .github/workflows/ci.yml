@@ -1,12 +1,17 @@
 # The local gate, reproduced once.
 #
-# Deliberately small. This is a final check that the repository builds and passes somewhere other
-# than the machine that wrote it, not a debugger: anything that fails here is reproduced and
-# fixed locally first. There is no matrix, because nothing here is OS or version specific and a
-# matrix would multiply the wait without multiplying the information.
+# Deliberately one job and no matrix. Every step here depends on the one before it: the Rust
+# program tests load the built SBF objects from `target/deploy`, and the TypeScript client
+# imports the IDL from `target/idl`, so both are downstream of `anchor build`. Splitting them
+# into parallel jobs means building twice or passing artifacts between them, which is more
+# machinery than a final check deserves.
+#
+# This is a confirmation that the repository builds somewhere other than the machine that wrote
+# it. It is not a debugger: anything failing here is reproduced and fixed locally first.
 #
 # The browser suite is not run here. It needs a live Solana Devnet and a MagicBlock rollup, and a
-# CI job that fails because somebody else's testnet is busy teaches people to ignore CI.
+# job that fails because somebody else's testnet is busy teaches people to ignore CI. It runs
+# locally and against the deployment, which is where it means something.
 name: gate
 
 on:
@@ -18,37 +23,60 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # Pinned in docs/source-lock.md. A drift here is a drift from what the evidence was produced on.
+  SOLANA_VERSION: "3.1.9"
+  ANCHOR_VERSION: "1.0.2"
+
 jobs:
-  rust:
+  gate:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+
       - uses: Swatinem/rust-cache@v2
+
+      - name: Install the Solana CLI
+        run: |
+          sh -c "$(curl -sSfL https://release.anza.xyz/v${SOLANA_VERSION}/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+
+      - name: Install Anchor
+        run: |
+          cargo install --git https://github.com/coral-xyz/anchor avm --force
+          avm install "$ANCHOR_VERSION"
+          avm use "$ANCHOR_VERSION"
+
+      # Produces target/deploy/*.so, which the program tests load, and target/idl/*.json, which
+      # the TypeScript client imports. Everything below depends on this having run.
+      - name: Build the programs
+        run: anchor build --ignore-keys
+
       - run: cargo fmt --all -- --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
 
-  typescript:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
+
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm test:ts
       - run: pnpm verify-vectors
+
       # Every claim carries a reachable commit, artifacts that exist, a reproducing command, and
-      # a stated limitation. This is a gate because one claim once pointed at a file that had
-      # never been written.
+      # a stated limitation. A gate because one claim once pointed at a file never written.
       - run: pnpm audit-claims
       # No credential and no private incident material in anything committed.
       - run: pnpm scan-artifacts
+
       - run: pnpm --filter @vinct/web build
