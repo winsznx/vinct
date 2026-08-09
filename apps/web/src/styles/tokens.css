@@ -1540,5 +1540,13 @@ ol {
  * Everywhere else needs the offset, or the first heading sits behind the links.
  */
 .page-offset {
-  padding-top: var(--header);
+  /*
+   * The whole top gap, not just the bar's height.
+   *
+   * Every page using this also sets its own padding. A `padding` shorthand there silently
+   * replaces the offset, which is how three pages ended up starting their first line 25px above
+   * the fixed header. Owning the full value here means a call site has to use the longhands for
+   * the sides and bottom, and cannot half-override this by accident.
+   */
+  padding-top: calc(var(--header) + var(--s7));
 }

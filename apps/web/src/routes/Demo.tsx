@@ -44,7 +44,10 @@ export function Demo() {
   const phase = Math.min(4, [0, 1, 2, 3, 3, 4, 4][step] ?? 0) as MechanismPhase;
 
   return (
-    <div className="wrap page-offset" style={{ padding: "var(--s7) var(--s5) var(--s9)" }}>
+    <div
+      className="wrap page-offset"
+      style={{ paddingInline: "var(--s5)", paddingBottom: "var(--s9)" }}
+    >
       <header className="stack" style={{ gap: "var(--s4)", marginBottom: "var(--s7)" }}>
         <div className="row" style={{ flexWrap: "wrap", gap: "var(--s2)" }}>
           <Pill tone="attention">Recorded on Solana Devnet</Pill>

@@ -15,7 +15,10 @@ export function NotFound() {
   const location = useLocation();
   return (
     <SiteChrome>
-      <div className="wrap page-offset" style={{ padding: "var(--s8) var(--s5) var(--s9)" }}>
+      <div
+        className="wrap page-offset"
+        style={{ paddingInline: "var(--s5)", paddingBottom: "var(--s9)" }}
+      >
         <Empty
           title="No page at that address"
           testId="not-found"

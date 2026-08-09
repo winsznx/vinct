@@ -111,7 +111,10 @@ export function Proof() {
 
   return (
     <SiteChrome>
-      <div className="wrap page-offset" style={{ padding: "var(--s7) var(--s5) var(--s9)" }}>
+      <div
+        className="wrap page-offset"
+        style={{ paddingInline: "var(--s5)", paddingBottom: "var(--s9)" }}
+      >
         <header className="stack" style={{ gap: "var(--s3)", marginBottom: "var(--s6)" }}>
           <Pill>No wallet · No login · Nothing here to trust</Pill>
           <h1 className="m-heading" style={{ maxWidth: "18ch" }}>
