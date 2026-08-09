@@ -34,6 +34,11 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history, because `pnpm audit-claims` verifies that every claim's source commit is
+          # reachable. A shallow clone has one commit, so every claim looks unfalsifiable and the
+          # audit fails for a reason that has nothing to do with the claims.
+          fetch-depth: 0
 
       # rust-toolchain.toml pins 1.89.0. Taking `stable` instead installed 1.91 tooling that then
       # refused to build the pinned Anchor, which is a version skew CI invented for itself.
