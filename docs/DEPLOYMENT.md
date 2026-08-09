@@ -40,12 +40,31 @@ separate endpoint from `Network.base`, and both are visible in `apps/web/src/lib
 | --- | --- | --- |
 | `SOLANA_RPC` | Worker secret | upstream for the proxy |
 | `FALLBACK_RPC` | Worker var, optional | used when the primary declines a method |
-| `VITE_SOLANA_RPC` | build time, optional | overrides the proxy default |
+| `VITE_SOLANA_RPC` | build time, optional | overrides the proxy default; unset in production |
 | `VITE_SOLANA_SCAN_RPC` | build time, optional | overrides the scan endpoint |
 | `VITE_MAGICBLOCK_ROUTER` | build time, optional | router for rollup resolution |
 
 No regional rollup is ever hardcoded. `resolveRuntime` asks the router what exists and refuses
 to guess when the router and the chain disagree.
+
+### Why the production build leaves `VITE_SOLANA_RPC` unset
+
+Unset is what puts the browser on `/rpc`, and `/rpc` is the only reason the upstream credential
+stays server-side. Setting it removes that indirection: the endpoint is inlined into the bundle
+and every reader calls it directly.
+
+Vite inlines any `VITE_` variable it finds, from the environment or from an env file, and it
+reads `.env` and `.env.local` in **every** mode. Local development therefore uses
+`apps/web/.env.development.local`, which `vite dev` reads and a build does not. Copy it from
+`apps/web/.env.example`.
+
+A production build prints a warning when `VITE_SOLANA_RPC` is set, because the override is
+supported and occasionally wanted, but should never happen by accident. To confirm a bundle went
+out on the proxy, check that the `/rpc` default survived:
+
+```bash
+grep -ho '"/rpc"' apps/web/dist/assets/*.js | wc -l   # 1 on a proxied build, 0 if baked over
+```
 
 The build fingerprint is computed from `programs/vinct-core/src` at build time and inlined, so
 the app can tell whether a rollup is executing the build it was compiled against.

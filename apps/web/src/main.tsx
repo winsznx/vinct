@@ -91,6 +91,12 @@ function ProofRedirect() {
 const root = document.getElementById("root");
 if (!root) throw new Error("no root element");
 
+// Dev-only, and eliminated with the branch in a production build. See the module for why it is
+// loaded this way rather than rendered as a component.
+if (import.meta.env.DEV) {
+  void import("./lib/dev-config-notice").then((module) => module.mountDevConfigNotice());
+}
+
 createRoot(root).render(
   <StrictMode>
     <BrowserRouter>

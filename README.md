@@ -143,8 +143,19 @@ its own Solana release under `.toolchain/` and leaves the machine-wide one alone
 ```bash
 bash scripts/bootstrap-toolchain.sh
 pnpm install --frozen-lockfile
-pnpm web                     # the app, against Devnet
+cp apps/web/.env.example apps/web/.env.development.local
+pnpm web                     # the app, against Devnet, on http://localhost:5173
 ```
+
+The copy is not optional. A deployment reads the chain through `/rpc` on its own origin, which
+is the Cloudflare Worker holding the upstream credential, and `vite` serves no such route. Skip
+the copy and every read 404s while the pages still render, so the console reports an empty chain
+rather than a missing endpoint. `.env.development.local` names a public Devnet endpoint directly,
+and the dev server says so on screen if the file is missing.
+
+The `.development` in that filename is load-bearing. Vite reads `.env.local` in every mode,
+production builds included, so the same values parked there would quietly replace the Worker
+proxy in a deployed bundle. A production build warns if `VITE_SOLANA_RPC` is set at all.
 
 The whole mechanism, end to end, on a local MagicBlock stack:
 
