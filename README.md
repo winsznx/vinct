@@ -169,7 +169,7 @@ not the test, and no endpoint is selected by its hostname.
 ## Architecture
 
 ```mermaid
-flowchart LR
+flowchart TD
     A[Protocol A] --> CA[Adapter A, owned by A]
     B[Protocol B] --> CB[Adapter B, owned by B]
     C[Protocol C] --> CC[Adapter C, owned by C]

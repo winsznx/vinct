@@ -9,7 +9,7 @@ decide privately whether it has failed, and each acts through an adapter it owns
 VINCT can make a protocol act.
 
 ```mermaid
-flowchart TB
+flowchart TD
   subgraph base["Solana base layer"]
     COV[Covenant + memberships]
     CAP[Sovereign capabilities]
@@ -214,7 +214,7 @@ read as a completed settlement. See D-0058.
 ## Deployment boundary
 
 ```mermaid
-flowchart LR
+flowchart TD
   B[Browser] -->|reads| W[Cloudflare Worker]
   W -->|forwards| RPC[Solana RPC]
   B -->|scans direct| PUB[Public Solana RPC]
