@@ -1,0 +1,61 @@
+{
+  "captured_at": "2026-08-09T01:32:17.699Z",
+  "url": "https://vinct.timjosh507.workers.dev",
+  "question": "Does every public route serve, do client-side deep links survive a hard refresh, and is the proxy narrow?",
+  "routes": [
+    {
+      "path": "/",
+      "status": 200,
+      "ms": 556
+    },
+    {
+      "path": "/demo",
+      "status": 200,
+      "ms": 529
+    },
+    {
+      "path": "/proof",
+      "status": 200,
+      "ms": 178
+    },
+    {
+      "path": "/status",
+      "status": 200,
+      "ms": 197
+    },
+    {
+      "path": "/app",
+      "status": 200,
+      "ms": 189
+    },
+    {
+      "path": "/app/covenants",
+      "status": 200,
+      "ms": 183
+    },
+    {
+      "path": "/app/incidents",
+      "status": 200,
+      "ms": 178
+    },
+    {
+      "path": "/app/adapters",
+      "status": 200,
+      "ms": 187
+    },
+    {
+      "path": "/no-such-page",
+      "status": 200,
+      "ms": 191
+    },
+    {
+      "path": "/proof/b259584f4498acbc356d1940865288b623f4049e155b73c574dad7d4d166af1a",
+      "status": 200,
+      "ms": 184
+    }
+  ],
+  "all_ok": true,
+  "rpc_health": "ok",
+  "rpc_refuses_unlisted_method": "Method not proxied: requestAirdrop",
+  "note": "A 200 on /no-such-page is correct: routing is client-side, so the edge serves index.html and the app renders its own not-found. The proxy forwards a fixed allowlist of read methods and refuses everything else."
+}

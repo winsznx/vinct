@@ -1,0 +1,11 @@
+{
+  "captured_at": "2026-08-09T01:31:12.351Z",
+  "url": "https://vinct.timjosh507.workers.dev",
+  "bundle": "assets/index-Bmzk4Azf.js",
+  "bundle_bytes": 1162102,
+  "question": "Does the deployed bundle contain any key material or credential?",
+  "solana_secret_key_shaped_arrays": 0,
+  "credential_patterns_found": [],
+  "clean": true,
+  "note": "Every signature is produced in the user wallet. The upstream RPC credential is a Cloudflare Worker secret and is never sent to the browser; the page calls its own /rpc origin instead."
+}

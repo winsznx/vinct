@@ -30,7 +30,8 @@
     "proof:web": "bash scripts/phase7-web-proof.sh",
     "audit-claims": "tsx scripts/audit-claims.ts",
     "scan-artifacts": "tsx scripts/scan-artifacts.ts",
-    "optimize-art": "tsx scripts/optimize-art.ts"
+    "optimize-art": "tsx scripts/optimize-art.ts",
+    "scan-bundle": "node scripts/scan-bundle.mjs"
   },
   "dependencies": {
     "@coral-xyz/anchor": "0.32.1",

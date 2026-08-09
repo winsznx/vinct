@@ -1459,7 +1459,7 @@
     "status": "verified",
     "proof_level": 6,
     "network": "devnet",
-    "source_commit": "PENDING",
+    "source_commit": "5d05174",
     "program_ids": [
       "9BaZmGntudyAL5VodBWFCANchn7vx1Y7DNpXADbx6JcG"
     ],
@@ -1467,7 +1467,9 @@
     "commands": [
       "VINCT_WEB_URL=https://vinct.timjosh507.workers.dev pnpm exec playwright test"
     ],
-    "artifacts": [],
+    "artifacts": [
+      "artifacts/deployment/live-surface.json"
+    ],
     "verified_at": "2026-08-09T00:00:00Z",
     "limitations": [
       "37 passed and 3 skipped by viewport. The skips are the desktop navigation cases on mobile and the mobile disclosure case on desktop.",
@@ -1480,14 +1482,17 @@
     "status": "verified",
     "proof_level": 6,
     "network": "devnet",
-    "source_commit": "PENDING",
+    "source_commit": "5d05174",
     "program_ids": [],
     "transactions": [],
     "commands": [
       "pnpm --filter @vinct/web build",
+      "node scripts/scan-bundle.mjs https://vinct.timjosh507.workers.dev",
       "pnpm exec playwright test tests/web/privacy.spec.ts"
     ],
-    "artifacts": [],
+    "artifacts": [
+      "artifacts/deployment/bundle-scan.json"
+    ],
     "verified_at": "2026-08-09T00:00:00Z",
     "limitations": [
       "Establishes that no key is shipped or persisted. It does not establish anything about the wallet extension the user chooses to install."
@@ -1499,7 +1504,7 @@
     "status": "verified",
     "proof_level": 4,
     "network": "none",
-    "source_commit": "PENDING",
+    "source_commit": "5d05174",
     "program_ids": [],
     "transactions": [],
     "commands": [
